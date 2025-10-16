@@ -25,7 +25,12 @@ yarn-error.log*
 # environment
 .env
 
+# database
+wikicontest.db
+*.db
+
 # logs
+log.txt
 logs/
 *.log
 

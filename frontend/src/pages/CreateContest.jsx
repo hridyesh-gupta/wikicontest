@@ -155,7 +155,7 @@ const ContestCreatePage = () => {
       
       {/* Main Content */}
       <div className="main-content">
-        <h1 className="page-title">New Editathon</h1>
+        <h1 className="page-title">New Edit-a-thon</h1>
         
         {/* Tab Navigation */}
         <div className="tab-navigation">

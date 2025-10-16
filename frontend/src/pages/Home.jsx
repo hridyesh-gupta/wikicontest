@@ -94,7 +94,7 @@ const Home = () => {
         color: 'white',
         boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
       }}>
-        <h2 style={{ margin: 0 }}>Editathons</h2>
+        <h2 style={{ margin: 0 }}>Edit-a-thon</h2>
         {user ? (
           <div style={{ display: 'flex', gap: '1rem' }}>
             <button
