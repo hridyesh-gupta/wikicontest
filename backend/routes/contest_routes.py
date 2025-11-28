@@ -33,10 +33,12 @@ def validate_date_string(date_str):
         return None
 
 @contest_bp.route('/', methods=['GET'])
+@require_auth
 @handle_errors
 def get_all_contests():
     """
     Get all contests categorized by status
+    Requires authentication - users must be logged in to view contests.
     
     Returns:
         JSON response with contests categorized as current, upcoming, and past
@@ -165,10 +167,12 @@ def create_contest():
         return jsonify({'error': 'Failed to create contest'}), 500
 
 @contest_bp.route('/<int:id>', methods=['GET'])
+@require_auth
 @handle_errors
 def get_contest_by_id(id):
     """
     Get a specific contest by ID
+    Requires authentication - users must be logged in to view contest details.
     
     Args:
         id: Contest ID
@@ -184,10 +188,12 @@ def get_contest_by_id(id):
     return jsonify(contest.to_dict()), 200
 
 @contest_bp.route('/<int:id>/leaderboard', methods=['GET'])
+@require_auth
 @handle_errors
 def get_contest_leaderboard(id):
     """
     Get leaderboard for a specific contest
+    Requires authentication - users must be logged in to view leaderboard.
     
     Args:
         id: Contest ID
