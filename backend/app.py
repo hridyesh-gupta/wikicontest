@@ -62,6 +62,16 @@ def create_app():
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'rohank10')
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'rohank10')
     
+    # Session configuration for OAuth flow
+    # Sessions need to persist across redirects to external OAuth providers
+    app.config['SESSION_PERMANENT'] = True  # Make sessions persistent
+    app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)  # 30 minute timeout
+    app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access
+    app.config['SESSION_COOKIE_SAMESITE'] = 'None'  # Allow cross-site redirects for OAuth (required for external redirects)
+    app.config['SESSION_COOKIE_SECURE'] = False  # Set to False for localhost (True for HTTPS in production)
+    app.config['SESSION_COOKIE_DOMAIN'] = None  # Don't restrict domain for localhost
+    app.config['SESSION_COOKIE_PATH'] = '/'  # Available for all paths
+    
     # JWT token expiration time (24 hours)
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
     
@@ -250,11 +260,14 @@ def oauth_config_check():
     custom_callback_path = app.config.get('OAUTH_CALLBACK_PATH', None)
     
     # Build callback URL
+    # For local development: http://localhost:5000/api/user/oauth/callback
+    # For Toolforge: https://wikicontest.toolforge.org/oauth/callback (if OAUTH_CALLBACK_PATH is set)
     scheme = flask_request.scheme
     host = flask_request.host
     if custom_callback_path:
         callback_url = f"{scheme}://{host}{custom_callback_path}"
     else:
+        # Default callback URL for local development
         callback_url = f"{scheme}://{host}/api/user/oauth/callback"
     
     return jsonify({
