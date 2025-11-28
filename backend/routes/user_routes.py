@@ -10,6 +10,10 @@ from middleware.auth import require_auth, require_role, handle_errors, validate_
 import re
 from database import db
 import mwoauth
+import time
+# Temporary storage for OAuth tokens (in-memory cache)
+# This is used as a fallback when session cookies don't persist across redirects
+_oauth_token_cache = {}
 
 # Create blueprint
 user_bp = Blueprint('user', __name__)
@@ -370,16 +374,32 @@ def oauth_login():
         scheme = request.scheme  # 'http' or 'https'
         host = request.host  # '127.0.0.1:5000' or domain name
         
+        # For local development, ensure we use 'localhost' not '127.0.0.1'
+        # OAuth consumer is registered with 'localhost:5000', so we must use that exact format
+        if '127.0.0.1' in host or (host.startswith('localhost') and ':' not in host):
+            # Extract port if present
+            port = ':5000'  # Default port
+            if ':' in host:
+                port = ':' + host.split(':')[1]
+            # Force localhost for local development to match OAuth consumer registration
+            host = f'localhost{port}'
+        
         # Check if we should use a custom callback path (e.g., for Toolforge)
         # Toolforge OAuth consumer is registered with /oauth/callback
         # Regular deployment uses /api/user/oauth/callback
+        # For local development: http://localhost:5000/api/user/oauth/callback
         custom_callback_path = current_app.config.get('OAUTH_CALLBACK_PATH', None)
         if custom_callback_path:
             # Use custom callback path (e.g., /oauth/callback for Toolforge)
             callback_url = f"{scheme}://{host}{custom_callback_path}"
         else:
             # Use default blueprint route path
+            # This will be: http://localhost:5000/api/user/oauth/callback for local development
             callback_url = f"{scheme}://{host}/api/user/oauth/callback"
+        
+        # Log the exact callback URL being used for debugging
+        current_app.logger.info(f'Built callback URL: {callback_url}')
+        current_app.logger.info(f'Request host: {request.host}, Scheme: {scheme}, Final host: {host}')
         
         # Check if OAuth consumer is registered with "oob" (out-of-band)
         # If your OAuth consumer was registered with "oob", you must use "oob" here
@@ -416,8 +436,34 @@ def oauth_login():
         session['request_token'] = request_token.key
         session['request_secret'] = request_token.secret
         
+        # Also store in temporary cache as backup (in case session cookies don't persist)
+        # This helps when redirecting to external sites where cookies might not work
+        _oauth_token_cache[request_token.key] = {
+            'secret': request_token.secret,
+            'timestamp': time.time()
+        }
+        
+        # Clean up old cache entries (older than 10 minutes)
+        current_time = time.time()
+        expired_keys = [k for k, v in _oauth_token_cache.items() if current_time - v['timestamp'] > 600]
+        for key in expired_keys:
+            _oauth_token_cache.pop(key, None)
+        
+        # Explicitly save session before redirect to ensure it persists
+        # This is critical for OAuth flow where we redirect to external site
+        session.permanent = True  # Make session persistent
+        session.modified = True  # Mark session as modified to ensure it's saved
+        
+        # Log session storage for debugging
+        current_app.logger.info(f'Session stored - request_token: {request_token.key[:10]}...')
+        current_app.logger.info(f'Session keys: {list(session.keys())}')
+        current_app.logger.info(f'Token also cached as backup')
+        
+        # Create response with redirect to ensure session cookie is set
+        response = make_response(redirect(redirect_url))
+        
         # Redirect user to Wikimedia for authorization
-        return redirect(redirect_url)
+        return response
         
     except Exception as e:
         current_app.logger.error(f'OAuth initiation error: {str(e)}')
@@ -452,16 +498,40 @@ def oauth_callback():
     oauth_verifier = request.args.get('oauth_verifier')
     oauth_token = request.args.get('oauth_token')
     
-    # Get stored request token from session
+    # Get stored request token from session (primary method)
     request_token_key = session.get('request_token')
     request_secret = session.get('request_secret')
+    
+    # If session doesn't have the token, try to get it from cache (fallback)
+    # This handles cases where session cookies don't persist across external redirects
+    if not request_token_key or not request_secret:
+        if oauth_token in _oauth_token_cache:
+            cached_data = _oauth_token_cache.get(oauth_token)
+            if cached_data:
+                request_token_key = oauth_token
+                request_secret = cached_data['secret']
+                current_app.logger.info('Retrieved OAuth token from cache (session cookie failed)')
+                # Clean up cache entry after use
+                _oauth_token_cache.pop(oauth_token, None)
+    
+    # Log session data for debugging
+    current_app.logger.info(f'OAuth callback received - oauth_token: {oauth_token}, oauth_verifier: {oauth_verifier}')
+    current_app.logger.info(f'Session data - request_token_key: {request_token_key}, request_secret: {bool(request_secret)}')
+    current_app.logger.info(f'Session keys: {list(session.keys())}')
     
     # Validate callback parameters
     if not oauth_verifier or not oauth_token:
         return jsonify({'error': 'Missing OAuth parameters'}), 400
     
     if not request_token_key or not request_secret:
-        return jsonify({'error': 'OAuth session expired. Please try again.'}), 400
+        # Provide more detailed error message
+        current_app.logger.error('OAuth session expired - session data missing')
+        current_app.logger.error(f'Available session keys: {list(session.keys())}')
+        current_app.logger.error(f'Cache keys: {list(_oauth_token_cache.keys())}')
+        return jsonify({
+            'error': 'OAuth session expired. Please try again.',
+            'details': 'Session data was not found. Make sure cookies are enabled and you\'re using the same browser session.'
+        }), 400
     
     if oauth_token != request_token_key:
         return jsonify({'error': 'Invalid OAuth token'}), 400
@@ -472,11 +542,19 @@ def oauth_callback():
         request_token = mwoauth.RequestToken(request_token_key, request_secret)
         
         # Exchange request token for access token
+        # mwoauth.complete expects the full query string as BYTES, not a string
+        # request.query_string is already bytes, which is what we need
+        response_qs = request.query_string
+        
+        # Log parameters before calling complete
+        current_app.logger.info(f'Calling mwoauth.complete with query string: {response_qs.decode("utf-8")}')
+        current_app.logger.info(f'oauth_verifier: {oauth_verifier}, oauth_token: {oauth_token}')
+        
         access_token = mwoauth.complete(
             mw_uri,
             consumer_token,
             request_token,
-            oauth_verifier
+            response_qs  # Pass the full query string as bytes (not decoded)
         )
         
         # Get user identity from Wikimedia
@@ -533,3 +611,30 @@ def oauth_callback():
             'error': 'OAuth authentication failed',
             'details': str(e)
         }), 500
+@user_bp.route('/search', methods=['GET'])
+@handle_errors
+def search_users():
+    """
+    Search users by username (for autocomplete)
+    
+    Query parameters:
+        q: Search query string
+        limit: Maximum results to return (default: 10)
+    
+    Returns:
+        JSON response with list of matching usernames
+    """
+    query = request.args.get('q', '').strip()
+    limit = request.args.get('limit', 10, type=int)
+    
+    if not query or len(query) < 2:
+        return jsonify({'users': []}), 200
+    
+    # Search users whose username starts with or contains the query
+    users = User.query.filter(
+        User.username.ilike(f'%{query}%')
+    ).limit(limit).all()
+    
+    return jsonify({
+        'users': [{'username': user.username, 'id': user.id} for user in users]
+    }), 200
