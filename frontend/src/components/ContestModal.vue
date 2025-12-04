@@ -72,13 +72,12 @@
                   <tr v-for="submission in submissions" :key="submission.id">
                     <td>
                       <a 
-                        :href="submission.article_link" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        class="text-decoration-none"
+                        href="#" 
+                        @click.prevent="showArticlePreview(submission.article_link, submission.article_title)"
+                        class="text-decoration-none article-title-link"
                       >
                         {{ submission.article_title }}
-                        <i class="fas fa-external-link-alt ms-1" style="font-size: 0.8em;"></i>
+                        <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                       </a>
                     </td>
                     <td>{{ submission.username || 'Unknown' }}</td>
@@ -90,15 +89,13 @@
                     <td>{{ submission.score || 0 }}</td>
                     <td>{{ formatDate(submission.submitted_at) }}</td>
                     <td>
-                      <a 
-                        :href="submission.article_link" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <button 
+                        @click="showArticlePreview(submission.article_link, submission.article_title)"
                         class="btn btn-sm btn-outline-primary"
-                        title="View Article"
+                        title="Preview Article"
                       >
                         <i class="fas fa-eye"></i>
-                      </a>
+                      </button>
                     </td>
                   </tr>
                 </tbody>
@@ -140,6 +137,12 @@
       </div>
     </div>
   </div>
+
+  <!-- Article Preview Modal -->
+  <ArticlePreviewModal
+    :article-url="previewArticleUrl"
+    :article-title="previewArticleTitle"
+  />
 </template>
 
 <script>
@@ -194,6 +197,10 @@ export default {
     
     // State to track if auth check is in progress
     const checkingAuth = ref(false)
+    
+    // State for article preview modal
+    const previewArticleUrl = ref('')
+    const previewArticleTitle = ref('')
 
     // Check if user can view submissions (jury member or contest creator)
     const canViewSubmissions = computed(() => {
@@ -803,6 +810,19 @@ export default {
 }
 
 .table a:hover {
+  color: var(--wiki-primary-hover);
+  text-decoration: underline;
+}
+
+/* Article title link - clickable for preview */
+.article-title-link {
+  cursor: pointer;
+  color: var(--wiki-primary);
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.article-title-link:hover {
   color: var(--wiki-primary-hover);
   text-decoration: underline;
 }
