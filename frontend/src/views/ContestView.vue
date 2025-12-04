@@ -129,16 +129,15 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="submission in submissions" :key="submission.id">
+                  <tr v-for="submission in submissions" :key="submission.id">
                   <td>
                     <a 
-                      :href="submission.article_link" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      class="text-decoration-none"
+                      href="#" 
+                      @click.prevent="showArticlePreview(submission.article_link, submission.article_title)"
+                      class="text-decoration-none article-title-link"
                     >
                       {{ submission.article_title }}
-                      <i class="fas fa-external-link-alt ms-1" style="font-size: 0.8em;"></i>
+                      <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                     </a>
                   </td>
                   <td>{{ submission.username || 'Unknown' }}</td>
@@ -150,15 +149,13 @@
                   <td>{{ submission.score || 0 }}</td>
                   <td>{{ formatDate(submission.submitted_at) }}</td>
                   <td>
-                    <a 
-                      :href="submission.article_link" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
+                    <button 
+                      @click="showArticlePreview(submission.article_link, submission.article_title)"
                       class="btn btn-sm btn-outline-primary"
-                      title="View Article"
+                      title="Preview Article"
                     >
                       <i class="fas fa-eye"></i>
-                    </a>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -204,6 +201,12 @@
       :contest-id="submittingToContestId"
       @submitted="handleArticleSubmitted"
     />
+
+    <!-- Article Preview Modal -->
+    <ArticlePreviewModal
+      :article-url="previewArticleUrl"
+      :article-title="previewArticleTitle"
+    />
   </div>
 </template>
 
@@ -215,11 +218,13 @@ import api from '../services/api'
 import { showAlert } from '../utils/alerts'
 import { unslugify } from '../utils/slugify'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
+import ArticlePreviewModal from '../components/ArticlePreviewModal.vue'
 
 export default {
   name: 'ContestView',
   components: {
-    SubmitArticleModal
+    SubmitArticleModal,
+    ArticlePreviewModal
   },
   setup() {
     const router = useRouter()
@@ -236,6 +241,8 @@ export default {
     const canDeleteContest = ref(false)
     const checkingAuth = ref(false)
     const submittingToContestId = ref(null)
+    const previewArticleUrl = ref('')
+    const previewArticleTitle = ref('')
 
     // Get reactive references to auth state
     const currentUser = computed(() => {
@@ -495,6 +502,21 @@ export default {
       router.push({ name: 'Contests' })
     }
 
+    // Show article preview modal
+    const showArticlePreview = (url, title) => {
+      previewArticleUrl.value = url
+      previewArticleTitle.value = title || 'Article'
+      
+      // Show modal using Bootstrap
+      setTimeout(() => {
+        const modalElement = document.getElementById('articlePreviewModal')
+        if (modalElement) {
+          const modal = new bootstrap.Modal(modalElement)
+          modal.show()
+        }
+      }, 100)
+    }
+
     // Watch for changes in currentUser to update delete permission
     watch(() => currentUser.value, (newUser) => {
       if (newUser && contest.value && !checkingAuth.value) {
@@ -532,7 +554,10 @@ export default {
       handleSubmitArticle,
       handleArticleSubmitted,
       forceAuthRefresh,
-      goBack
+      goBack,
+      showArticlePreview,
+      previewArticleUrl,
+      previewArticleTitle
     }
   }
 }
@@ -661,6 +686,19 @@ export default {
 }
 
 .table a:hover {
+  color: var(--wiki-primary-hover);
+  text-decoration: underline;
+}
+
+/* Article title link - clickable for preview */
+.article-title-link {
+  cursor: pointer;
+  color: var(--wiki-primary);
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.article-title-link:hover {
   color: var(--wiki-primary-hover);
   text-decoration: underline;
 }
