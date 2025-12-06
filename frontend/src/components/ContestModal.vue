@@ -36,31 +36,32 @@
           <div v-if="canViewSubmissions" class="mt-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h6>Submissions</h6>
-              <button 
+              <button
                 v-if="loadingSubmissions"
-                class="btn btn-sm btn-outline-secondary" 
+                class="btn btn-sm btn-outline-secondary"
                 disabled
               >
                 <span class="spinner-border spinner-border-sm me-2"></span>Loading...
               </button>
-              <button 
+              <button
                 v-else
-                class="btn btn-sm btn-outline-primary" 
+                class="btn btn-sm btn-outline-primary"
                 @click="loadSubmissions"
               >
                 <i class="fas fa-sync-alt me-1"></i>Refresh
               </button>
             </div>
-            
+
             <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
               <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
             </div>
-            
+
             <div v-else-if="submissions.length > 0" class="table-responsive">
               <table class="table table-sm table-hover">
                 <thead>
                   <tr>
                     <th>Article Title</th>
+                    <th>Article Author</th>
                     <th>Submitted By</th>
                     <th>Status</th>
                     <th>Score</th>
@@ -71,14 +72,33 @@
                 <tbody>
                   <tr v-for="submission in submissions" :key="submission.id">
                     <td>
-                      <a 
-                        href="#" 
+                      <a
+                        href="#"
                         @click.prevent="showArticlePreview(submission.article_link, submission.article_title)"
                         class="text-decoration-none article-title-link"
+                        :title="submission.article_link"
                       >
                         {{ submission.article_title }}
                         <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                       </a>
+                      <div
+                        v-if="submission.article_word_count && submission.article_word_count > 0"
+                        class="text-muted small mt-1"
+                      >
+                        <i class="fas fa-file-alt me-1"></i>{{ formatWordCount(submission.article_word_count) }}
+                      </div>
+                      <div v-else-if="submission.article_word_count === 0" class="text-muted small mt-1">
+                        <i class="fas fa-file-alt me-1"></i>Size: 0 bytes
+                      </div>
+                    </td>
+                    <td>
+                      <div v-if="submission.article_author">
+                        <i class="fas fa-user me-1"></i>{{ submission.article_author }}
+                      </div>
+                      <div v-else class="text-muted small">Unknown</div>
+                      <div v-if="submission.article_created_at" class="text-muted small mt-1">
+                        <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
+                      </div>
                     </td>
                     <td>{{ submission.username || 'Unknown' }}</td>
                     <td>
@@ -89,7 +109,7 @@
                     <td>{{ submission.score || 0 }}</td>
                     <td>{{ formatDate(submission.submitted_at) }}</td>
                     <td>
-                      <button 
+                      <button
                         @click="showArticlePreview(submission.article_link, submission.article_title)"
                         class="btn btn-sm btn-outline-primary"
                         title="Preview Article"
@@ -107,17 +127,21 @@
           <!-- Debug info and auth status -->
           <div class="me-auto">
             <!-- Warning if user is not loaded -->
-            <div v-if="contest && !currentUser && !checkingAuth" class="alert alert-warning py-1 px-2 mb-2" style="font-size: 0.75rem;">
+            <div
+              v-if="contest && !currentUser && !checkingAuth"
+              class="alert alert-warning py-1 px-2 mb-2"
+              style="font-size: 0.75rem;"
+            >
               <i class="fas fa-exclamation-triangle me-1"></i>
-              <strong>User not loaded!</strong> 
+              <strong>User not loaded!</strong>
               <button class="btn btn-sm btn-outline-warning ms-2" @click="forceAuthRefresh" style="font-size: 0.7rem;">
                 <i class="fas fa-sync-alt me-1"></i>Refresh Auth
               </button>
             </div>
           </div>
-          <button 
+          <button
             v-if="canDeleteContest"
-            class="btn btn-danger" 
+            class="btn btn-danger"
             @click="handleDeleteContest"
             :disabled="deletingContest"
           >
@@ -125,9 +149,9 @@
             <i v-else class="fas fa-trash me-2"></i>
             {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
           </button>
-          <button 
+          <button
             v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-            class="btn btn-primary" 
+            class="btn btn-primary"
             @click="handleSubmitArticle"
           >
             Submit Article
@@ -150,9 +174,13 @@ import { computed, ref, watch } from 'vue'
 import { useStore } from '../store'
 import api from '../services/api'
 import { showAlert } from '../utils/alerts'
+import ArticlePreviewModal from './ArticlePreviewModal.vue'
 
 export default {
   name: 'ContestModal',
+  components: {
+    ArticlePreviewModal
+  },
   props: {
     contest: {
       type: Object,
@@ -184,20 +212,20 @@ export default {
       const user = currentUser.value
       return !!user && !!user.id && !!user.username
     })
-    
+
     // State for submissions
     const submissions = ref([])
     const loadingSubmissions = ref(false)
-    
+
     // State for delete operation
     const deletingContest = ref(false)
-    
+
     // State for delete permission (updated after auth check)
     const canDeleteContest = ref(false)
-    
+
     // State to track if auth check is in progress
     const checkingAuth = ref(false)
-    
+
     // State for article preview modal
     const previewArticleUrl = ref('')
     const previewArticleTitle = ref('')
@@ -207,48 +235,48 @@ export default {
       if (!isAuthenticated.value || !props.contest || !currentUser.value) {
         return false
       }
-      
+
       const username = (currentUser.value.username || '').trim().toLowerCase()
       const contest = props.contest
-      
+
       // Check if user is contest creator (case-insensitive)
       const contestCreator = (contest.created_by || '').trim().toLowerCase()
       if (contestCreator && username === contestCreator) {
         return true
       }
-      
+
       // Check if user is jury member (case-insensitive)
       if (contest.jury_members && Array.isArray(contest.jury_members)) {
         const juryUsernames = contest.jury_members.map(j => (j || '').trim().toLowerCase())
         return juryUsernames.includes(username)
       }
-      
+
       return false
     })
 
     /**
      * Check if user can delete contest
-     * 
+     *
      * This works for both regular users and OAuth (Wikimedia) users:
      * - Regular users: username from registration
      * - OAuth users: Wikimedia username stored in username field
-     * 
+     *
      * When a contest is created, the backend stores user.username in created_by field,
      * so the comparison works the same way for both user types.
      */
     const checkDeletePermission = () => {
       // Reset to false initially
       canDeleteContest.value = false
-      
+
       // Get current user from multiple sources to ensure we get the latest value
       // Try computed property first, then direct state access
       const userFromComputed = currentUser.value
       const userFromStore = store.currentUser
       const userFromState = (store.state && store.state.currentUser) || null
-      
+
       // Use the first available user source
       const userToCheck = userFromComputed || userFromStore || userFromState
-      
+
       console.log('=== Delete Permission Check ===')
       console.log('isAuthenticated:', isAuthenticated.value)
       console.log('hasContest:', !!props.contest)
@@ -256,34 +284,34 @@ export default {
       console.log('store.currentUser:', userFromStore)
       console.log('store.state.currentUser:', userFromState)
       console.log('userToCheck (final):', userToCheck)
-      
+
       // Check basic requirements
       if (!isAuthenticated.value) {
         console.log('❌ Delete check: Not authenticated')
         canDeleteContest.value = false
         return
       }
-      
+
       if (!props.contest) {
         console.log('❌ Delete check: No contest')
         canDeleteContest.value = false
         return
       }
-      
+
       if (!userToCheck) {
         console.log('❌ Delete check: No current user object')
         console.log('Store state:', store.state)
         canDeleteContest.value = false
         return
       }
-      
+
       // Get username from current user (works for both regular and OAuth users)
       const username = (userToCheck.username || '').trim()
       const contestCreator = (props.contest.created_by || '').trim()
-      
+
       // If either is empty, can't match
       if (!username) {
-        console.log('❌ Delete check: Username is empty', { 
+        console.log('❌ Delete check: Username is empty', {
           userToCheck,
           currentUser: userFromComputed,
           storeUser: userFromStore,
@@ -292,30 +320,30 @@ export default {
         canDeleteContest.value = false
         return
       }
-      
+
       if (!contestCreator) {
         console.log('❌ Delete check: Contest creator is empty', { contest: props.contest })
         canDeleteContest.value = false
         return
       }
-      
+
       // Check if user is contest creator (case-insensitive comparison)
       // This works for both regular users and OAuth users since both use username
       const usernameLower = username.toLowerCase()
       const creatorLower = contestCreator.toLowerCase()
       const canDelete = usernameLower === creatorLower
-      
+
       // Debug logging to help troubleshoot
       console.log('✅ Delete permission check result:', {
-        username: username,
-        contestCreator: contestCreator,
-        usernameLower: usernameLower,
-        creatorLower: creatorLower,
+        username,
+        contestCreator,
+        usernameLower,
+        creatorLower,
         match: canDelete,
-        canDelete: canDelete,
+        canDelete,
         note: 'Works for both regular and OAuth (Wikimedia) users'
       })
-      
+
       canDeleteContest.value = canDelete
       console.log('=== End Delete Permission Check ===')
     }
@@ -333,6 +361,46 @@ export default {
       } catch (e) {
         return dateString
       }
+    }
+
+    // Format date in short format (for article creation date)
+    const formatDateShort = (dateString) => {
+      if (!dateString) return ''
+      try {
+        // Handle MediaWiki timestamp format (e.g., "2024-01-15T10:30:00Z")
+        const date = new Date(dateString)
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        })
+      } catch (e) {
+        return dateString
+      }
+    }
+
+    // Format word count for display
+    const formatWordCount = (count) => {
+      if (!count) return ''
+      if (count >= 1000) {
+        return `${(count / 1000).toFixed(1)}k words`
+      }
+      return `${count} words`
+    }
+
+    // Show article preview modal
+    const showArticlePreview = (url, title) => {
+      previewArticleUrl.value = url
+      previewArticleTitle.value = title || 'Article'
+
+      // Show modal using Bootstrap
+      setTimeout(() => {
+        const modalElement = document.getElementById('articlePreviewModal')
+        if (modalElement) {
+          const modal = new bootstrap.Modal(modalElement)
+          modal.show()
+        }
+      }, 100)
     }
 
     // Get status badge color
@@ -354,7 +422,7 @@ export default {
       if (!props.contest || !canViewSubmissions.value) {
         return
       }
-      
+
       loadingSubmissions.value = true
       try {
         const data = await api.get(`/contest/${props.contest.id}/submissions`)
@@ -371,27 +439,27 @@ export default {
     // Handle delete contest
     const handleDeleteContest = async () => {
       if (!props.contest) return
-      
+
       // Confirm deletion
       const confirmed = confirm(
         `Are you sure you want to delete the contest "${props.contest.name}"?\n\n` +
         'This action cannot be undone and will delete all associated submissions.'
       )
-      
+
       if (!confirmed) return
-      
+
       deletingContest.value = true
       try {
         await api.delete(`/contest/${props.contest.id}`)
         showAlert('Contest deleted successfully', 'success')
-        
+
         // Close modal
         const modalElement = document.getElementById('contestModal')
         const modal = bootstrap.Modal.getInstance(modalElement)
         if (modal) {
           modal.hide()
         }
-        
+
         // Emit event to parent to reload contests
         emit('contest-deleted')
       } catch (error) {
@@ -417,7 +485,7 @@ export default {
       checkingAuth.value = true
       try {
         console.log('🔄 Manual auth refresh triggered')
-        const authResult = await store.checkAuth()
+        await store.checkAuth()
         await new Promise(resolve => setTimeout(resolve, 200))
         checkDeletePermission()
         console.log('🔄 Auth refresh completed, user:', store.currentUser || (store.state && store.state.currentUser))
@@ -443,7 +511,7 @@ export default {
         canDeleteContest.value = false
       }
     }, { deep: true, immediate: false })
-    
+
     // Also watch store state directly as backup (only if store.state exists)
     if (store.state) {
       watch(() => store.state.currentUser, (newUser, oldUser) => {
@@ -459,7 +527,7 @@ export default {
         }
       }, { deep: true, immediate: false })
     }
-    
+
     // Also watch store.currentUser computed property
     watch(() => store.currentUser, (newUser, oldUser) => {
       if (newUser && props.contest && !checkingAuth.value) {
@@ -480,36 +548,36 @@ export default {
         // Reset state
         checkingAuth.value = true
         canDeleteContest.value = false
-        
+
         try {
           console.log('🔍 Modal opened, checking auth for contest:', newContest.name)
           console.log('🔍 Contest created by:', newContest.created_by)
-          
+
           // First, check if user is already in the store (from login)
           // This is faster and more reliable than calling checkAuth()
           let loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
-          
+
           console.log('📊 Initial user check:', {
             storeCurrentUser: store.currentUser,
             stateCurrentUser: (store.state && store.state.currentUser) || null,
             computedCurrentUser: currentUser.value,
-            loadedUser: loadedUser
+            loadedUser
           })
-          
+
           // If user is not in store, try to load it via checkAuth
           if (!loadedUser) {
             console.log('⚠️ User not in store, calling checkAuth()...')
             let userLoaded = false
             let retries = 0
             const maxRetries = 3
-            
+
             while (!userLoaded && retries < maxRetries) {
               try {
                 const authResult = await store.checkAuth()
-                
+
                 // Wait for reactive state to update after checkAuth
                 await new Promise(resolve => setTimeout(resolve, 150))
-                
+
                 // Check if user is actually loaded now
                 const userNow = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
                 if (authResult && userNow) {
@@ -523,7 +591,7 @@ export default {
               } catch (error) {
                 console.error(`Auth check attempt ${retries + 1} failed:`, error)
               }
-              
+
               if (!userLoaded && retries < maxRetries - 1) {
                 console.log(`Retrying auth check... (${retries + 1}/${maxRetries})`)
                 await new Promise(resolve => setTimeout(resolve, 300))
@@ -533,23 +601,23 @@ export default {
           } else {
             console.log('✅ User already in store, using existing user:', loadedUser)
           }
-          
+
           // Wait a bit for reactive state to fully propagate
           await new Promise(resolve => setTimeout(resolve, 100))
-          
+
           // Final user check - try all sources again
           loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
-          
+
           // Log for debugging
           console.log('📊 Final user state:', {
             isAuthenticated: store.isAuthenticated,
             currentUser: store.currentUser,
             stateCurrentUser: (store.state && store.state.currentUser) || null,
             computedCurrentUser: currentUser.value,
-            loadedUser: loadedUser,
+            loadedUser,
             contestCreator: newContest.created_by
           })
-          
+
           // Check if user is loaded - if not, we can't check permissions
           if (!loadedUser) {
             console.error('❌ CRITICAL: User not loaded!')
@@ -563,24 +631,24 @@ export default {
           } else {
             console.log('✅ User loaded successfully:', loadedUser)
           }
-          
+
           // Now check delete permission with the loaded user
           // Give it a moment for reactivity to settle
           await new Promise(resolve => setTimeout(resolve, 100))
           checkDeletePermission()
-          
+
           // If permission check didn't work, try a few more times
           if (!canDeleteContest.value) {
             console.log('⚠️ Delete permission false, retrying permission check...')
             for (let i = 0; i < 3; i++) {
               await new Promise(resolve => setTimeout(resolve, 150))
-              
+
               // Re-read user to ensure we have latest state
               const userNow = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
               if (userNow) {
                 console.log(`Permission check retry ${i + 1}, user:`, userNow)
                 checkDeletePermission()
-                
+
                 // If we got a result, break
                 if (canDeleteContest.value) {
                   console.log('✅ Delete permission granted!')
@@ -589,7 +657,7 @@ export default {
               }
             }
           }
-          
+
           // Final check and logging
           if (!canDeleteContest.value) {
             const finalUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
@@ -605,14 +673,13 @@ export default {
           } else {
             console.log('✅ Delete permission check successful!')
           }
-          
         } catch (error) {
           console.error('❌ Failed to check auth:', error)
           canDeleteContest.value = false
         } finally {
           checkingAuth.value = false
         }
-        
+
         // Load submissions if user can view them
         if (canViewSubmissions.value) {
           loadSubmissions()
@@ -636,11 +703,16 @@ export default {
       canViewSubmissions,
       canDeleteContest,
       formatDate,
+      formatDateShort,
+      formatWordCount,
       getStatusColor,
       loadSubmissions,
       handleSubmitArticle,
       handleDeleteContest,
-      forceAuthRefresh
+      forceAuthRefresh,
+      showArticlePreview,
+      previewArticleUrl,
+      previewArticleTitle
     }
   }
 }
@@ -979,11 +1051,11 @@ export default {
   .modal-body {
     padding: 1rem;
   }
-  
+
   .table {
     font-size: 0.9rem;
   }
-  
+
   .table thead th,
   .table tbody td {
     padding: 0.5rem;

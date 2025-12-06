@@ -1,6 +1,6 @@
 /**
  * Alert Utility Functions
- * 
+ *
  * This module provides a simple alert system for showing notifications.
  * It manages a global list of alerts that are displayed in AlertContainer.
  */
@@ -23,9 +23,9 @@ export function showAlert(message, type = 'info') {
     message,
     type
   }
-  
+
   alertState.alerts.push(alert)
-  
+
   // Auto-remove after 5 seconds
   setTimeout(() => {
     removeAlert(alert.id)

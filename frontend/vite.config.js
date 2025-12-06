@@ -1,6 +1,6 @@
 /**
  * Vite Configuration for WikiContest Frontend
- * 
+ *
  * This configuration sets up the Vue.js build process with Vite.
  * The build output will be in the 'dist' directory, which Flask will serve.
  */

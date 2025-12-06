@@ -1,7 +1,7 @@
 <template>
     <div class="container py-5">
       <h2 class="mb-4 page-header">Dashboard</h2>
-    
+
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -47,19 +47,19 @@
           <div class="card h-100">
             <div class="card-body">
               <div v-if="dashboardData.submissions_by_contest?.length > 0">
-                <div 
-                  v-for="contest in dashboardData.submissions_by_contest" 
+                <div
+                  v-for="contest in dashboardData.submissions_by_contest"
                   :key="contest.contest_id"
                   class="mb-3"
                 >
                   <h6>{{ contest.contest_name }}</h6>
-                  <div 
-                    v-for="submission in contest.submissions" 
+                  <div
+                    v-for="submission in contest.submissions"
                     :key="submission.id"
                     class="d-flex justify-content-between align-items-center mb-2 flex-wrap"
                   >
                     <span class="me-2 mb-1">{{ submission.article_title }}</span>
-                    <span 
+                    <span
                       :class="`badge bg-${getStatusColor(submission.status)}`"
                     >
                       {{ submission.status }}
@@ -78,8 +78,8 @@
           <div class="card h-100">
             <div class="card-body">
               <div v-if="dashboardData.contest_wise_scores?.length > 0">
-                <div 
-                  v-for="score in dashboardData.contest_wise_scores" 
+                <div
+                  v-for="score in dashboardData.contest_wise_scores"
                   :key="score.contest_id"
                   class="d-flex justify-content-between align-items-center mb-2 flex-wrap"
                 >
@@ -124,7 +124,7 @@
                       </td>
                       <td>{{ contest.project_name || 'N/A' }}</td>
                       <td>
-                        <span 
+                        <span
                           class="badge"
                           :class="`bg-${getStatusBadgeColor(contest.status)}`"
                         >
@@ -134,7 +134,7 @@
                       <td>{{ contest.submission_count || 0 }}</td>
                       <td>{{ formatDate(contest.created_at) }}</td>
                       <td>
-                        <button 
+                        <button
                           class="btn btn-sm btn-outline-primary"
                           @click.stop="viewContest(contest.id)"
                         >
@@ -212,9 +212,9 @@ export default {
     // Get status color for badges
     const getStatusColor = (status) => {
       const statusColors = {
-        'accepted': 'success',
-        'rejected': 'danger',
-        'pending': 'warning'
+        accepted: 'success',
+        rejected: 'danger',
+        pending: 'warning'
       }
       return statusColors[status] || 'secondary'
     }
@@ -222,11 +222,11 @@ export default {
     // Get status badge color for contest status
     const getStatusBadgeColor = (status) => {
       const statusColors = {
-        'current': 'success',
-        'active': 'success',
-        'upcoming': 'warning',
-        'past': 'secondary',
-        'completed': 'info'
+        current: 'success',
+        active: 'success',
+        upcoming: 'warning',
+        past: 'secondary',
+        completed: 'info'
       }
       return statusColors[status?.toLowerCase()] || 'primary'
     }
@@ -236,9 +236,9 @@ export default {
       if (!dateString) return 'N/A'
       try {
         const date = new Date(dateString)
-        return date.toLocaleDateString('en-US', { 
+        return date.toLocaleDateString('en-US', {
           year: 'numeric',
-          month: 'short', 
+          month: 'short',
           day: 'numeric'
         })
       } catch (e) {
@@ -250,12 +250,12 @@ export default {
     const viewContest = (contestId) => {
       // Find the contest object from dashboard data
       let contestData = null
-      
+
       // Check in created contests
       if (dashboardData.value?.created_contests) {
         contestData = dashboardData.value.created_contests.find(c => c.id === contestId)
       }
-      
+
       // If not found, try to get from store (all contests)
       if (!contestData) {
         const allContests = store.getContestsByCategory('current')
@@ -263,7 +263,7 @@ export default {
           .concat(store.getContestsByCategory('past'))
         contestData = allContests.find(c => c.id === contestId)
       }
-      
+
       // If still not found, try to fetch it
       if (!contestData) {
         // Fallback: fetch contest by ID to get the name
@@ -282,7 +282,7 @@ export default {
           })
         return
       }
-      
+
       // If we have the contest data, navigate to full page
       if (contestData && contestData.name) {
         const contestSlug = slugify(contestData.name)
@@ -299,7 +299,7 @@ export default {
         return
       }
       submittingToContestId.value = contestId
-      
+
       // Show submit modal using Bootstrap
       setTimeout(() => {
         const modalElement = document.getElementById('submitArticleModal')
@@ -655,15 +655,15 @@ h6 {
   h2.page-header {
     font-size: 1.75rem;
   }
-  
+
   h4 {
     font-size: 1.125rem;
   }
-  
+
   .card-body {
     padding: 1.25rem;
   }
-  
+
   h2.text-primary,
   h2.text-success,
   h2.text-warning {

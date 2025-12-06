@@ -7,7 +7,10 @@
         <div class="hero-content">
           <h1 class="hero-title">WikiContest</h1>
           <p class="hero-subtitle">Collaborate. Compete. Create Knowledge.</p>
-          <p class="hero-description">A professional platform for managing Wikipedia article contests and fostering collaborative knowledge creation.</p>
+          <p class="hero-description">
+            A professional platform for managing Wikipedia article contests and
+            fostering collaborative knowledge creation.
+          </p>
 
           <div class="hero-buttons">
             <router-link class="btn btn-primary btn-lg" to="/contests">Browse Contests</router-link>
