@@ -1,6 +1,6 @@
 <template>
   <div class="modal fade" id="articlePreviewModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
@@ -16,15 +16,15 @@
             </div>
             <p class="mt-3 text-muted">Loading article preview...</p>
           </div>
-          
+
           <!-- Error state -->
           <div v-else-if="error" class="alert alert-danger">
             <i class="fas fa-exclamation-circle me-2"></i>
             {{ error }}
             <div class="mt-3">
-              <a 
-                :href="articleUrl" 
-                target="_blank" 
+              <a
+                :href="articleUrl"
+                target="_blank"
                 rel="noopener noreferrer"
                 class="btn btn-sm btn-outline-primary"
               >
@@ -32,12 +32,14 @@
               </a>
             </div>
           </div>
-          
+
           <!-- MediaWiki content preview -->
+          <!-- Content is from MediaWiki API parse action, which sanitizes HTML for safe display -->
           <div v-else-if="mediaWikiContent" class="article-preview-container mediawiki-content">
+            <!-- eslint-disable-next-line vue/no-v-html -->
             <div class="mediawiki-preview" v-html="mediaWikiContent"></div>
           </div>
-          
+
           <!-- Article preview iframe (for non-MediaWiki pages) -->
           <div v-else class="article-preview-container">
             <iframe
@@ -51,9 +53,9 @@
           </div>
         </div>
         <div class="modal-footer">
-          <a 
-            :href="articleUrl" 
-            target="_blank" 
+          <a
+            :href="articleUrl"
+            target="_blank"
             rel="noopener noreferrer"
             class="btn btn-outline-primary"
           >
@@ -89,7 +91,7 @@ export default {
     const mediaWikiContent = ref('')
     const actualArticleTitle = ref(props.articleTitle || 'Article')
     let loadTimeout = null
-    let iframeCheckInterval = null
+    const iframeCheckInterval = null
 
     // Check if URL is a MediaWiki page
     const isMediaWikiUrl = (url) => {
@@ -108,95 +110,52 @@ export default {
       }
     }
 
-    // Extract MediaWiki API base URL from article URL
-    const getMediaWikiApiUrl = (articleUrl) => {
-      try {
-        const urlObj = new URL(articleUrl)
-        // Get the base URL (protocol + hostname)
-        const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`
-        
-        // Extract page title from URL
-        let pageTitle = ''
-        if (urlObj.pathname.includes('/wiki/')) {
-          // Standard MediaWiki URL format: /wiki/Page_Title
-          pageTitle = decodeURIComponent(urlObj.pathname.split('/wiki/')[1])
-        } else if (urlObj.searchParams.has('title')) {
-          // Old-style URL: /w/index.php?title=Page_Title
-          pageTitle = urlObj.searchParams.get('title')
-        } else {
-          // Try to extract from pathname
-          const parts = urlObj.pathname.split('/')
-          pageTitle = parts[parts.length - 1] || ''
-        }
-        
-        // Build API URL
-        const apiUrl = `${baseUrl}/w/api.php?action=parse&page=${encodeURIComponent(pageTitle)}&format=json&origin=*`
-        return { apiUrl, pageTitle }
-      } catch (e) {
-        return null
-      }
-    }
-
-    // Fetch MediaWiki content via API
+    // Fetch MediaWiki content via backend proxy API
+    // This avoids CORS issues by making the request through our backend server
     const fetchMediaWikiContent = async (articleUrl) => {
       try {
-        const apiInfo = getMediaWikiApiUrl(articleUrl)
-        if (!apiInfo || !apiInfo.pageTitle) {
-          throw new Error('Could not parse MediaWiki URL or extract page title')
+        // Validate that we have a valid URL
+        if (!articleUrl) {
+          throw new Error('Article URL is required')
         }
 
-        // Fetch content from MediaWiki API with timeout
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 second timeout
+        // Use backend proxy endpoint to fetch MediaWiki content
+        // The backend makes the request to MediaWiki API, avoiding CORS restrictions
+        const response = await fetch(`/api/mediawiki/preview?url=${encodeURIComponent(articleUrl)}`, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json'
+          }
+        })
 
-        try {
-          const response = await fetch(apiInfo.apiUrl, {
-            signal: controller.signal,
-            headers: {
-              'Accept': 'application/json'
-            }
-          })
-          
-          clearTimeout(timeoutId)
-          
-          if (!response.ok) {
-            throw new Error(`API request failed: ${response.status} ${response.statusText}`)
+        if (!response.ok) {
+          // Try to get error message from response
+          let errorMessage = `Request failed: ${response.status} ${response.statusText}`
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.error || errorMessage
+          } catch (e) {
+            // If JSON parsing fails, use default message
           }
+          throw new Error(errorMessage)
+        }
 
-          const data = await response.json()
-          
-          if (data.error) {
-            throw new Error(data.error.info || `API error: ${data.error.code || 'Unknown error'}`)
-          }
+        const data = await response.json()
 
-          if (data.parse && data.parse.text && data.parse.text['*']) {
-            // Get the HTML content
-            let htmlContent = data.parse.text['*']
-            
-            // Get the actual page title from API response (more accurate than URL)
-            const actualPageTitle = data.parse.title || data.parse.displaytitle || null
-            
-            // Make links absolute (convert relative links to absolute)
-            const urlObj = new URL(articleUrl)
-            const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`
-            
-            // Replace relative links with absolute links
-            htmlContent = htmlContent.replace(/href="\/wiki\//g, `href="${baseUrl}/wiki/`)
-            htmlContent = htmlContent.replace(/href="\/w\//g, `href="${baseUrl}/w/`)
-            htmlContent = htmlContent.replace(/src="\/wiki\//g, `src="${baseUrl}/wiki/`)
-            htmlContent = htmlContent.replace(/src="\/w\//g, `src="${baseUrl}/w/`)
-            
-            // Return both content and actual page title
-            return { htmlContent, actualPageTitle }
-          } else {
-            throw new Error('No content found in API response')
+        // Check for error in response
+        if (data.error) {
+          throw new Error(data.error)
+        }
+
+        // Return the content and title from backend response
+        // Backend already processes the HTML and makes links absolute
+        if (data.htmlContent) {
+          return {
+            htmlContent: data.htmlContent,
+            actualPageTitle: data.actualPageTitle || null
           }
-        } catch (fetchErr) {
-          clearTimeout(timeoutId)
-          if (fetchErr.name === 'AbortError') {
-            throw new Error('Request timed out. The MediaWiki API may be slow or unavailable.')
-          }
-          throw fetchErr
+        } else {
+          throw new Error('No content found in API response')
         }
       } catch (err) {
         console.error('Error fetching MediaWiki content:', err)
@@ -224,7 +183,7 @@ export default {
         try {
           // Try to fetch via MediaWiki API
           const result = await fetchMediaWikiContent(props.articleUrl)
-          
+
           // Update content and title
           if (typeof result === 'object' && result.htmlContent) {
             mediaWikiContent.value = result.htmlContent
@@ -236,13 +195,20 @@ export default {
             // Fallback for old format (string)
             mediaWikiContent.value = result
           }
-          
+
           loading.value = false
         } catch (err) {
           console.error('MediaWiki API fetch failed:', err)
-          // If API fails, show error message
+          // If API fails, show error message with details from backend if available
           loading.value = false
-          error.value = 'Unable to load MediaWiki article preview. This may be due to CORS restrictions or the page not being accessible. Please use "Open in New Tab" to view the article.'
+          // Try to extract error message from the error object
+          const errorMessage = err.message || err.toString()
+          // Show more specific error if available, otherwise show generic message
+          if (errorMessage && !errorMessage.includes('Failed to fetch') && !errorMessage.includes('NetworkError')) {
+            error.value = `Unable to load article preview: ${errorMessage}. Please use "Open in New Tab" to view the article.`
+          } else {
+            error.value = 'Unable to load MediaWiki article preview. This may be due to CORS restrictions or the page not being accessible. Please use "Open in New Tab" to view the article.'
+          }
         }
       } else {
         // For non-MediaWiki pages, use iframe with timeout
@@ -339,31 +305,38 @@ export default {
   opacity: 1;
 }
 
-/* Modal body - matches theme */
+/* Modal body - matches theme - fullscreen */
 .modal-body {
   padding: 0;
   background-color: var(--wiki-modal-bg);
   color: var(--wiki-text);
   transition: background-color 0.3s ease, color 0.3s ease;
-  min-height: 500px;
+  min-height: calc(100vh - 140px); /* Full height minus header and footer */
   display: flex;
   flex-direction: column;
-}
-
-/* Article preview container */
-.article-preview-container {
-  width: 100%;
-  height: 100%;
-  min-height: 500px;
-  position: relative;
+  flex: 1;
   overflow: hidden;
 }
 
-/* MediaWiki content preview */
-.mediawiki-content {
-  overflow-y: auto;
+/* Article preview container - fullscreen */
+.article-preview-container {
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 140px); /* Full height minus header and footer */
+  position: relative;
+  overflow: hidden; /* Keep hidden for iframe */
+  flex: 1;
+}
+
+/* MediaWiki content preview - fullscreen with scrolling */
+/* When container has both classes, allow vertical scrolling for long content */
+.article-preview-container.mediawiki-content {
+  overflow-y: auto; /* Allow scrolling for MediaWiki content */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
   padding: 1.5rem;
   background-color: white;
+  height: 100%;
+  flex: 1;
 }
 
 [data-theme="dark"] .mediawiki-content {
@@ -374,6 +347,9 @@ export default {
   max-width: 100%;
   color: var(--wiki-text);
   line-height: 1.6;
+  /* Ensure all content is visible and can expand */
+  min-height: fit-content;
+  width: 100%;
 }
 
 /* Style MediaWiki content to match Wikipedia appearance */
@@ -448,11 +424,11 @@ export default {
   margin-bottom: 0.5rem;
 }
 
-/* Article preview iframe - full size */
+/* Article preview iframe - fullscreen */
 .article-preview-iframe {
   width: 100%;
-  height: 70vh;
-  min-height: 500px;
+  height: 100%;
+  min-height: calc(100vh - 140px); /* Full height minus header and footer */
   border: none;
   background-color: white;
   transition: opacity 0.3s ease;
@@ -536,11 +512,14 @@ export default {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Modal content - ensures proper background */
+/* Modal content - ensures proper background - fullscreen */
 .modal-content {
   background-color: var(--wiki-modal-bg);
   border-color: var(--wiki-border);
   transition: background-color 0.3s ease, border-color 0.3s ease;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Icon styling */
@@ -558,23 +537,18 @@ export default {
   transition: color 0.3s ease;
 }
 
-/* Responsive adjustments */
+/* Responsive adjustments - fullscreen on mobile too */
 @media (max-width: 768px) {
-  .modal-dialog {
-    margin: 0.5rem;
-  }
-  
-  .article-preview-iframe {
-    height: 60vh;
-    min-height: 400px;
-  }
-  
   .modal-body {
-    min-height: 400px;
+    min-height: calc(100vh - 120px); /* Slightly less on mobile due to smaller header/footer */
   }
-  
+
+  .article-preview-iframe {
+    min-height: calc(100vh - 120px);
+  }
+
   .article-preview-container {
-    min-height: 400px;
+    min-height: calc(100vh - 120px);
   }
 }
 </style>

@@ -1,6 +1,6 @@
 /**
  * API Service for WikiContest Backend Communication
- * 
+ *
  * This module handles all HTTP requests to the Flask backend API.
  * It includes:
  * - CSRF token management
@@ -63,15 +63,15 @@ api.interceptors.response.use(
       // This prevents "Unauthorized" alerts from showing during normal auth checks
       return Promise.reject(apiError)
     }
-    
+
     // Extract error message from response
     const message = error.response?.data?.error || error.message || 'Request failed'
-    
+
     // Create a new error with the message
     const apiError = new Error(message)
     apiError.status = error.response?.status
     apiError.response = error.response
-    
+
     return Promise.reject(apiError)
   }
 )
@@ -80,16 +80,16 @@ api.interceptors.response.use(
 export default {
   // GET request
   get: (url, config = {}) => api.get(url, config),
-  
+
   // POST request
   post: (url, data = {}, config = {}) => api.post(url, data, config),
-  
+
   // PUT request
   put: (url, data = {}, config = {}) => api.put(url, data, config),
-  
+
   // DELETE request
   delete: (url, config = {}) => api.delete(url, config),
-  
+
   // PATCH request
   patch: (url, data = {}, config = {}) => api.patch(url, data, config)
 }

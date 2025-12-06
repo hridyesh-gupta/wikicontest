@@ -2,20 +2,20 @@
   <div class="container py-5">
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4">
       <h2 class="mb-3 mb-sm-0">Contests</h2>
-      <button 
+      <button
         v-if="isAuthenticated"
-        class="btn btn-primary" 
+        class="btn btn-primary"
         @click="showCreateContestModal"
       >
         <i class="fas fa-plus me-2"></i>Create Contest
       </button>
     </div>
-    
+
     <!-- Contest Categories Tabs -->
     <ul class="nav nav-tabs mb-4" id="contestTabs">
       <li class="nav-item">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           :class="{ active: activeCategory === 'current' }"
           @click="setActiveCategory('current')"
         >
@@ -23,8 +23,8 @@
         </button>
       </li>
       <li class="nav-item">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           :class="{ active: activeCategory === 'upcoming' }"
           @click="setActiveCategory('upcoming')"
         >
@@ -32,8 +32,8 @@
         </button>
       </li>
       <li class="nav-item">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           :class="{ active: activeCategory === 'past' }"
           @click="setActiveCategory('past')"
         >
@@ -41,7 +41,7 @@
         </button>
       </li>
     </ul>
-    
+
     <!-- Loading State -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -56,8 +56,8 @@
         No {{ activeCategory }} contests available.
       </div>
       <div v-else class="contest-list">
-        <div 
-          v-for="contest in currentContests" 
+        <div
+          v-for="contest in currentContests"
           :key="contest.id"
           class="contest-item"
           @click="viewContest(contest)"
@@ -67,7 +67,7 @@
             <!-- Header Row: Title and Timestamp -->
             <div class="contest-header">
               <div class="contest-title-section">
-                <span 
+                <span
                   class="contest-title-link"
                   @click.stop="viewContest(contest)"
                 >
@@ -82,7 +82,7 @@
             <!-- Tags Row: Status, Project, Submissions, Creator -->
             <div class="contest-tags">
               <!-- Status Badge -->
-              <span 
+              <span
                 class="contest-tag status-tag"
                 :class="getStatusClass(contest.status)"
               >
@@ -181,9 +181,9 @@ export default {
       if (!dateString) return ''
       try {
         const date = new Date(dateString)
-        return date.toLocaleDateString('en-US', { 
-          weekday: 'short', 
-          month: 'short', 
+        return date.toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
           day: 'numeric',
           hour: 'numeric',
           minute: '2-digit'
@@ -196,7 +196,7 @@ export default {
     // Format date range
     const formatDateRange = (startDate, endDate) => {
       if (!startDate && !endDate) return ''
-      
+
       const format = (dateStr) => {
         if (!dateStr) return ''
         try {
@@ -220,10 +220,10 @@ export default {
     // Get status label
     const getStatusLabel = (status) => {
       const labels = {
-        'current': 'Active',
-        'upcoming': 'Upcoming',
-        'past': 'Past',
-        'unknown': 'Unknown'
+        current: 'Active',
+        upcoming: 'Upcoming',
+        past: 'Past',
+        unknown: 'Unknown'
       }
       return labels[status] || 'Unknown'
     }
@@ -231,10 +231,10 @@ export default {
     // Get status CSS class
     const getStatusClass = (status) => {
       const classes = {
-        'current': 'status-active',
-        'upcoming': 'status-upcoming',
-        'past': 'status-past',
-        'unknown': 'status-unknown'
+        current: 'status-active',
+        upcoming: 'status-upcoming',
+        past: 'status-past',
+        unknown: 'status-unknown'
       }
       return classes[status] || 'status-unknown'
     }
@@ -242,10 +242,10 @@ export default {
     // Get status icon
     const getStatusIcon = (status) => {
       const icons = {
-        'current': 'fas fa-circle',
-        'upcoming': 'fas fa-clock',
-        'past': 'fas fa-check-circle',
-        'unknown': 'fas fa-question-circle'
+        current: 'fas fa-circle',
+        upcoming: 'fas fa-clock',
+        past: 'fas fa-check-circle',
+        unknown: 'fas fa-question-circle'
       }
       return icons[status] || 'fas fa-question-circle'
     }
@@ -258,12 +258,12 @@ export default {
         // If passed ID, find the contest object
         contestData = currentContests.value.find(c => c.id === parseInt(contest))
       }
-      
+
       if (!contestData || !contestData.name) {
         showAlert('Contest not found', 'danger')
         return
       }
-      
+
       // Create URL-friendly slug from contest name
       const contestSlug = slugify(contestData.name)
       router.push({ name: 'ContestView', params: { name: contestSlug } })
@@ -275,7 +275,7 @@ export default {
         showAlert('Please login to create a contest', 'warning')
         return
       }
-      
+
       // Show modal using Bootstrap
       const modalElement = document.getElementById('createContestModal')
       if (modalElement) {
@@ -296,7 +296,7 @@ export default {
         return
       }
       submittingToContestId.value = contestId
-      
+
       // Show submit modal using Bootstrap
       setTimeout(() => {
         const modalElement = document.getElementById('submitArticleModal')
@@ -742,46 +742,46 @@ h2 {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  
+
   h2 {
     font-size: 1.75rem;
   }
-  
+
   .contest-card {
     padding: 1rem;
   }
-  
+
   .contest-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .contest-title-section {
     width: 100%;
   }
-  
+
   .contest-title-link {
     font-size: 1.2rem;
   }
-  
+
   .contest-timestamp {
     font-size: 0.8rem;
   }
-  
+
   .contest-tags {
     gap: 0.35rem;
   }
-  
+
   .contest-tag {
     font-size: 0.7rem;
     padding: 0.2rem 0.45rem;
   }
-  
+
   .contest-tag i {
     font-size: 0.6rem;
   }
-  
+
   .nav-tabs .nav-link {
     padding: 0.5rem 0.75rem;
     font-size: 0.9rem;
@@ -793,52 +793,52 @@ h2 {
   h2 {
     font-size: 1.5rem;
   }
-  
+
   .contest-card {
     padding: 0.875rem;
   }
-  
+
   .contest-title-link {
     font-size: 1.1rem;
   }
-  
+
   .contest-id {
     font-size: 0.85rem;
   }
-  
+
   .contest-timestamp {
     font-size: 0.75rem;
   }
-  
+
   .contest-tags {
     gap: 0.3rem;
   }
-  
+
   .contest-tag {
     font-size: 0.65rem;
     padding: 0.2rem 0.4rem;
   }
-  
+
   .contest-tag i {
     font-size: 0.6rem;
   }
-  
+
   .nav-tabs {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .nav-tabs .nav-link {
     white-space: nowrap;
     padding: 0.5rem;
     font-size: 0.85rem;
   }
-  
+
   .btn-sm {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
   }
-  
+
   /* Make create button more compact on mobile */
   .btn-primary {
     font-size: 0.9rem;

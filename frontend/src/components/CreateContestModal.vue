@@ -11,71 +11,73 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="contestName" class="form-label">Contest Name *</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="contestName" 
+                <input
+                  type="text"
+                  class="form-control"
+                  id="contestName"
                   v-model="formData.name"
                   required
-                >
+                />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="projectName" class="form-label">Project Name *</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="projectName" 
+                <input
+                  type="text"
+                  class="form-control"
+                  id="projectName"
                   v-model="formData.project_name"
                   required
-                >
+                />
               </div>
             </div>
-            
+
             <div class="mb-3">
               <label for="contestDescription" class="form-label">Description</label>
-              <textarea 
-                class="form-control" 
-                id="contestDescription" 
+              <textarea
+                class="form-control"
+                id="contestDescription"
                 rows="3"
                 v-model="formData.description"
               ></textarea>
             </div>
-            
+
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="startDate" class="form-label">Start Date *</label>
-                <input 
-                  type="date" 
-                  class="form-control" 
-                  id="startDate" 
+                <input
+                  type="date"
+                  class="form-control"
+                  id="startDate"
                   v-model="formData.start_date"
                   required
-                >
+                />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="endDate" class="form-label">End Date *</label>
-                <input 
-                  type="date" 
-                  class="form-control" 
-                  id="endDate" 
+                <input
+                  type="date"
+                  class="form-control"
+                  id="endDate"
                   v-model="formData.end_date"
                   required
-                >
+                />
               </div>
             </div>
-            
+
             <!-- Jury Members with Autocomplete -->
             <div class="mb-3">
               <label for="juryInput" class="form-label">
-                Jury Members * 
+                Jury Members *
                 <span class="badge bg-info text-dark">Type to search users</span>
               </label>
-              
+
               <!-- Selected Jury Members Display -->
               <div class="mb-2 p-2 border rounded bg-light jury-selection-box" style="min-height: 40px;">
-                <small v-if="selectedJury.length === 0" class="jury-placeholder-text">No jury members selected yet</small>
-                <span 
-                  v-for="username in selectedJury" 
+                <small v-if="selectedJury.length === 0" class="jury-placeholder-text">
+                  No jury members selected yet
+                </small>
+                <span
+                  v-for="username in selectedJury"
                   :key="username"
                   class="badge bg-primary me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;"
@@ -84,25 +86,25 @@
                   <i class="fas fa-times ms-1" @click="removeJury(username)"></i>
                 </span>
               </div>
-              
+
               <!-- Jury Input with Autocomplete -->
               <div style="position: relative;">
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="juryInput" 
+                <input
+                  type="text"
+                  class="form-control"
+                  id="juryInput"
                   v-model="jurySearchQuery"
                   @input="searchJury"
                   placeholder="Type username to search..."
                   autocomplete="off"
-                >
+                />
                 <!-- Autocomplete Dropdown -->
-                <!-- 
+                <!--
                   Note: we avoid hard-coded light backgrounds here so that
                   the dropdown looks correct in both light and dark modes.
                   Colors now come from CSS variables defined in the styles below.
                 -->
-                <div 
+                <div
                   v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
                   class="jury-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
@@ -120,47 +122,49 @@
                 </div>
               </div>
             </div>
-            
+
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="marksAccepted" class="form-label">Points for Accepted Submissions</label>
-                <input 
-                  type="number" 
-                  class="form-control" 
-                  id="marksAccepted" 
+                <input
+                  type="number"
+                  class="form-control"
+                  id="marksAccepted"
                   v-model.number="formData.marks_setting_accepted"
                   min="0"
-                >
+                />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="marksRejected" class="form-label">Points for Rejected Submissions</label>
-                <input 
-                  type="number" 
-                  class="form-control" 
-                  id="marksRejected" 
+                <input
+                  type="number"
+                  class="form-control"
+                  id="marksRejected"
                   v-model.number="formData.marks_setting_rejected"
                   min="0"
-                >
+                />
               </div>
             </div>
-            
+
             <div class="mb-3">
-              <label for="codeLink" class="form-label">Code Repository Link <span class="text-muted">(Optional)</span></label>
-              <input 
-                type="text" 
-                class="form-control" 
-                id="codeLink" 
+              <label for="codeLink" class="form-label">
+                Code Repository Link <span class="text-muted">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                class="form-control"
+                id="codeLink"
                 v-model="formData.code_link"
                 placeholder="https://github.com/..."
-              >
+              />
             </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button 
-            type="button" 
-            class="btn btn-primary" 
+          <button
+            type="button"
+            class="btn btn-primary"
             @click="handleSubmit"
             :disabled="loading"
           >
@@ -217,7 +221,7 @@ export default {
     // Search for users (jury members)
     const searchJury = async () => {
       const query = jurySearchQuery.value.trim()
-      
+
       if (query.length < 2) {
         jurySearchResults.value = []
         return
@@ -324,7 +328,7 @@ export default {
       formData.code_link = null
       selectedJury.value = []
       formData.jury_members = []
-      
+
       // Reset dates
       const today = new Date()
       const tomorrow = new Date(today)

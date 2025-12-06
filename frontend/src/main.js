@@ -1,6 +1,6 @@
 /**
  * WikiContest Vue.js Application Entry Point
- * 
+ *
  * This is the main entry point for the Vue.js application.
  * It initializes Vue, Vue Router, and mounts the app to the DOM.
  */
