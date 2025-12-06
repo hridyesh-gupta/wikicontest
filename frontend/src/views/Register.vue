@@ -9,36 +9,36 @@
               <form @submit.prevent="handleRegister">
                 <div class="mb-3">
                   <label for="registerUsername" class="form-label">Username</label>
-                  <input 
-                    type="text" 
-                    class="form-control" 
-                    id="registerUsername" 
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="registerUsername"
                     v-model="username"
                     required
-                  >
+                  />
                 </div>
                 <div class="mb-3">
                   <label for="registerEmail" class="form-label">Email</label>
-                  <input 
-                    type="email" 
-                    class="form-control" 
-                    id="registerEmail" 
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="registerEmail"
                     v-model="email"
                     required
-                  >
+                  />
                 </div>
                 <div class="mb-3">
                   <label for="registerPassword" class="form-label">Password</label>
-                  <input 
-                    type="password" 
-                    class="form-control" 
-                    id="registerPassword" 
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="registerPassword"
                     v-model="password"
                     required
-                  >
+                  />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   class="btn btn-primary w-100"
                   :disabled="loading"
                 >
@@ -47,7 +47,7 @@
                 </button>
               </form>
               <div class="text-center mt-3">
-                <p>Already have an account? 
+                <p>Already have an account?
                   <router-link to="/login">Login here</router-link>
                 </p>
               </div>
@@ -70,7 +70,7 @@ export default {
   setup() {
     const store = useStore()
     const router = useRouter()
-    
+
     const username = ref('')
     const email = ref('')
     const password = ref('')
@@ -79,10 +79,10 @@ export default {
     const handleRegister = async () => {
       loading.value = true
       try {
-        const result = await store.register({ 
-          username: username.value, 
-          email: email.value, 
-          password: password.value 
+        const result = await store.register({
+          username: username.value,
+          email: email.value,
+          password: password.value
         })
         if (result.success) {
           showAlert('Registration successful! Please login.', 'success')
@@ -216,16 +216,16 @@ a:hover {
     padding-left: 1rem;
     padding-right: 1rem;
   }
-  
+
   .section {
     min-height: calc(100vh - 150px);
     padding: 1rem 0;
   }
-  
+
   .card-body {
     padding: 1.5rem;
   }
-  
+
   .card-title {
     font-size: 1.5rem;
   }
@@ -236,16 +236,16 @@ a:hover {
     min-height: auto;
     padding: 0.5rem 0;
   }
-  
+
   .card-body {
     padding: 1.25rem;
   }
-  
+
   .card-title {
     font-size: 1.25rem;
     margin-bottom: 1.5rem;
   }
-  
+
   .form-control {
     font-size: 16px; /* Prevents zoom on iOS */
   }

@@ -7,16 +7,16 @@
         <router-link class="navbar-brand" to="/">
           WikiContest
         </router-link>
-        
-        <button 
-          class="navbar-toggler" 
-          type="button" 
-          data-bs-toggle="collapse" 
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
           data-bs-target="#navbarNav"
         >
           <span class="navbar-toggler-icon"></span>
         </button>
-        
+
         <div class="collapse navbar-collapse" id="navbarNav">
           <!-- Middle: Navigation Links (Centered) -->
           <ul class="navbar-nav mx-auto">
@@ -33,13 +33,13 @@
               <router-link class="nav-link" to="/dashboard">Dashboard</router-link>
             </li>
           </ul>
-          
+
           <!-- Right: Theme Toggle and Login/User Menu -->
           <ul class="navbar-nav">
             <!-- Theme Toggle Button - Always visible -->
             <li class="nav-item me-2">
-              <button 
-                class="btn btn-outline-secondary theme-toggle" 
+              <button
+                class="btn btn-outline-secondary theme-toggle"
                 type="button"
                 @click="toggleTheme"
                 :title="theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'"
@@ -47,23 +47,27 @@
                 <i :class="theme === 'light' ? 'fas fa-moon' : 'fas fa-sun'"></i>
               </button>
             </li>
-            <!-- Show login/register buttons when not authenticated -->
+            <!-- Show login button when not authenticated -->
             <template v-if="!isAuthenticated">
               <li class="nav-item">
-                <router-link class="btn btn-outline-primary me-2" to="/login" style="text-decoration: none; display: inline-block;">Login</router-link>
-              </li>
-              <li class="nav-item">
-                <router-link class="btn btn-primary" to="/register" style="text-decoration: none; display: inline-block;">Register</router-link>
+                <a
+                  :href="`${getApiBaseUrl()}/user/oauth/login`"
+                  class="btn btn-login-brand"
+                  style="text-decoration: none; display: inline-block;"
+                  title="Log in using Wikimedia OAuth 1.0a"
+                >
+                  <i class="fab fa-wikipedia-w me-2"></i>Log in
+                </a>
               </li>
             </template>
             <!-- Show user menu when authenticated -->
             <template v-else>
               <li class="nav-item">
                 <div class="dropdown">
-                  <button 
-                    class="btn btn-outline-secondary dropdown-toggle" 
-                    type="button" 
-                    id="userDropdown" 
+                  <button
+                    class="btn btn-outline-secondary dropdown-toggle"
+                    type="button"
+                    id="userDropdown"
                     data-bs-toggle="dropdown"
                   >
                     <i class="fas fa-user me-1"></i>{{ currentUser?.username || 'User' }}
@@ -79,7 +83,7 @@
                         <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                       </router-link>
                     </li>
-                    <li><hr class="dropdown-divider"></li>
+                    <li><hr class="dropdown-divider"/></li>
                     <li>
                       <a class="dropdown-item text-danger" href="#" @click.prevent="handleLogout">
                         <i class="fas fa-sign-out-alt me-2"></i>Logout
@@ -105,7 +109,7 @@
 </template>
 
 <script>
-import { computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useStore } from './store'
 import { useRouter } from 'vue-router'
 import AlertContainer from './components/AlertContainer.vue'
@@ -130,6 +134,16 @@ export default {
       store.toggleTheme()
     }
 
+    // Get API base URL - use full URL for OAuth to ensure proper redirect
+    const getApiBaseUrl = () => {
+      // In development, use full URL to Flask backend
+      if (import.meta.env.DEV) {
+        return 'http://localhost:5000/api'
+      }
+      // In production, use relative URL
+      return '/api'
+    }
+
     // Check authentication on app mount
     // This runs after initial render, so buttons will show immediately
     onMounted(async () => {
@@ -138,7 +152,7 @@ export default {
         const savedTheme = localStorage.getItem('theme') || 'light'
         store.setTheme(savedTheme)
       }
-      
+
       try {
         // Force a fresh auth check - this will clear state if not authenticated
         await store.checkAuth()
@@ -154,26 +168,26 @@ export default {
     const handleLogout = async () => {
       try {
         // Logout clears state immediately
-        const result = await store.logout()
-        
+        await store.logout()
+
         // Small delay to ensure cookies are cleared on backend
         await new Promise(resolve => setTimeout(resolve, 200))
-        
+
         // Force a fresh auth check to verify logout worked
         // This ensures state is definitely cleared
         await store.checkAuth()
-        
+
         // Show success message
         const { showAlert } = await import('./utils/alerts')
         showAlert('Logged out successfully', 'success')
-        
+
         // Redirect to home - state is already cleared
         router.push('/')
       } catch (error) {
         // Even if logout fails, ensure state is cleared
         // Force checkAuth to clear any stale state
         await store.checkAuth()
-        
+
         const { showAlert } = await import('./utils/alerts')
         showAlert('Logged out (session cleared)', 'info')
         router.push('/')
@@ -185,7 +199,8 @@ export default {
       currentUser,
       theme,
       toggleTheme,
-      handleLogout
+      handleLogout,
+      getApiBaseUrl
     }
   }
 }
@@ -350,6 +365,29 @@ body, button, input {
   background: var(--wiki-primary);
   border-color: var(--wiki-primary);
   color: #fff;
+}
+
+/* Brand blue login button - uses Wikimedia brand color #006699 */
+.btn-login-brand {
+  background: #006699;
+  border: 1px solid #006699;
+  color: #ffffff !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.btn-login-brand:hover {
+  background: #005580;
+  border-color: #005580;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(0, 102, 153, 0.2);
+}
+
+/* Wikimedia icon in login button - white color */
+.btn-login-brand .fab.fa-wikipedia-w {
+  color: #ffffff !important;
+  font-size: 1.1em;
 }
 
 /* Theme Toggle Button - professional */

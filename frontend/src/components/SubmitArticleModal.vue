@@ -10,35 +10,31 @@
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
-            <div class="mb-3">
-              <label for="articleTitle" class="form-label">
-                <i class="fas fa-heading me-2 text-primary"></i>Article Title <span class="text-danger">*</span>
-              </label>
-              <input 
-                type="text" 
-                class="form-control" 
-                id="articleTitle" 
-                v-model="formData.article_title"
-                placeholder="Enter the title of your article"
-                required
-                autofocus
-              >
+            <!-- Info message about URL submission -->
+            <div class="alert alert-info mb-3">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Note:</strong> Please submit the URL of your article.
+              The system will automatically fetch article information including title and author.
             </div>
-            
+
             <div class="mb-3">
               <label for="articleUrl" class="form-label">
                 <i class="fas fa-link me-2 text-primary"></i>Article URL <span class="text-danger">*</span>
               </label>
-              <input 
-                type="url" 
-                class="form-control" 
-                id="articleUrl" 
+              <input
+                type="url"
+                class="form-control"
+                id="articleUrl"
                 v-model="formData.article_link"
-                placeholder="https://example.com/article"
+                placeholder="https://en.wikipedia.org/wiki/Article_Title"
                 required
-              >
+                autofocus
+              />
+              <small class="form-text text-muted">
+                Enter the full URL of your MediaWiki article (e.g., Wikipedia, Wikiversity, etc.)
+              </small>
             </div>
-            
+
             <div v-if="error" class="alert alert-danger" role="alert">
               {{ error }}
             </div>
@@ -48,9 +44,9 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times me-2"></i>Cancel
           </button>
-          <button 
-            type="button" 
-            class="btn btn-primary" 
+          <button
+            type="button"
+            class="btn btn-primary"
             @click="handleSubmit"
             :disabled="loading"
           >
@@ -80,20 +76,15 @@ export default {
   setup(props, { emit }) {
     const loading = ref(false)
     const error = ref('')
-    
+
     const formData = reactive({
-      article_title: '',
       article_link: ''
     })
 
     const handleSubmit = async () => {
       error.value = ''
-      
+
       // Validation
-      if (!formData.article_title.trim()) {
-        error.value = 'Please enter an article title'
-        return
-      }
       if (!formData.article_link.trim()) {
         error.value = 'Please enter an article URL'
         return
@@ -105,23 +96,22 @@ export default {
 
       loading.value = true
       try {
+        // Submit only the URL - backend will fetch article information
         await api.post(`/contest/${props.contestId}/submit`, {
-          article_title: formData.article_title.trim(),
           article_link: formData.article_link.trim()
         })
 
         showAlert('Article submitted successfully!', 'success')
         emit('submitted')
-        
+
         // Close modal
         const modalElement = document.getElementById('submitArticleModal')
         const modal = bootstrap.Modal.getInstance(modalElement)
         if (modal) {
           modal.hide()
         }
-        
+
         // Reset form
-        formData.article_title = ''
         formData.article_link = ''
       } catch (err) {
         error.value = 'Failed to submit article: ' + err.message

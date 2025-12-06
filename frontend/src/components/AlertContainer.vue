@@ -1,6 +1,6 @@
 <template>
-  <div 
-    id="alertContainer" 
+  <div
+    id="alertContainer"
     class="position-fixed end-0 p-3"
     style="z-index: 1050; top: 80px;"
   >

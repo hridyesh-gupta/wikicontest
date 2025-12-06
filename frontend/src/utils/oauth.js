@@ -1,6 +1,6 @@
 /**
  * OAuth Utility Functions
- * 
+ *
  * This module handles OAuth callback processing after Wikimedia authentication.
  * It checks for OAuth success in URL parameters and updates the authentication state.
  */
@@ -10,17 +10,17 @@ import { showAlert } from './alerts'
 /**
  * Process OAuth callback after redirect from Wikimedia
  * This should be called when the app loads to check if we just returned from OAuth
- * 
+ *
  * @param {Object} store - The store instance from useStore()
  * @param {Object} router - Vue Router instance
  */
 export function processOAuthCallback(store, router) {
   // Check if we have OAuth success indicators in the URL
   const urlParams = new URLSearchParams(window.location.search)
-  
+
   // Check for OAuth success
   const oauthSuccess = urlParams.get('oauth_success')
-  
+
   if (oauthSuccess === 'true') {
     // OAuth was successful, check authentication
     // Give a small delay to ensure cookies are set
@@ -43,7 +43,7 @@ export function processOAuthCallback(store, router) {
       }
     }, 200)
   }
-  
+
   // Check for OAuth errors
   const oauthError = urlParams.get('oauth_error')
   if (oauthError) {

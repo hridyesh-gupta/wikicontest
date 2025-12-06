@@ -1,11 +1,11 @@
 /**
  * Composable Store for WikiContest Application
- * 
+ *
  * This composable manages global application state including:
  * - User authentication
  * - Contest data
  * - UI state
- * 
+ *
  * Uses Vue 3 Composition API with reactive state management.
  */
 
@@ -37,14 +37,14 @@ export function useStore() {
   const isAuthenticated = computed(() => !!state.currentUser)
   const currentUser = computed(() => state.currentUser)
   const contests = computed(() => state.contests)
-  
+
   // Check if user is authenticated
   const checkAuth = async () => {
     try {
       console.log('🔐 Checking authentication...')
       const response = await api.get('/cookie')
       console.log('🔐 Auth API response:', response)
-      
+
       // Double-check response is valid and has required fields
       // Must have userId and it must be a valid number > 0
       if (response && response.userId && typeof response.userId === 'number' && response.userId > 0) {
@@ -54,7 +54,7 @@ export function useStore() {
           username: response.username || response.email || 'User',
           email: response.email || ''
         }
-        
+
         console.log('✅ Setting current user:', newUser)
         state.currentUser = newUser
         console.log('✅ Current user set. State:', state.currentUser)
@@ -72,15 +72,15 @@ export function useStore() {
       console.log('❌ Auth check failed:', {
         status: error.status,
         message: error.message,
-        error: error
+        error
       })
-      
+
       // Only clear state if we don't already have a user set
       // This prevents clearing state immediately after login when cookie might still be setting
       if (!state.currentUser) {
         state.currentUser = null
       }
-      
+
       // Only log if it's not a 401 (which is expected for logged out users)
       if (error.status !== 401 && error.status !== undefined) {
         console.log('Auth check error:', error.message)
@@ -93,25 +93,25 @@ export function useStore() {
   const login = async ({ email, password }) => {
     try {
       const response = await api.post('/user/login', { email, password })
-      
+
       // Set user state immediately after successful login
       // The backend sets the JWT cookie, but we also set state here
       // so the UI updates immediately
       state.currentUser = {
         id: response.userId,
         username: response.username,
-        email: email
+        email
       }
-      
+
       // Verify the state was set correctly
       if (!state.currentUser) {
         console.error('Failed to set user state after login')
       }
-      
+
       // Wait a bit for the cookie to be set by the browser
       // This ensures the cookie is available for subsequent requests
       await new Promise(resolve => setTimeout(resolve, 200))
-      
+
       return { success: true, data: response }
     } catch (error) {
       // Ensure state is cleared on login failure
@@ -135,7 +135,7 @@ export function useStore() {
     // Always clear local state FIRST (before API call)
     // This ensures UI updates immediately
     state.currentUser = null
-    
+
     try {
       await api.post('/user/logout')
       // After successful logout, ensure state is still null
@@ -148,7 +148,7 @@ export function useStore() {
       console.log('Logout API call failed, but local state cleared:', error.message)
       // Ensure state is null even if API fails
       state.currentUser = null
-      return { success: true }  // Return success since we cleared local state
+      return { success: true } // Return success since we cleared local state
     }
   }
 
@@ -192,13 +192,13 @@ export function useStore() {
   const toggleTheme = () => {
     // Switch theme
     state.theme = state.theme === 'light' ? 'dark' : 'light'
-    
+
     // Save to localStorage
     localStorage.setItem('theme', state.theme)
-    
+
     // Apply theme to document
     applyTheme(state.theme)
-    
+
     return state.theme
   }
 

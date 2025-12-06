@@ -1,13 +1,11 @@
 /**
  * Vue Router Configuration
- * 
+ *
  * This file defines all routes for the WikiContest application.
  * Routes are protected based on authentication requirements.
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
-// Import store function - will be used in navigation guard
-let storeModule = null
 
 // Import page components
 import Home from '../views/Home.vue'
@@ -17,6 +15,8 @@ import Contests from '../views/Contests.vue'
 import ContestView from '../views/ContestView.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Profile from '../views/Profile.vue'
+// Import store function - will be used in navigation guard
+let storeModule = null
 
 // Define routes
 const routes = [
@@ -85,11 +85,11 @@ router.beforeEach(async (to, from, next) => {
   }
   const { useStore } = storeModule
   const store = useStore()
-  
+
   // Check if user is already authenticated in store (from login response)
   // This prevents unnecessary API calls right after login
   const hasUserInStore = store.isAuthenticated && store.currentUser
-  
+
   // Always check authentication status from server (async)
   // This ensures we have the latest auth state from the server
   // But if we already have a user in store, we can use that as a fallback
@@ -108,13 +108,13 @@ router.beforeEach(async (to, from, next) => {
       isAuthenticated = false
     }
   }
-  
+
   // Check if route requires authentication
   if (to.meta.requiresAuth && !isAuthenticated) {
     // Redirect to login with return URL
-    next({ 
-      name: 'Login', 
-      query: { redirect: to.fullPath } 
+    next({
+      name: 'Login',
+      query: { redirect: to.fullPath }
     })
   } else {
     // Allow access to login/register pages even if authenticated
