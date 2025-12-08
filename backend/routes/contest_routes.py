@@ -5,7 +5,7 @@ Handles contest creation, retrieval, and management functionality
 
 from datetime import datetime
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 
 from database import db
 from middleware.auth import require_auth, handle_errors, validate_json_data
@@ -313,6 +313,126 @@ def delete_contest(contest_id):
     except Exception:  # pylint: disable=broad-exception-caught
         # Log error for debugging but don't expose details to client
         return jsonify({'error': 'Failed to delete contest'}), 500
+
+
+def parse_date_or_none(s):
+    if not s:
+        return None
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").date()
+    except Exception:
+        try:
+            return datetime.fromisoformat(s).date()
+        except Exception:
+            return None
+
+@contest_bp.route('/<int:contest_id>', methods=['PUT'])
+@require_auth  
+def update_contest(contest_id):
+    from flask import Blueprint, request, jsonify, current_app
+    user = request.current_user 
+    try:
+        if not request.is_json:
+            data = request.get_json(force=True, silent=True) or {}
+        else:
+            data = request.get_json() or {}
+
+        current_app.logger.debug("update_contest payload: %s", data)
+
+        contest = Contest.query.get(contest_id)
+        if not contest:
+            return jsonify({'error': 'Contest not found'}), 404
+
+        # permission: creator or admin (adjust to your auth model)
+        if not (hasattr(user, 'is_admin') and user.is_admin()) and user.username != contest.created_by:
+            return jsonify({'error': 'Permission denied'}), 403
+
+        # --- Basic fields ---
+        if 'name' in data:
+            contest.name = data.get('name') or contest.name
+        
+        if 'project_name' in data:
+            contest.project_name = data.get('project_name') or contest.project_name    
+
+        if 'description' in data:
+            contest.description = data.get('description')
+
+        
+        rules_payload = data.get('rules', None)
+        if rules_payload is not None:
+            if isinstance(rules_payload, str):
+               
+               
+                contest.set_rules({'text': rules_payload})
+            elif isinstance(rules_payload, dict):
+                contest.set_rules(rules_payload)
+            else:
+                
+                contest.set_rules({'text': ''})
+
+        # --- Dates ---
+        if 'start_date' in data:
+            parsed = parse_date_or_none(data.get('start_date'))
+            if parsed is None and data.get('start_date') not in (None, ''):
+                return jsonify({'error': 'Invalid start_date format'}), 400
+            contest.start_date = parsed
+
+        if 'end_date' in data:
+            parsed = parse_date_or_none(data.get('end_date'))
+            if parsed is None and data.get('end_date') not in (None, ''):
+                return jsonify({'error': 'Invalid end_date format'}), 400
+            contest.end_date = parsed
+
+        if contest.start_date and contest.end_date:
+            if contest.start_date >= contest.end_date:
+                return jsonify({'error': 'start_date must be < end_date'}), 400
+
+        
+        if 'marks_setting_accepted' in data:
+            try:
+                contest.marks_setting_accepted = int(data.get('marks_setting_accepted') or 0)
+            except Exception:
+                return jsonify({'error': 'marks_setting_accepted must be integer'}), 400
+
+        if 'marks_setting_rejected' in data:
+            try:
+                contest.marks_setting_rejected = int(data.get('marks_setting_rejected') or 0)
+            except Exception:
+                return jsonify({'error': 'marks_setting_rejected must be integer'}), 400
+
+        # --- Jury members: accept list or comma string ---
+        if 'jury_members' in data:
+            jm = data.get('jury_members')
+            if isinstance(jm, list):
+                contest.set_jury_members(jm)
+            elif isinstance(jm, str):
+               
+                arr = [x.strip() for x in jm.split(',') if x.strip()]
+                contest.set_jury_members(arr)
+            else:
+                
+                contest.set_jury_members([])
+
+        # --- Code link ---
+        if 'code_link' in data:
+            link = data.get('code_link')
+            contest.code_link = link.strip() if isinstance(link, str) and link.strip() else None
+
+        # Persist
+        db.session.add(contest)
+        db.session.commit()
+
+        current_app.logger.info("Contest %s updated by %s", contest_id, user.username)
+        return jsonify({'message': 'Contest updated', 'contest': contest.to_dict()}), 200
+
+    except Exception as exc:
+      
+        current_app.logger.error("Error updating contest %s: %s", contest_id, exc)
+        current_app.logger.error(traceback.format_exc())
+        
+        return jsonify({'error': 'Internal server error'}), 500
+
+
 
 @contest_bp.route('/<int:contest_id>/submit', methods=['POST'])
 @require_auth
