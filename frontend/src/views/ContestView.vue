@@ -2,10 +2,7 @@
   <div class="container py-5">
     <!-- Back button -->
     <div class="mb-4">
-      <button
-        class="btn btn-outline-secondary"
-        @click="goBack"
-      >
+      <button class="btn btn-outline-secondary" @click="goBack">
         <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
     </div>
@@ -80,15 +77,15 @@
         </div>
       </div>
       <div v-if="contest.rules && contest.rules.text" class="card mb-4">
-  <div class="card-header">
-    <h5 class="mb-0"><i class="fas fa-book me-2"></i>Contest Rules</h5>
-  </div>
-  <div class="card-body">
-    <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-book me-2"></i>Contest Rules</h5>
+        </div>
+        <div class="card-body">
+          <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">
 {{ contest.rules.text }}
     </pre>
-  </div>
-</div>
+        </div>
+      </div>
 
       <!-- Jury Members Section -->
       <div v-if="contest.jury_members && contest.jury_members.length > 0" class="card mb-4">
@@ -99,27 +96,35 @@
           <p>{{ contest.jury_members.join(', ') }}</p>
         </div>
       </div>
+      <div class="card mb-4">
+        <div class="card-header">
+          <label class="form-label">Code Link</label>
+        </div>
+        <div class="card-body">
+          <p class="code-link-text">
+            <a v-if="contest.code_link" :href="contest.code_link" target="_blank" rel="noopener noreferrer">
+              {{ contest.code_link }}
+            </a>
+            <span v-else class="text-muted">No code link provided</span>
+          </p>
+        </div>
+      </div>
+
+
 
       <!-- Submissions Section (for jury and contest creators) -->
       <div v-if="canViewSubmissions" class="card mb-4">
         <div class="card-header">
           <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
-            <button
-              v-if="loadingSubmissions || refreshingMetadata"
-              class="btn btn-sm btn-outline-secondary"
-              disabled
-            >
-              <span class="spinner-border spinner-border-sm me-2"></span>{{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
+            <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary" disabled>
+              <span class="spinner-border spinner-border-sm me-2"></span>{{ loadingSubmissions ? 'Loading...' :
+                'Refreshing...' }}
             </button>
-            <button
-              v-else
-              class="btn btn-sm btn-outline-light"
-              @click="refreshMetadata"
+            <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
               :disabled="submissions.length === 0"
               title="Refresh article metadata (word count, author, etc.) from MediaWiki and reload submissions"
-              style="color: white; border-color: white;"
-            >
+              style="color: white; border-color: white;">
               <i class="fas fa-database me-1"></i>Refresh Metadata
             </button>
           </div>
@@ -143,21 +148,15 @@
                 </tr>
               </thead>
               <tbody>
-                  <tr v-for="submission in submissions" :key="submission.id">
+                <tr v-for="submission in submissions" :key="submission.id">
                   <td>
-                    <a
-                      href="#"
-                      @click.prevent="showArticlePreview(submission.article_link, submission.article_title)"
-                      class="text-decoration-none article-title-link"
-                      :title="submission.article_link"
-                    >
+                    <a href="#" @click.prevent="showArticlePreview(submission.article_link, submission.article_title)"
+                      class="text-decoration-none article-title-link" :title="submission.article_link">
                       {{ submission.article_title }}
                       <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                     </a>
-                    <div
-                      v-if="submission.article_word_count && submission.article_word_count > 0"
-                      class="text-muted small mt-1"
-                    >
+                    <div v-if="submission.article_word_count && submission.article_word_count > 0"
+                      class="text-muted small mt-1">
                       <i class="fas fa-file-alt me-1"></i>{{ formatWordCount(submission.article_word_count) }}
                     </div>
                     <div v-else-if="submission.article_word_count === 0" class="text-muted small mt-1">
@@ -182,11 +181,8 @@
                   <td>{{ submission.score || 0 }}</td>
                   <td>{{ formatDate(submission.submitted_at) }}</td>
                   <td>
-                    <button
-                      @click="showArticlePreview(submission.article_link, submission.article_title)"
-                      class="btn btn-sm btn-outline-primary"
-                      title="Preview Article"
-                    >
+                    <button @click="showArticlePreview(submission.article_link, submission.article_title)"
+                      class="btn btn-sm btn-outline-primary" title="Preview Article">
                       <i class="fas fa-eye"></i>
                     </button>
                   </td>
@@ -208,49 +204,122 @@
           </button>
         </div>
 
-        <button
-          v-if="canDeleteContest"
-          class="btn btn-danger"
-          @click="handleDeleteContest"
-          :disabled="deletingContest"
-        >
+        <button v-if="canDeleteContest" class="btn btn-danger" @click="handleDeleteContest" :disabled="deletingContest">
           <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
           <i v-else class="fas fa-trash me-2"></i>
           {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
         </button>
-        <button
-          v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-          class="btn btn-primary"
-          @click="handleSubmitArticle"
-        >
+        <button v-if="canDeleteContest" class="btn btn-warning" @click="openEditModal">
+          <i class="fas fa-edit me-2"></i>Edit Contest
+        </button>
+
+        <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions" class="btn btn-primary"
+          @click="handleSubmitArticle">
           <i class="fas fa-paper-plane me-2"></i>Submit Article
         </button>
       </div>
     </div>
 
     <!-- Submit Article Modal -->
-    <SubmitArticleModal
-      v-if="submittingToContestId"
-      :contest-id="submittingToContestId"
-      @submitted="handleArticleSubmitted"
-    />
+    <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
+      @submitted="handleArticleSubmitted" />
 
     <!-- Article Preview Modal -->
-    <ArticlePreviewModal
-      :article-url="previewArticleUrl"
-      :article-title="previewArticleTitle"
-    />
+    <ArticlePreviewModal :article-url="previewArticleUrl" :article-title="previewArticleTitle" />
   </div>
+
+  <!-- Edit Contest Modal -->
+  <div class="modal fade" id="editContestModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="fas fa-edit me-2"></i>Edit Contest
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <form @submit.prevent="saveContestEdits">
+
+            <div class="mb-3">
+              <label class="form-label">Contest Name</label>
+              <input v-model="editForm.name" class="form-control" required />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Project Name</label>
+              <input v-model="editForm.project_name" class="form-control" required />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea v-model="editForm.description" rows="4" class="form-control"></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Rules</label>
+              <textarea v-model="editForm.rules" rows="6" class="form-control"></textarea>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Start Date</label>
+                <input type="date" v-model="editForm.start_date" class="form-control">
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label class="form-label">End Date</label>
+                <input type="date" v-model="editForm.end_date" class="form-control">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Jury Members (comma separated)</label>
+              <input v-model="editForm.jury_members" class="form-control" placeholder="e.g. user1, user2, user3" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Accepted Points</label>
+              <input type="number" v-model.number="editForm.marks_setting_accepted" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Rejected Points</label>
+              <input type="number" v-model.number="editForm.marks_setting_rejected" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Code Link (optional)</label>
+              <input type="text" class="form-control" v-model="editForm.code_link"
+                placeholder="Optional: Add Code Link" />
+            </div>
+
+          </form>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" @click="saveContestEdits">
+            <i class="fas fa-save me-2"></i>Save Changes
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
 </template>
 
 <script>
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useStore } from '../store'
 import api from '../services/api'
 import { showAlert } from '../utils/alerts'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import ArticlePreviewModal from '../components/ArticlePreviewModal.vue'
+import slugify from 'slugify'
 
 export default {
   name: 'ContestView',
@@ -357,7 +426,7 @@ export default {
           // If no timezone indicator, assume it's UTC and append 'Z'
           utcDateString = dateString + 'Z'
         }
-        
+
         // Convert to IST (Indian Standard Time) timezone
         // IST is UTC+5:30, timezone identifier is 'Asia/Kolkata'
         return new Date(utcDateString).toLocaleString('en-IN', {
@@ -387,7 +456,7 @@ export default {
           // If no timezone indicator, assume it's UTC and append 'Z'
           utcDateString = dateString + 'Z'
         }
-        
+
         // Convert to IST (Indian Standard Time) timezone
         // IST is UTC+5:30, timezone identifier is 'Asia/Kolkata'
         // Show full date and time with month name, day, year, hour, and minute
@@ -440,29 +509,27 @@ export default {
     }
 
     // Load contest data by name (slug)
-    const loadContest = async () => {
-      const contestName = route.params.name
-      if (!contestName) {
-        error.value = 'Contest name is required'
-        loading.value = false
-        return
-      }
-
+    const loadContest = async (id = null) => {
       loading.value = true
       error.value = null
 
       try {
-        // Fetch contest by slugified name
-        const data = await api.get(`/contest/name/${contestName}`)
+        let data;
+        if (id) {
+          data = await api.get(`/contest/${id}`)
+        } else {
+          const contestName = route.params.name
+          if (!contestName) throw new Error('Contest name is required')
+          data = await api.get(`/contest/name/${contestName}`)
+        }
+
         contest.value = data
 
         // Check auth and permissions after loading contest
         await checkAuthAndPermissions()
 
         // Load submissions if user can view them
-        if (canViewSubmissions.value) {
-          loadSubmissions()
-        }
+        if (canViewSubmissions.value) loadSubmissions()
       } catch (err) {
         console.error('Error loading contest:', err)
         error.value = 'Failed to load contest: ' + (err.message || 'Unknown error')
@@ -544,7 +611,6 @@ export default {
           `Metadata refreshed: ${response.updated} updated, ${response.failed} failed`,
           response.failed === 0 ? 'success' : 'warning'
         )
-        
         // Reload submissions to show updated data
         await loadSubmissions()
       } catch (error) {
@@ -651,10 +717,91 @@ export default {
       }
     }, { deep: true })
 
-    // Load contest on mount
-    onMounted(() => {
-      loadContest()
+    const editForm = reactive({
+      name: '',
+      project_name: '',
+      description: '',
+      rules: '',
+      start_date: '',
+      end_date: '',
+      marks_setting_accepted: 0,
+      marks_setting_rejected: 0,
+      jury_members: '',
+      code_link: ''
     })
+
+    onMounted(() => {
+      loadContest();
+      const modalEl = document.getElementById("editContestModal");
+      if (modalEl) editModal = new bootstrap.Modal(modalEl);
+    })
+
+    let editModal = null
+    const openEditModal = () => {
+      if (!contest.value) return;
+
+      editForm.name = contest.value.name;
+      editForm.project_name = contest.value.project_name || "";
+      editForm.description = contest.value.description || "";
+
+
+      editForm.rules = contest.value.rules?.text || "";
+
+      editForm.start_date = contest.value.start_date || "";
+      editForm.end_date = contest.value.end_date || "";
+
+      editForm.marks_setting_accepted = Number(contest.value.marks_setting_accepted ?? 0);
+      editForm.marks_setting_rejected = Number(contest.value.marks_setting_rejected ?? 0);
+      editForm.jury_members = Array.isArray(contest.value.jury_members)
+        ? contest.value.jury_members.join(", ")
+        : '';
+
+      editForm.code_link = contest.value?.code_link ?? "";
+
+
+      editModal.show();
+    }
+
+
+    const saveContestEdits = async () => {
+      try {
+        const payload = {
+          name: editForm.name || "",
+          project_name: editForm.project_name || "",
+          description: editForm.description || "",
+          rules: editForm.rules?.trim() || "",
+          start_date: editForm.start_date || null,
+          end_date: editForm.end_date || null,
+          marks_setting_accepted: Number(editForm.marks_setting_accepted) || 0,
+          marks_setting_rejected: Number(editForm.marks_setting_rejected) || 0,
+          jury_members: Array.isArray(editForm.jury_members)
+            ? editForm.jury_members
+            : editForm.jury_members
+              .split(",")
+              .map(x => x.trim())
+              .filter(x => x.length > 0),
+          code_link: editForm.code_link?.trim() || null
+        };
+
+        // console.log("FINAL PAYLOAD SENT →", payload);
+        await api.put(`/contest/${contest.value.id}`, payload);
+
+        showAlert("Contest updated successfully", "success");
+        editModal.hide();
+
+        await loadContest(contest.value.id);
+        const newSlug = slugify(payload.name, { lower: true, strict: true });
+        router.replace({ name: 'ContestView', params: { name: newSlug } });
+      } catch (error) {
+        console.error("SAVE ERROR:", error);
+
+        showAlert(
+          "Failed to save: " + (error.response?.data?.detail || error.message),
+          "danger"
+        );
+      }
+    };
+
 
     return {
       contest,
@@ -684,7 +831,10 @@ export default {
       goBack,
       showArticlePreview,
       previewArticleUrl,
-      previewArticleTitle
+      previewArticleTitle,
+      editForm,
+      openEditModal,
+      saveContestEdits,
     }
   }
 }
@@ -721,6 +871,48 @@ export default {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+/* Code Link Input Field Styling - Match other fields in Contest View */
+.contest-view .form-label {
+  font-weight: 600;
+  color: var(--wiki-dark);
+}
+
+.contest-view input.form-control {
+  border: 1px solid var(--wiki-border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+  background-color: white;
+  color: var(--wiki-dark);
+}
+
+[data-theme="dark"] .contest-view input.form-control {
+  background-color: #2a2a2a;
+  color: #ffffff;
+  border-color: #444;
+}
+
+.contest-view input.form-control:focus {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 0 0 0.2rem rgba(0, 102, 153, 0.25);
+  outline: none;
+}
+
+.contest-view .btn-warning {
+  background-color: var(--wiki-primary);
+  border-color: var(--wiki-primary);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.contest-view .btn-warning:hover {
+  background-color: var(--wiki-primary-hover);
+  border-color: var(--wiki-primary-hover);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 102, 153, 0.3);
 }
 
 /* Card Styling */
@@ -939,11 +1131,13 @@ export default {
 }
 
 .description-text {
-  white-space: pre-line; /* Preserves line breaks and wraps text */
+  white-space: pre-line;
+  /* Preserves line breaks and wraps text */
   line-height: 1.6;
   margin-bottom: 0;
   color: var(--wiki-text);
-  word-wrap: break-word; /* Break long words if needed */
+  word-wrap: break-word;
+  /* Break long words if needed */
   transition: color 0.3s ease;
 }
 
@@ -971,4 +1165,3 @@ export default {
   }
 }
 </style>
-

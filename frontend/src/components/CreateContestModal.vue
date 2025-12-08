@@ -343,7 +343,7 @@ export default {
       formData.description = ''
       formData.code_link = null
       selectedJury.value = []
-      formData.jury_members = [],
+      formData.jury_members = []
       formData.rules_text = ''
 
       // Reset dates
