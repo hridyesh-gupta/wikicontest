@@ -117,7 +117,6 @@
         <div class="card-header">
           <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
-<<<<<<< HEAD
             <button
               v-if="loadingSubmissions || refreshingMetadata"
               class="btn btn-sm btn-outline-secondary"
@@ -125,22 +124,12 @@
             >
               <span class="spinner-border spinner-border-sm me-2"></span>
               {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
-=======
-            <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary" disabled>
-              <span class="spinner-border spinner-border-sm me-2"></span>{{ loadingSubmissions ? 'Loading...' :
-                'Refreshing...' }}
->>>>>>> dev-gauri
             </button>
             <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
               :disabled="submissions.length === 0"
-<<<<<<< HEAD
               title="Refresh article metadata (byte count, author, etc.) from MediaWiki and reload submissions"
               style="color: white; border-color: white;"
             >
-=======
-              title="Refresh article metadata (word count, author, etc.) from MediaWiki and reload submissions"
-              style="color: white; border-color: white;">
->>>>>>> dev-gauri
               <i class="fas fa-database me-1"></i>Refresh Metadata
             </button>
           </div>
@@ -171,7 +160,6 @@
                       {{ submission.article_title }}
                       <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                     </a>
-<<<<<<< HEAD
                     <!-- Total bytes = Original bytes (at submission) + Expansion bytes (change since submission) -->
                     <div
                       v-if="submission.article_word_count !== null &&
@@ -185,11 +173,10 @@
                           (submission.article_expansion_bytes || 0)
                         )
                       }}
-=======
+                    </div>
                     <div v-if="submission.article_word_count && submission.article_word_count > 0"
                       class="text-muted small mt-1">
                       <i class="fas fa-file-alt me-1"></i>{{ formatWordCount(submission.article_word_count) }}
->>>>>>> dev-gauri
                     </div>
                     <div
                       v-if="submission.article_word_count !== null &&
@@ -721,10 +708,6 @@ export default {
           `Metadata refreshed: ${response.updated} updated, ${response.failed} failed`,
           response.failed === 0 ? 'success' : 'warning'
         )
-<<<<<<< HEAD
-
-=======
->>>>>>> dev-gauri
         // Reload submissions to show updated data
         await loadSubmissions()
       } catch (error) {
