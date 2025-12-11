@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"  # adjust if you need 3.10
+          python-version: "3.11"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -28,16 +28,20 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Install dependencies
+        working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          if [ -f backend/requirements.txt ]; then python -m pip install -r backend/requirements.txt; fi
+          if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
           python -m pip install pylint
 
       - name: Run pylint on app.py
-        run: python -m pylint --fail-under=9 backend/app.py
+        working-directory: backend
+        run: python -m pylint --fail-under=9 app.py
 
       - name: Run pylint on models
-        run: python -m pylint --fail-under=9 backend/models/
+        working-directory: backend
+        run: python -m pylint --fail-under=9 models/
 
       - name: Run pylint on routes
-        run: python -m pylint --fail-under=9 backend/routes/
+        working-directory: backend
+        run: python -m pylint --fail-under=9 routes/
