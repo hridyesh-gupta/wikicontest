@@ -6,8 +6,8 @@ Defines the Contest table and related functionality
 import json
 from datetime import datetime, date
 
-from database import db
-from models.base_model import BaseModel
+from app.database import db
+from app.models.base_model import BaseModel
 
 class Contest(BaseModel):
     """
