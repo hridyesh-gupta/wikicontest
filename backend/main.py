@@ -25,4 +25,3 @@ if __name__ == '__main__':
         host='0.0.0.0',    # Allow connections from any IP
         port=5000          # Default Flask development port
     )
-
