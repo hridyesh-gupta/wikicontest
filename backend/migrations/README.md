@@ -49,7 +49,7 @@ python migrations/add_size_at_start_to_submissions.py
 
 ```bash
 # The application runs all migrations automatically on startup
-python run.py
+python main.py
 ```
 
 ## Migration Safety

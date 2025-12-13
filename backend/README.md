@@ -53,7 +53,7 @@ backend/
 │   └── toolforge_requirements.txt
 ├── tests/                       # Test files (pytest)
 ├── logs/                        # Application logs
-├── run.py                       # Main entry point for running the app
+├── main.py                      # Main entry point for running the app
 ├── requirements.txt             # Python dependencies
 ├── setup.py                     # Setup script
 ├── deploy_to_toolforge.sh       # Deployment script
@@ -121,7 +121,7 @@ backend/
 
 1. **Start the Flask development server:**
    ```bash
-   python run.py
+   python main.py
    ```
    
    Or using Flask directly:
