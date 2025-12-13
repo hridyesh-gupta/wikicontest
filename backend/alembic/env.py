@@ -44,6 +44,31 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = db.metadata
 
+# Optional: Filter function to include/exclude objects from autogenerate
+def include_object(object, name, type_, reflected, compare_to):
+    """
+    Optional function to filter which objects Alembic should consider.
+    
+    This can be used to exclude certain tables or objects from migration generation.
+    By default, include all objects.
+    
+    Args:
+        object: The object being considered
+        name: Name of the object
+        type_: Type of object ('table', 'column', 'index', etc.)
+        reflected: Whether the object is from the database
+        compare_to: The object from the model metadata
+    
+    Returns:
+        bool: True to include, False to exclude
+    """
+    # Include all objects by default
+    # You can add custom logic here to exclude specific tables/objects
+    # For example, to exclude alembic_version table:
+    # if name == 'alembic_version':
+    #     return False
+    return True
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -85,6 +110,10 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        # Enable better autogenerate detection for offline mode
+        compare_type=True,              # Detect type changes (e.g., String(50) -> String(100))
+        compare_server_default=True,    # Detect default value changes
+        include_object=include_object   # Use filter function
     )
 
     with context.begin_transaction():
@@ -111,7 +140,13 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            # Enable better autogenerate detection
+            compare_type=True,          # Detect type changes
+            compare_server_default=True,  # Detect default value changes
+            render_as_batch=False,     # Use ALTER TABLE for MySQL
+            include_object=include_object  # Optional: filter objects
         )
 
         with context.begin_transaction():
