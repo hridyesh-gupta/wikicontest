@@ -58,6 +58,8 @@ backend/
 │   └── toolforge_requirements.txt
 ├── tests/                       # Test files (pytest)
 ├── logs/                        # Application logs
+├── docs/                        # Documentation
+│   ├── ALEMBIC_USAGE_GUIDE.md  # Detailed Alembic usage guide
 ├── run.py                       # Main entry point for running the app
 ├── alembic.ini                  # Alembic configuration file
 ├── Makefile                     # Makefile for common commands
