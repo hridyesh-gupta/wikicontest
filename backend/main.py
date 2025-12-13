@@ -6,7 +6,7 @@ This script initializes the database and starts the Flask development server.
 For production, use a WSGI server like gunicorn or uwsgi.
 
 Usage:
-    python run.py
+    python main.py
 """
 
 from app import app, db
