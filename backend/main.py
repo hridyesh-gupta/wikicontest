@@ -6,12 +6,15 @@ This script initializes the database and starts the Flask development server.
 For production, use a WSGI server like gunicorn or uwsgi.
 
 Usage:
-    python run.py
+    python main.py
 """
 
-from app import app, db
+# Third-party imports should come before local imports
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError, ProgrammingError, OperationalError
+
+# Local application imports
+from app import app, db
 
 def migrate_database():
     """

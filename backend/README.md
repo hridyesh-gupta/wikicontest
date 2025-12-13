@@ -60,7 +60,7 @@ backend/
 ├── logs/                        # Application logs
 ├── docs/                        # Documentation
 │   ├── ALEMBIC_USAGE_GUIDE.md  # Detailed Alembic usage guide
-├── run.py                       # Main entry point for running the app
+├── main.py                      # Main entry point for running the app
 ├── alembic.ini                  # Alembic configuration file
 ├── Makefile                     # Makefile for common commands
 ├── requirements.txt             # Python dependencies
@@ -144,7 +144,7 @@ make help
 
 1. **Start the Flask development server:**
    ```bash
-   python run.py
+   python main.py
    ```
    
    Or using Flask directly:
