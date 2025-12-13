@@ -312,6 +312,27 @@ alembic current
 alembic history
 ```
 
+#### How Alembic Works
+
+1. **Migration Files**: Python files in `alembic/versions/` define schema changes
+2. **Version Tracking**: `alembic_version` table in database stores current version
+3. **Migration Chain**: Each migration points to the previous one (linked list structure)
+4. **Upgrade/Downgrade**: Each migration has functions to apply and reverse changes
+
+#### Typical Workflow
+
+1. Modify your models in `app/models/`
+2. Generate migration: `make migrate-create MSG="Add new field"`
+3. Review the generated file in `alembic/versions/`
+4. Apply migration: `make db-upgrade`
+5. Test your application
+6. Commit migration file to version control
+
+For detailed Alembic documentation, see:
+- [`docs/ALEMBIC_USAGE_GUIDE.md`](docs/ALEMBIC_USAGE_GUIDE.md) - Complete usage guide
+- [`docs/ALEMBIC_MODEL_COMPATIBILITY.md`](docs/ALEMBIC_MODEL_COMPATIBILITY.md) - Model compatibility guide
+- [`docs/ALEMBIC_SETUP_VERIFICATION.md`](docs/ALEMBIC_SETUP_VERIFICATION.md) - Setup verification checklist
+
 #### Legacy Migration Scripts
 
 The application also includes custom migration scripts in the `migrations/` directory for reference. These can be run manually if needed:
