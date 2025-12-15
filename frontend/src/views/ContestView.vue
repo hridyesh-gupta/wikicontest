@@ -2,37 +2,30 @@
   <div class="container py-5">
     <!-- Back button -->
     <div class="mb-4 d-flex justify-content-between align-items-center">
-  <!-- Left: Back button -->
-  <button class="btn btn-outline-secondary" @click="goBack">
-    <i class="fas fa-arrow-left me-2"></i>Back to Contests
-  </button>
-
-  <!-- Right: Action buttons -->
-  <div class="d-flex gap-2">
-    <button v-if="canDeleteContest"
-            class="btn btn-danger"
-            @click="handleDeleteContest"
-            :disabled="deletingContest">
-      <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
-      <i v-else class="fas fa-trash me-2"></i>
-      {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
+    <!-- Left: Back button -->
+    <button class="btn btn-outline-secondary" @click="goBack">
+      <i class="fas fa-arrow-left me-2"></i>Back to Contests
     </button>
 
-    <button v-if="canDeleteContest"
-            class="btn btn-primary"
-            @click="openEditModal">
-      <i class="fas fa-edit me-2"></i>Edit Contest
-    </button>
+    <!-- Right: Action buttons (only admin / creator actions at top) -->
+    <!-- We intentionally keep "Submit Article" button only at bottom so users read details first -->
+    <div class="d-flex gap-2">
+      <button v-if="canDeleteContest"
+              class="btn btn-danger"
+              @click="handleDeleteContest"
+              :disabled="deletingContest">
+        <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
+        <i v-else class="fas fa-trash me-2"></i>
+        {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
+      </button>
 
-    <button v-if="contest?.status === 'current' 
-                  && isAuthenticated 
-                  && !canViewSubmissions"
-            class="btn btn-primary"
-            @click="handleSubmitArticle">
-      <i class="fas fa-paper-plane me-2"></i>Submit Article
-    </button>
+      <button v-if="canDeleteContest"
+              class="btn btn-primary"
+              @click="openEditModal">
+        <i class="fas fa-edit me-2"></i>Edit Contest
+      </button>
+    </div>
   </div>
-</div>
 
      
 
@@ -219,21 +212,35 @@
                         )
                       }}
                     </div>
-                    <div v-if="submission.article_word_count && submission.article_word_count > 0"
-                      class="text-muted small mt-1">
-                      <i class="fas fa-file-alt me-1"></i>{{ formatWordCount(submission.article_word_count) }}
-                    </div>
+                    <!-- NOTE: We intentionally show only three metrics for clarity:
+                         1) Total bytes
+                         2) Original bytes
+                         3) Expansion bytes
+                         The previous extra "word count" line was removed to avoid duplicate numbers
+                         and to match the simplified UI requested by the user. -->
                     <div v-if="submission.article_word_count !== null &&
                       submission.article_word_count !== undefined" class="text-muted small mt-1">
                       <i class="fas fa-clock me-1"></i>Original bytes:
                       {{ formatByteCountWithExact(submission.article_word_count) }}
                     </div>
-                    <!-- Show expansion bytes (0 if no change, +X if increased, -X if decreased) -->
+                    <!-- Show expansion bytes (0 if no change, +X if increased, -X if decreased)
+                         We also show different directional arrows to make this very clear:
+                         - Up arrow for positive (bytes increased)
+                         - Down arrow for negative (bytes decreased)
+                         - Left-right arrow for zero change -->
                     <div v-if="submission.article_expansion_bytes !== null &&
                       submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
-                      <i v-if="submission.article_expansion_bytes !== 0" :class="submission.article_expansion_bytes >= 0
-                        ? 'fas fa-arrow-up me-1'
-                        : 'fas fa-arrow-down me-1'"></i>Expansion bytes:
+                      <i
+                        class="me-1"
+                        :class="
+                          submission.article_expansion_bytes > 0
+                            ? 'fas fa-arrow-up'
+                            : submission.article_expansion_bytes < 0
+                              ? 'fas fa-arrow-down'
+                              : 'fas fa-arrows-left-right'
+                        "
+                      ></i>
+                      Expansion bytes:
                       <span v-if="submission.article_expansion_bytes !== 0"
                         :class="submission.article_expansion_bytes >= 0 ? 'text-success' : 'text-danger'">
                         {{ submission.article_expansion_bytes >= 0 ? '+' : '-' }}{{
@@ -288,9 +295,10 @@
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="d-flex gap-2 mb-4">
-        <!-- Debug info and auth status -->
+      <!-- Bottom Action Row -->
+      <!-- This row stays at the end of the contest view so users naturally read everything before seeing submit -->
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
+        <!-- Debug info and auth status (left aligned, technical info only for edge cases) -->
         <div v-if="contest && !currentUser && !checkingAuth" class="alert alert-warning py-1 px-2 mb-0 me-auto">
           <i class="fas fa-exclamation-triangle me-1"></i>
           <strong>User not loaded!</strong>
@@ -298,6 +306,16 @@
             <i class="fas fa-sync-alt me-1"></i>Refresh Auth
           </button>
         </div>
+
+        <!-- Main submit button shown at the bottom of the page -->
+        <!-- Simple rule: show only for logged-in users when contest is current and they are not jury/creator -->
+        <button v-if="contest?.status === 'current' 
+                      && isAuthenticated 
+                      && !canViewSubmissions"
+                class="btn btn-primary ms-auto"
+                @click="handleSubmitArticle">
+          <i class="fas fa-paper-plane me-2"></i>Submit Article
+        </button>
       </div>
     </div>
 
