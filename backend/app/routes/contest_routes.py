@@ -840,7 +840,7 @@ def get_contest_submissions(contest_id):
         Submission,
         User.username,
         User.email
-    ).join(User).filter(
+    ).join(User, Submission.user_id == User.id).filter(
         Submission.contest_id == contest_id
     ).order_by(Submission.submitted_at.desc()).all()
 

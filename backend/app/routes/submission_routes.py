@@ -66,60 +66,60 @@ def get_submission_by_id(submission_id):  # pylint: disable=unused-argument
     submission_data = submission.to_dict(include_user_info=True)
 
     return jsonify(submission_data), 200
+#Temporarily disabling manual status update endpoint to enforce single source of truth
+# @submission_bp.route('/<int:submission_id>', methods=['PUT'])
+# @require_submission_permission('jury')
+# @handle_errors
+# @validate_json_data(['status'])
+# def update_submission_status(submission_id):  # pylint: disable=unused-argument
+#     """
+#     Update submission status and score (jury or admin only)
 
-@submission_bp.route('/<int:submission_id>', methods=['PUT'])
-@require_submission_permission('jury')
-@handle_errors
-@validate_json_data(['status'])
-def update_submission_status(submission_id):  # pylint: disable=unused-argument
-    """
-    Update submission status and score (jury or admin only)
+#     Args:
+#         submission_id: Submission ID
 
-    Args:
-        submission_id: Submission ID
+#     Expected JSON data:
+#         status: New status ('accepted' or 'rejected')
 
-    Expected JSON data:
-        status: New status ('accepted' or 'rejected')
+#     Returns:
+#         JSON response with success message and updated status/score
+#     """
+#     submission = request.current_submission
+#     data = request.validated_data
 
-    Returns:
-        JSON response with success message and updated status/score
-    """
-    submission = request.current_submission
-    data = request.validated_data
+#     new_status = data['status'].strip().lower()
 
-    new_status = data['status'].strip().lower()
+#     # Validate status
+#     if new_status not in ['accepted', 'rejected']:
+#         return jsonify({'error': 'Status must be either "accepted" or "rejected"'}), 400
 
-    # Validate status
-    if new_status not in ['accepted', 'rejected']:
-        return jsonify({'error': 'Status must be either "accepted" or "rejected"'}), 400
+#     # Check if status is already set
+#     if submission.status == new_status:
+#         return jsonify({
+#             'message': f'Submission is already {new_status}. No changes made.',
+#             'status': submission.status,
+#             'score': submission.score
+#         }), 200
 
-    # Check if status is already set
-    if submission.status == new_status:
-        return jsonify({
-            'message': f'Submission is already {new_status}. No changes made.',
-            'status': submission.status,
-            'score': submission.score
-        }), 200
+#     # Update submission status and score
+#     try:
+#         updated = submission.update_status(new_status)
 
-    # Update submission status and score
-    try:
-        updated = submission.update_status(new_status)
+#         if updated:
+#             return jsonify({
+#                 'message': 'Submission updated successfully',
+#                 'status': submission.status,
+#                 'score': submission.score
+#             }), 200
+#         return jsonify({
+#             'message': 'No changes made to submission',
+#             'status': submission.status,
+#             'score': submission.score
+#         }), 200
 
-        if updated:
-            return jsonify({
-                'message': 'Submission updated successfully',
-                'status': submission.status,
-                'score': submission.score
-            }), 200
-        return jsonify({
-            'message': 'No changes made to submission',
-            'status': submission.status,
-            'score': submission.score
-        }), 200
-
-    except Exception:  # pylint: disable=broad-exception-caught
-        # Log error for debugging but don't expose details to client
-        return jsonify({'error': 'Failed to update submission'}), 500
+#     except Exception:  # pylint: disable=broad-exception-caught
+#         # Log error for debugging but don't expose details to client
+#         return jsonify({'error': 'Failed to update submission'}), 500
 
 @submission_bp.route('/user/<int:user_id>', methods=['GET'])
 @require_auth
@@ -456,4 +456,56 @@ def refresh_metadata(contest_id):
         'updated': updated,
         'failed': failed,
         'total': len(submissions)
+    }), 200
+
+@submission_bp.route("/<int:submission_id>/review", methods=["PUT"])
+@require_auth
+@handle_errors
+@validate_json_data(["status"])
+def review_submission(submission_id):
+    user = request.current_user
+    data = request.validated_data
+
+    submission = Submission.query.get_or_404(submission_id)
+    contest = submission.contest
+
+    # ---- Permission ----
+    if not submission.can_be_judged_by(user):
+        return jsonify({"error": "Not allowed to review this submission"}), 403
+
+    if submission.reviewed_at:
+        return jsonify({"error": "Submission already reviewed"}), 400
+
+    status = data.get("status")
+    score = data.get("score")
+    comment = data.get("comment")
+
+    if status not in ["accepted", "rejected"]:
+        return jsonify({"error": "Invalid status"}), 400
+
+    # ---- Score validation ----
+    if status == "accepted":
+        if score is None:
+            return jsonify({"error": "Score required for accepted submission"}), 400
+
+        max_score = contest.marks_setting_accepted
+        if not isinstance(score, int) or score < 0 or score > max_score:
+            return jsonify({
+                "error": f"Score must be between 0 and {max_score}"
+            }), 400
+    else:
+        score = contest.marks_setting_rejected
+
+    # ✅ SINGLE SOURCE OF TRUTH
+    submission.update_status(
+        new_status=status,
+        reviewer=user,
+        score=score,
+        comment=comment,
+        contest=contest
+    )
+
+    return jsonify({
+        "message": "Submission reviewed successfully",
+        "submission": submission.to_dict(include_user_info=True)
     }), 200

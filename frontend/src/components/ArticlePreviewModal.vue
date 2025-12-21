@@ -22,25 +22,16 @@
             <i class="fas fa-exclamation-circle me-2"></i>
             {{ error }}
             <div class="mt-3">
-              <a
-                :href="articleUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="btn btn-sm btn-outline-primary"
-              >
+              <a :href="articleUrl" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-external-link-alt me-2"></i>Open Article in New Tab
               </a>
             </div>
           </div>
 
           <!-- MediaWiki content preview -->
-          <!-- Content is from MediaWiki API parse action, which sanitizes HTML for safe display -->
           <div v-else-if="mediaWikiContent" class="article-preview-container mediawiki-content">
-            <!-- Article metadata card - shows author and creation date -->
-            <div
-              v-if="articleMetadata && (articleMetadata.author || articleMetadata.article_created_at)"
-              class="article-metadata-card"
-            >
+            <div v-if="articleMetadata && (articleMetadata.author || articleMetadata.article_created_at)"
+              class="article-metadata-card">
               <h6 class="article-metadata-title">Article Author</h6>
               <div class="article-metadata-content">
                 <div v-if="articleMetadata.author" class="metadata-item">
@@ -59,23 +50,27 @@
 
           <!-- Article preview iframe (for non-MediaWiki pages) -->
           <div v-else class="article-preview-container">
-            <iframe
-              :src="articleUrl"
-              class="article-preview-iframe"
-              frameborder="0"
-              allowfullscreen
-              @load="handleIframeLoad"
-              @error="handleIframeError"
-            ></iframe>
+            <iframe :src="articleUrl" class="article-preview-iframe" frameborder="0" allowfullscreen
+              @load="handleIframeLoad" @error="handleIframeError"></iframe>
           </div>
         </div>
         <div class="modal-footer">
-          <a
-            :href="articleUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="btn btn-outline-primary"
-          >
+          <!--Show warning if already reviewed -->
+          <div v-if="isAlreadyReviewed" class="alert alert-warning m-3 flex-grow-1">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>This submission has already been reviewed.</strong>
+            <div v-if="submission?.review_comment" class="mt-2 small">
+              <strong>Comment:</strong> {{ submission.review_comment }}
+            </div>
+          </div>
+
+          <!-- Review Button - disabled if already reviewed -->
+          <button class="btn btn-primary" :disabled="isAlreadyReviewed" @click="openReviewModal">
+            <i class="fas fa-gavel me-2"></i>
+            {{ isAlreadyReviewed ? 'Already Reviewed' : 'Review Submission' }}
+          </button>
+
+          <a :href="articleUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary">
             <i class="fas fa-external-link-alt me-2"></i>Open in New Tab
           </a>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -84,14 +79,21 @@
         </div>
       </div>
     </div>
+    <ReviewSubmissionModal :submission-id="submissionId" @reviewed="onReviewed" />
   </div>
 </template>
 
 <script>
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted, computed } from 'vue'
+import ReviewSubmissionModal from './ReviewSubmissionModal.vue'
+import { showAlert } from '../utils/alerts';
 
 export default {
   name: 'ArticlePreviewModal',
+  components: {
+    ReviewSubmissionModal
+  },
+
   props: {
     articleUrl: {
       type: String,
@@ -100,23 +102,39 @@ export default {
     articleTitle: {
       type: String,
       default: 'Article'
-    }
+    },
+    submissionId: {
+      type: Number,
+      required: true
+    },
+    submission: {
+      type: Object,
+      required: true
+    },
   },
-  setup(props) {
+
+  emits: ['reviewed'],
+
+  setup(props, { emit }) {
     const loading = ref(true)
     const error = ref('')
     const mediaWikiContent = ref('')
     const actualArticleTitle = ref(props.articleTitle || 'Article')
-    const articleMetadata = ref(null) // Store article metadata (author, creation date)
+    const articleMetadata = ref(null)
     let loadTimeout = null
     const iframeCheckInterval = null
 
-    // Check if URL is a MediaWiki page
+    // Computed property that's always up-to-date
+    const isAlreadyReviewed = computed(() => {
+      return props.submission?.already_reviewed === true ||
+        props.submission?.reviewed_at !== null
+    })
+
+
     const isMediaWikiUrl = (url) => {
       if (!url) return false
       try {
         const urlObj = new URL(url)
-        // Check for common MediaWiki patterns
         return (
           urlObj.hostname.includes('wiki') ||
           urlObj.pathname.includes('/wiki/') ||
@@ -128,49 +146,72 @@ export default {
       }
     }
 
-    // Fetch article metadata (author, creation date) from backend API
-    // This uses the article-info endpoint which returns comprehensive metadata
+    const openReviewModal = () => {
+      //  Check if already reviewed
+      if (isAlreadyReviewed.value) {
+        showAlert('This submission has already been reviewed.')
+        return
+      }
+
+      if (!props.submissionId) {
+        console.error('submissionId missing')
+        showAlert('Submission ID not found')
+        return
+      }
+
+      const modalEl = document.getElementById('reviewSubmissionModal')
+      if (!modalEl) {
+        console.error('ReviewSubmissionModal DOM not found')
+        return
+      }
+
+      new window.bootstrap.Modal(modalEl).show()
+    }
+
+    const onReviewed = (reviewData) => {
+      console.log('ArticlePreviewModal received reviewed event:', reviewData)
+
+      // Emit to parent (ContestView)
+      emit('reviewed', reviewData)
+
+      // Close the article preview modal
+      const modalEl = document.getElementById('articlePreviewModal')
+      if (modalEl) {
+        const modal = window.bootstrap.Modal.getInstance(modalEl)
+        if (modal) {
+          modal.hide()
+        }
+      }
+    }
+
     const fetchArticleMetadata = async (articleUrl) => {
       try {
         // Validate that we have a valid URL
-        if (!articleUrl) {
-          return null
-        }
-
+        if (!articleUrl) return null
         // Only fetch metadata for MediaWiki URLs
-        if (!isMediaWikiUrl(articleUrl)) {
-          return null
-        }
-
+        if (!isMediaWikiUrl(articleUrl)) return null
         // Use backend endpoint to fetch article metadata
         // This includes author and creation date information
+
         const response = await fetch(`/api/mediawiki/article-info?url=${encodeURIComponent(articleUrl)}`, {
           method: 'GET',
           headers: {
             Accept: 'application/json'
           }
         })
-
         // If request fails, don't throw error - just return null
         // Metadata is optional, so we don't want to break the preview if metadata fetch fails
-        if (!response.ok) {
-          return null
-        }
+
+        if (!response.ok) return null
 
         const data = await response.json()
+        if (data.error) return null
 
-        // Check for error in response
-        if (data.error) {
-          return null
-        }
-
-        // Return metadata if available
         return {
           author: data.author || null,
           article_created_at: data.article_created_at || null
         }
       } catch (err) {
-        // Silently fail - metadata is optional
         console.warn('Error fetching article metadata:', err)
         return null
       }
@@ -180,13 +221,10 @@ export default {
     // This avoids CORS issues by making the request through our backend server
     const fetchMediaWikiContent = async (articleUrl) => {
       try {
-        // Validate that we have a valid URL
         if (!articleUrl) {
           throw new Error('Article URL is required')
         }
 
-        // Use backend proxy endpoint to fetch MediaWiki content
-        // The backend makes the request to MediaWiki API, avoiding CORS restrictions
         const response = await fetch(`/api/mediawiki/preview?url=${encodeURIComponent(articleUrl)}`, {
           method: 'GET',
           headers: {
@@ -195,7 +233,6 @@ export default {
         })
 
         if (!response.ok) {
-          // Try to get error message from response
           let errorMessage = `Request failed: ${response.status} ${response.statusText}`
           try {
             const errorData = await response.json()
@@ -208,13 +245,10 @@ export default {
 
         const data = await response.json()
 
-        // Check for error in response
         if (data.error) {
           throw new Error(data.error)
         }
 
-        // Return the content and title from backend response
-        // Backend already processes the HTML and makes links absolute
         if (data.htmlContent) {
           return {
             htmlContent: data.htmlContent,
@@ -229,73 +263,57 @@ export default {
       }
     }
 
-    // Load article preview
     const loadPreview = async () => {
       if (!props.articleUrl) return
 
       loading.value = true
       error.value = ''
       mediaWikiContent.value = ''
-      articleMetadata.value = null // Reset metadata when loading new article
-      // Reset title to prop value (will be updated if API provides better title)
+      articleMetadata.value = null
       actualArticleTitle.value = props.articleTitle || 'Article'
 
-      // Clear any existing timeouts
       if (loadTimeout) {
         clearTimeout(loadTimeout)
       }
 
-      // Check if it's a MediaWiki URL
       if (isMediaWikiUrl(props.articleUrl)) {
         try {
-          // Fetch article content and metadata in parallel
-          // This improves performance by making both requests simultaneously
           const [contentResult, metadata] = await Promise.all([
             fetchMediaWikiContent(props.articleUrl),
             fetchArticleMetadata(props.articleUrl)
           ])
 
-          // Update content and title
           if (typeof contentResult === 'object' && contentResult.htmlContent) {
             mediaWikiContent.value = contentResult.htmlContent
-            // Use actual page title from API if available, otherwise use prop
             if (contentResult.actualPageTitle) {
               actualArticleTitle.value = contentResult.actualPageTitle
             }
           } else {
-            // Fallback for old format (string)
             mediaWikiContent.value = contentResult
           }
 
-          // Store metadata for display
           articleMetadata.value = metadata
-
           loading.value = false
         } catch (err) {
           console.error('MediaWiki API fetch failed:', err)
-          // If API fails, show error message with details from backend if available
           loading.value = false
-          // Try to extract error message from the error object
           const errorMessage = err.message || err.toString()
-          // Show more specific error if available, otherwise show generic message
           if (errorMessage && !errorMessage.includes('Failed to fetch') && !errorMessage.includes('NetworkError')) {
             error.value = `Unable to load article preview: ${errorMessage}. Please use "Open in New Tab" to view the article.`
           } else {
-            error.value = 'Unable to load MediaWiki article preview. This may be due to CORS restrictions or the page not being accessible. Please use "Open in New Tab" to view the article.'
+            error.value = 'Unable to load MediaWiki article preview. Please use "Open in New Tab" to view the article.'
           }
         }
       } else {
-        // For non-MediaWiki pages, use iframe with timeout
         loadTimeout = setTimeout(() => {
           if (loading.value) {
             loading.value = false
-            error.value = 'The article preview is taking too long to load. The page may block embedding. Please use "Open in New Tab" to view the article.'
+            error.value = 'The article preview is taking too long to load. Please use "Open in New Tab" to view the article.'
           }
-        }, 10000) // 10 second timeout
+        }, 10000)
       }
     }
 
-    // Handle iframe load event
     const handleIframeLoad = () => {
       if (loadTimeout) {
         clearTimeout(loadTimeout)
@@ -305,18 +323,15 @@ export default {
       error.value = ''
     }
 
-    // Handle iframe error event
     const handleIframeError = () => {
       if (loadTimeout) {
         clearTimeout(loadTimeout)
         loadTimeout = null
       }
       loading.value = false
-      error.value = 'Failed to load article preview. The article may not be accessible or may have security restrictions that prevent embedding.'
+      error.value = 'Failed to load article preview.'
     }
 
-    // Format date with full date and time (for article creation date)
-    // Shows complete date and time information including time
     const formatDateShort = (dateString) => {
       if (!dateString) return ''
       try {
@@ -325,9 +340,10 @@ export default {
         // This fixes the issue where naive UTC datetimes were being interpreted as local time
         let utcDateString = dateString
         if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
-          // If no timezone indicator, assume it's UTC and append 'Z'
+          // If no timezone indicator, assume it's UTC and append 'Z
           utcDateString = dateString + 'Z'
         }
+
 
         // Convert to IST (Indian Standard Time) timezone
         // IST is UTC+5:30, timezone identifier is 'Asia/Kolkata'
@@ -354,13 +370,18 @@ export default {
     }, { immediate: true })
 
     // Watch for title changes
+
     watch(() => props.articleTitle, (newTitle) => {
       if (newTitle) {
         actualArticleTitle.value = newTitle
       }
     }, { immediate: true })
 
-    // Cleanup on unmount
+    // Watch for changes in submission.already_reviewed
+    watch(() => props.submission?.already_reviewed, (newValue) => {
+      console.log('Watched already_reviewed changed to:', newValue)
+    })
+
     onUnmounted(() => {
       if (loadTimeout) {
         clearTimeout(loadTimeout)
@@ -376,9 +397,12 @@ export default {
       mediaWikiContent,
       actualArticleTitle,
       articleMetadata,
+      isAlreadyReviewed,
       handleIframeLoad,
       handleIframeError,
-      formatDateShort
+      formatDateShort,
+      openReviewModal,
+      onReviewed
     }
   }
 }
@@ -418,7 +442,8 @@ export default {
   background-color: var(--wiki-modal-bg);
   color: var(--wiki-text);
   transition: background-color 0.3s ease, color 0.3s ease;
-  min-height: calc(100vh - 140px); /* Full height minus header and footer */
+  min-height: calc(100vh - 140px);
+  /* Full height minus header and footer */
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -429,17 +454,21 @@ export default {
 .article-preview-container {
   width: 100%;
   height: 100%;
-  min-height: calc(100vh - 140px); /* Full height minus header and footer */
+  min-height: calc(100vh - 140px);
+  /* Full height minus header and footer */
   position: relative;
-  overflow: hidden; /* Keep hidden for iframe */
+  overflow: hidden;
+  /* Keep hidden for iframe */
   flex: 1;
 }
 
 /* MediaWiki content preview - fullscreen with scrolling */
 /* When container has both classes, allow vertical scrolling for long content */
 .article-preview-container.mediawiki-content {
-  overflow-y: auto; /* Allow scrolling for MediaWiki content */
-  overflow-x: hidden; /* Prevent horizontal scrolling */
+  overflow-y: auto;
+  /* Allow scrolling for MediaWiki content */
+  overflow-x: hidden;
+  /* Prevent horizontal scrolling */
   padding: 1.5rem;
   background-color: white;
   height: 100%;
@@ -578,7 +607,8 @@ export default {
 .article-preview-iframe {
   width: 100%;
   height: 100%;
-  min-height: calc(100vh - 140px); /* Full height minus header and footer */
+  min-height: calc(100vh - 140px);
+  /* Full height minus header and footer */
   border: none;
   background-color: white;
   transition: opacity 0.3s ease;
@@ -690,7 +720,8 @@ export default {
 /* Responsive adjustments - fullscreen on mobile too */
 @media (max-width: 768px) {
   .modal-body {
-    min-height: calc(100vh - 120px); /* Slightly less on mobile due to smaller header/footer */
+    min-height: calc(100vh - 120px);
+    /* Slightly less on mobile due to smaller header/footer */
   }
 
   .article-preview-iframe {

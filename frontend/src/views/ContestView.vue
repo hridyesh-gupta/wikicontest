@@ -2,40 +2,30 @@
   <div class="container py-5">
     <!-- Back button -->
     <div class="mb-4 d-flex justify-content-between align-items-center">
-    <!-- Left: Back button -->
-    <button class="btn btn-outline-secondary" @click="goBack">
-      <i class="fas fa-arrow-left me-2"></i>Back to Contests
-    </button>
-
-    <!-- Right: Action buttons (only admin / creator actions at top) -->
-    <!-- We intentionally keep "Submit Article" button only at bottom so users read details first -->
-    <div class="d-flex gap-2">
-      <button v-if="canDeleteContest"
-              class="btn btn-danger"
-              @click="handleDeleteContest"
-              :disabled="deletingContest">
-        <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
-        <i v-else class="fas fa-trash me-2"></i>
-        {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
+      <button class="btn btn-outline-secondary" @click="goBack">
+        <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
 
-      <button v-if="canDeleteContest"
-              class="btn btn-primary"
-              @click="openEditModal">
-        <i class="fas fa-edit me-2"></i>Edit Contest
-      </button>
+      <div class="d-flex gap-2">
+        <button v-if="canDeleteContest" class="btn btn-danger" @click="handleDeleteContest" :disabled="deletingContest">
+          <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
+          <i v-else class="fas fa-trash me-2"></i>
+          {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
+        </button>
+
+        <button v-if="canDeleteContest" class="btn btn-primary" @click="openEditModal">
+          <i class="fas fa-edit me-2"></i>Edit Contest
+        </button>
+      </div>
     </div>
-  </div>
 
-
-    <!-- Loading State -->
+    <!-- Loading/Error States -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
     </div>
 
-    <!-- Error State -->
     <div v-else-if="error" class="alert alert-danger">
       <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
       <button class="btn btn-sm btn-outline-danger ms-3" @click="goBack">Go Back</button>
@@ -57,7 +47,6 @@
 
       <!-- Main Content -->
       <div class="row">
-        <!-- Contest Details Column -->
         <div :class="canViewSubmissions ? 'col-md-6' : 'col-md-12'">
           <div class="card mb-4">
             <div class="card-header">
@@ -72,7 +61,6 @@
             </div>
           </div>
         </div>
-
         <!-- Scoring Column (for jury and contest creators) -->
         <div v-if="canViewSubmissions" class="col-md-6">
           <div class="card mb-4">
@@ -160,6 +148,7 @@ rel="noopener noreferrer">
           </p>
         </div>
       </div>
+
       <!-- Submissions Section (for jury and contest creators) -->
       <div v-if="canViewSubmissions" class="card mb-4">
         <div class="card-header">
@@ -169,11 +158,8 @@ rel="noopener noreferrer">
               <span class="spinner-border spinner-border-sm me-2"></span>
               {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
             </button>
-            <button v-else
-class="btn btn-sm btn-outline-light"
-@click="refreshMetadata"
-              :disabled="submissions.length === 0"
-              title="Refresh article metadata (byte count, author, etc.) from MediaWiki and reload submissions"
+            <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
+              :disabled="submissions.length === 0" title="Refresh article metadata"
               style="color: white; border-color: white;">
               <i class="fas fa-database me-1"></i>Refresh Metadata
             </button>
@@ -200,24 +186,16 @@ class="btn btn-sm btn-outline-light"
               <tbody>
                 <tr v-for="submission in submissions" :key="submission.id">
                   <td>
-                    <a href="#"
-@click.prevent="showArticlePreview(submission.article_link, submission.article_title)"
-                      class="text-decoration-none article-title-link"
-:title="submission.article_link">
+                    <a href="#" @click.prevent="showArticlePreview(submission)"
+                      class="text-decoration-none article-title-link" :title="submission.article_link">
                       {{ submission.article_title }}
                       <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                     </a>
-                    <!-- Total bytes = Original bytes (at submission) + Expansion bytes (change since submission) -->
-                    <div v-if="submission.article_word_count !== null &&
-                      submission.article_word_count !== undefined"
-class="text-muted small mt-1">
+                    <!-- Metadata display -->
+                    <div v-if="submission.article_word_count !== null" class="text-muted small mt-1">
                       <i class="fas fa-file-alt me-1"></i>Total bytes:
-                      {{
-                        formatByteCountWithExact(
-                          (submission.article_word_count || 0) +
-                          (submission.article_expansion_bytes || 0)
-                        )
-                      }}
+                      {{ formatByteCountWithExact((submission.article_word_count || 0) +
+                        (submission.article_expansion_bytes || 0)) }}
                     </div>
                     <!-- NOTE: We intentionally show only three metrics for clarity:
                          1) Total bytes
@@ -237,18 +215,13 @@ class="text-muted small mt-1">
                          - Down arrow for negative (bytes decreased)
                          - Left-right arrow for zero change -->
                     <div v-if="submission.article_expansion_bytes !== null &&
-                      submission.article_expansion_bytes !== undefined"
-class="text-muted small mt-1">
-                      <i
-                        class="me-1"
-                        :class="
-                          submission.article_expansion_bytes > 0
-                            ? 'fas fa-arrow-up'
-                            : submission.article_expansion_bytes < 0
-                              ? 'fas fa-arrow-down'
-                              : 'fas fa-arrows-left-right'
-                        "
-                      ></i>
+                      submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
+                      <i class="me-1" :class="submission.article_expansion_bytes > 0
+                        ? 'fas fa-arrow-up'
+                        : submission.article_expansion_bytes < 0
+                          ? 'fas fa-arrow-down'
+                          : 'fas fa-arrows-left-right'
+                        "></i>
                       Expansion bytes:
                       <span v-if="submission.article_expansion_bytes !== 0"
                         :class="submission.article_expansion_bytes >= 0 ? 'text-success' : 'text-danger'">
@@ -262,7 +235,6 @@ class="text-muted small mt-1">
                     </div>
                   </td>
                   <td>
-                    <!-- Original author (from oldest revision) -->
                     <div v-if="submission.article_author">
                       <i class="fas fa-user me-1"></i>{{ submission.article_author }}
                     </div>
@@ -289,13 +261,16 @@ class="mt-2 pt-2"
                     <span :class="`badge bg-${getStatusColor(submission.status)}`">
                       {{ submission.status }}
                     </span>
+                    <!-- Show reviewed indicator -->
+                    <div v-if="submission.already_reviewed" class="text-muted small mt-1">
+                      <i class="fas fa-check-circle me-1"></i>Reviewed
+                    </div>
                   </td>
                   <td>{{ submission.score || 0 }}</td>
                   <td>{{ formatDate(submission.submitted_at) }}</td>
                   <td>
-                    <button @click="showArticlePreview(submission.article_link, submission.article_title)"
-                      class="btn btn-sm btn-outline-primary"
-title="Preview Article">
+                    <button @click="showArticlePreview(submission)" class="btn btn-sm btn-outline-primary"
+                      title="Preview Article">
                       <i class="fas fa-eye"></i>
                     </button>
                   </td>
@@ -320,11 +295,8 @@ title="Preview Article">
 
         <!-- Main submit button shown at the bottom of the page -->
         <!-- Simple rule: show only for logged-in users when contest is current and they are not jury/creator -->
-        <button v-if="contest?.status === 'current'
-                      && isAuthenticated
-                      && !canViewSubmissions"
-                class="btn btn-primary ms-auto"
-                @click="handleSubmitArticle">
+        <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
+          class="btn btn-primary ms-auto" @click="handleSubmitArticle">
           <i class="fas fa-paper-plane me-2"></i>Submit Article
         </button>
       </div>
@@ -335,10 +307,11 @@ title="Preview Article">
 :contest-id="submittingToContestId"
       @submitted="handleArticleSubmitted" />
 
-    <!-- Article Preview Modal -->
-    <ArticlePreviewModal :article-url="previewArticleUrl" :article-title="previewArticleTitle" />
+    <!-- Article Preview Modal - Pass computed currentSubmission -->
+    <ArticlePreviewModal v-if="currentSubmission" :article-url="currentSubmission.article_link"
+      :article-title="currentSubmission.article_title" :submission-id="currentSubmission.id"
+      :submission="currentSubmission" @reviewed="handleSubmissionReviewed" />
   </div>
-
   <!-- Edit Contest Modal -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -431,7 +404,6 @@ v-model="editForm.code_link"
       </div>
     </div>
   </div>
-
 </template>
 
 <script>
@@ -469,7 +441,15 @@ export default {
     const previewArticleUrl = ref('')
     const previewArticleTitle = ref('')
 
-    // Get reactive references to auth state
+    // FIXED: Store submission ID instead of all preview data
+    const currentSubmissionId = ref(null)
+
+    // FIXED: Computed property to get current submission reactively
+    const currentSubmission = computed(() => {
+      if (!currentSubmissionId.value) return null
+      return submissions.value.find(s => s.id === currentSubmissionId.value)
+    })
+
     const currentUser = computed(() => {
       if (store.state && store.state.currentUser) {
         return store.state.currentUser
@@ -485,7 +465,6 @@ export default {
       return !!user && !!user.id && !!user.username
     })
 
-    // Check if user can view submissions (jury member or contest creator)
     const canViewSubmissions = computed(() => {
       if (!isAuthenticated.value || !contest.value || !currentUser.value) {
         return false
@@ -494,13 +473,11 @@ export default {
       const username = (currentUser.value.username || '').trim().toLowerCase()
       const contestData = contest.value
 
-      // Check if user is contest creator (case-insensitive)
       const contestCreator = (contestData.created_by || '').trim().toLowerCase()
       if (contestCreator && username === contestCreator) {
         return true
       }
 
-      // Check if user is jury member (case-insensitive)
       if (contestData.jury_members && Array.isArray(contestData.jury_members)) {
         const juryUsernames = contestData.jury_members.map(j => (j || '').trim().toLowerCase())
         return juryUsernames.includes(username)
@@ -554,22 +531,14 @@ export default {
       canDeleteContest.value = false
     }
 
-    // Format date for display in Indian Standard Time (IST)
-    // Converts UTC dates from backend to IST timezone for display
     const formatDate = (dateString) => {
       if (!dateString) return 'No date'
       try {
-        // Ensure the date string is treated as UTC
-        // If it doesn't end with 'Z', append it to indicate UTC timezone
-        // This fixes the issue where naive UTC datetimes were being interpreted as local time
         let utcDateString = dateString
         if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
-          // If no timezone indicator, assume it's UTC and append 'Z'
           utcDateString = dateString + 'Z'
         }
 
-        // Convert to IST (Indian Standard Time) timezone
-        // IST is UTC+5:30, timezone identifier is 'Asia/Kolkata'
         return new Date(utcDateString).toLocaleString('en-IN', {
           timeZone: 'Asia/Kolkata',
           year: 'numeric',
@@ -584,23 +553,14 @@ export default {
       }
     }
 
-    // Format date with full date and time in IST (for article creation date)
-    // Shows complete date and time information including time in IST timezone
     const formatDateShort = (dateString) => {
       if (!dateString) return ''
       try {
-        // Ensure the date string is treated as UTC
-        // If it doesn't end with 'Z', append it to indicate UTC timezone
-        // This fixes the issue where naive UTC datetimes were being interpreted as local time
         let utcDateString = dateString
         if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
-          // If no timezone indicator, assume it's UTC and append 'Z'
           utcDateString = dateString + 'Z'
         }
 
-        // Convert to IST (Indian Standard Time) timezone
-        // IST is UTC+5:30, timezone identifier is 'Asia/Kolkata'
-        // Show full date and time with month name, day, year, hour, and minute
         return new Date(utcDateString).toLocaleString('en-IN', {
           timeZone: 'Asia/Kolkata',
           year: 'numeric',
@@ -636,7 +596,6 @@ export default {
     const formatByteCountWithExact = (bytes) => {
       if (!bytes && bytes !== 0) return ''
 
-      // Handle negative values - use absolute value for formatting
       const absBytes = Math.abs(bytes)
 
       let formatted = ''
@@ -669,6 +628,7 @@ export default {
     }
 
     // Get status label
+
     const getStatusLabel = (status) => {
       const labels = {
         current: 'Active',
@@ -678,7 +638,6 @@ export default {
       }
       return labels[status] || 'Unknown'
     }
-
     // Get status badge color
     const getStatusColor = (status) => {
       switch (status?.toLowerCase()) {
@@ -783,7 +742,7 @@ export default {
       }
     }
 
-    // Refresh article metadata for all submissions in the contest
+    // Refresh article metadata for all submissions in the contes
     const refreshMetadata = async () => {
       if (!contest.value || !canViewSubmissions.value || submissions.value.length === 0) {
         return
@@ -821,8 +780,7 @@ export default {
       try {
         await api.delete(`/contest/${contest.value.id}`)
         showAlert('Contest deleted successfully', 'success')
-
-        // Navigate back to contests list
+        // Navigate back to contests list 
         router.push({ name: 'Contests' })
       } catch (error) {
         console.error('Failed to delete contest:', error)
@@ -831,15 +789,14 @@ export default {
         deletingContest.value = false
       }
     }
-
     // Handle submit article
+
     const handleSubmitArticle = () => {
       if (!store.isAuthenticated) {
         showAlert('Please login to submit an article', 'warning')
         return
       }
       submittingToContestId.value = contest.value.id
-
       // Show submit modal using Bootstrap
       setTimeout(() => {
         const modalElement = document.getElementById('submitArticleModal')
@@ -876,12 +833,10 @@ export default {
       router.push({ name: 'Contests' })
     }
 
-    // Show article preview modal
-    const showArticlePreview = (url, title) => {
-      previewArticleUrl.value = url
-      previewArticleTitle.value = title || 'Article'
+    // store only submission ID, rely on computed property
+    const showArticlePreview = (submission) => {
+      currentSubmissionId.value = submission.id
 
-      // Show modal using Bootstrap
       setTimeout(() => {
         const modalElement = document.getElementById('articlePreviewModal')
         if (modalElement) {
@@ -891,7 +846,35 @@ export default {
       }, 100)
     }
 
-    // Watch for changes in currentUser to update delete permission
+    // Update the actual submission in the array
+    const handleSubmissionReviewed = (reviewData) => {
+      console.log('Review received:', reviewData)
+
+      // Find and update the submission in the array
+      const submissionIndex = submissions.value.findIndex(
+        s => s.id === reviewData.submissionId
+      )
+
+      if (submissionIndex !== -1) {
+        // Update the submission object
+        submissions.value[submissionIndex] = {
+          ...submissions.value[submissionIndex],
+          status: reviewData.status,
+          score: reviewData.score,
+          review_comment: reviewData.comment,
+          already_reviewed: true,
+          reviewed_at: new Date().toISOString()
+        }
+
+        console.log('Updated submission:', submissions.value[submissionIndex])
+
+        // Force reactivity update
+        submissions.value = [...submissions.value]
+
+        showAlert('Submission reviewed successfully', 'success')
+      }
+    }
+
     watch(() => currentUser.value, (newUser) => {
       if (newUser && contest.value && !checkingAuth.value) {
         setTimeout(() => {
@@ -901,7 +884,6 @@ export default {
         canDeleteContest.value = false
       }
     }, { deep: true })
-
     const editForm = reactive({
       name: '',
       project_name: '',
@@ -990,7 +972,6 @@ export default {
       }
     }
 
-
     return {
       contest,
       loading,
@@ -1004,12 +985,13 @@ export default {
       currentUser,
       isAuthenticated,
       canViewSubmissions,
+      currentSubmission,
       formatDate,
       formatDateShort,
       formatByteCount,
       formatByteCountWithExact,
-      formatWordCount,
       getStatusLabel,
+      formatWordCount,
       getStatusColor,
       loadSubmissions,
       refreshMetadata,
@@ -1018,8 +1000,10 @@ export default {
       handleSubmitArticle,
       handleArticleSubmitted,
       forceAuthRefresh,
+
       goBack,
       showArticlePreview,
+      handleSubmissionReviewed,
       previewArticleUrl,
       previewArticleTitle,
       editForm,

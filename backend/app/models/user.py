@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from app.database import db
 from app.models.base_model import BaseModel
 
+
 class User(BaseModel):
     """
     User model representing users in the WikiContest platform
@@ -24,7 +25,7 @@ class User(BaseModel):
         created_at: Timestamp when user was created
     """
 
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     # Primary key
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -34,7 +35,7 @@ class User(BaseModel):
     email = db.Column(db.String(100), unique=True, nullable=False, index=True)
 
     # User role and authentication
-    role = db.Column(db.String(20), nullable=False, default='user')
+    role = db.Column(db.String(20), nullable=False, default="user")
     password = db.Column(db.String(255), nullable=False)
 
     # User score tracking
@@ -44,10 +45,23 @@ class User(BaseModel):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
-    created_contests = db.relationship('Contest', backref='creator', lazy='dynamic')
-    submissions = db.relationship('Submission', backref='submitter', lazy='dynamic')
+    created_contests = db.relationship("Contest", backref="creator", lazy="dynamic")
+    submissions = db.relationship(
+        "Submission",
+        foreign_keys="Submission.user_id",
+        back_populates="submitter",
+        lazy="dynamic",
+    )
 
-    def __init__(self, username, email, password, role='user'):
+    reviewed_submissions = db.relationship(
+        "Submission",
+        foreign_keys="Submission.reviewed_by",
+        primaryjoin="User.username == Submission.reviewed_by",
+        back_populates="reviewer",
+        overlaps="submissions",
+    )
+
+    def __init__(self, username, email, password, role="user"):
         """
         Initialize a new User instance
 
@@ -92,12 +106,12 @@ class User(BaseModel):
             dict: User data without password
         """
         return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'role': self.role,
-            'score': self.score,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "role": self.role,
+            "score": self.score,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
     def update_score(self, score_change):
@@ -145,7 +159,9 @@ class User(BaseModel):
         if not contest.jury_members:
             return False
 
-        jury_usernames = [username.strip() for username in contest.jury_members.split(',')]
+        jury_usernames = [
+            username.strip() for username in contest.jury_members.split(",")
+        ]
         return self.username in jury_usernames
 
     def is_contest_creator(self, contest):
@@ -190,4 +206,4 @@ class User(BaseModel):
 
     def __repr__(self):
         """String representation of User instance"""
-        return f'<User {self.username}>'
+        return f"<User {self.username}>"
