@@ -1,6 +1,6 @@
 <template>
   <div class="modal fade" id="createContestModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Create New Contest</h5>
@@ -110,13 +110,24 @@ autocomplete="off" />
                 <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
                   class="jury-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div v-for="user in jurySearchResults"
-:key="user.username"
-class="p-2 border-bottom cursor-pointer"
+                  <div
+                    v-for="user in jurySearchResults"
+                    :key="user.username"
+                    class="p-2 border-bottom cursor-pointer"
+                    :class="{ 'bg-warning-subtle self-selection-warning': isCurrentUser(user.username) }"
                     style="cursor: pointer;"
-@click="addJury(user.username)">
-                    <i class="fas fa-user me-2 text-primary"></i>
-                    <strong>{{ user.username }}</strong>
+                    @click="addJury(user.username)">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="d-flex align-items-center">
+                        <i class="fas fa-user me-2 text-primary"></i>
+                        <strong>{{ user.username }}</strong>
+                      </div>
+                      <!-- Enhanced warning indicator for self-selection -->
+                      <div v-if="isCurrentUser(user.username)" class="self-warning-badge">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        <strong>This is you - Not Recommended</strong>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -138,6 +149,33 @@ class="form-control"
 id="marksRejected"
                   v-model.number="formData.marks_setting_rejected"
 min="0" />
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="minByteCount" class="form-label">
+                  Minimum Byte Count <span class="text-muted">(Optional)</span>
+                </label>
+                <input type="number"
+class="form-control"
+id="minByteCount"
+                  v-model.number="formData.min_byte_count"
+min="0"
+                  placeholder="e.g., 1000" />
+                <small class="form-text text-muted">Articles must have at least this many bytes</small>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="maxByteCount" class="form-label">
+                  Maximum Byte Count <span class="text-muted">(Optional)</span>
+                </label>
+                <input type="number"
+class="form-control"
+id="maxByteCount"
+                  v-model.number="formData.max_byte_count"
+min="0"
+                  placeholder="e.g., 50000" />
+                <small class="form-text text-muted">Articles must not exceed this many bytes</small>
               </div>
             </div>
 
@@ -171,7 +209,7 @@ class="btn btn-primary"
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useStore } from '../store'
 import { showAlert } from '../utils/alerts'
 import api from '../services/api'
@@ -187,6 +225,21 @@ export default {
     const jurySearchResults = ref([])
     let searchTimeout = null
 
+    // Create a computed property to track current user reactively
+    // This ensures we always have the latest user data
+    // Try multiple sources to get current user (same approach as ContestModal)
+    const currentUser = computed(() => {
+      // Check store.state.currentUser first (direct reactive state access - most reliable)
+      if (store.state && store.state.currentUser) {
+        return store.state.currentUser
+      }
+      // Then check store.currentUser (computed property)
+      if (store.currentUser) {
+        return store.currentUser
+      }
+      return null
+    })
+
     const formData = reactive({
       name: '',
       project_name: '',
@@ -198,11 +251,13 @@ export default {
       marks_setting_rejected: 0,
       code_link: null,
       rules_text: '',
-      allowed_submission_type: 'both'
+      allowed_submission_type: 'both',
+      min_byte_count: null,
+      max_byte_count: null
     })
 
-    // Set default dates
-    onMounted(() => {
+    // Set default dates and ensure user is loaded
+    onMounted(async () => {
       const today = new Date()
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
@@ -211,7 +266,59 @@ export default {
 
       formData.start_date = tomorrow.toISOString().split('T')[0]
       formData.end_date = nextWeek.toISOString().split('T')[0]
+
+      // Ensure current user is loaded from store
+      // This helps ensure the warning works correctly
+      // Try multiple times if needed (user might not be loaded immediately)
+      let retries = 0
+      const maxRetries = 3
+      while (!currentUser.value && retries < maxRetries) {
+        console.log(`🔄 [MODAL] Loading user (attempt ${retries + 1}/${maxRetries})...`)
+        await store.checkAuth()
+        // Wait a bit for reactive state to update
+        await new Promise(resolve => setTimeout(resolve, 200))
+        retries++
+      }
+
+      if (currentUser.value) {
+        console.log('✅ [MODAL] User loaded:', currentUser.value.username)
+      } else {
+        console.warn('⚠️ [MODAL] User not loaded after retries')
+      }
     })
+
+    // Watch for modal visibility - when modal is shown, ensure user is loaded
+    // Bootstrap modals trigger 'shown.bs.modal' event when they become visible
+    onMounted(() => {
+      const modalElement = document.getElementById('createContestModal')
+      if (modalElement) {
+        modalElement.addEventListener('shown.bs.modal', async () => {
+          console.log('👁️ [MODAL] Modal shown, ensuring user is loaded...')
+          if (!currentUser.value) {
+            await store.checkAuth()
+            await new Promise(resolve => setTimeout(resolve, 200))
+          }
+          if (currentUser.value) {
+            console.log('✅ [MODAL] User loaded after modal shown:', currentUser.value.username)
+          }
+        })
+      }
+    })
+
+    // Watch for user changes to update warning when user loads
+    watch(currentUser, (newUser, oldUser) => {
+      if (newUser) {
+        console.log('👤 [MODAL] User loaded/changed:', {
+          username: newUser.username,
+          oldUser: oldUser?.username,
+          selectedJury: selectedJury.value
+        })
+        // If user just loaded and we have selected jury, check for self-selection
+        if (selectedJury.value.length > 0 && !oldUser) {
+          console.log('🔍 [MODAL] User loaded with jury selected, checking for self-selection...')
+        }
+      }
+    }, { immediate: true })
 
     // Search for users (jury members)
     const searchJury = async () => {
@@ -241,8 +348,39 @@ export default {
       }, 300)
     }
 
+    // Check if a username matches the current user
+    // Used to show warnings in dropdown and after selection
+    const isCurrentUser = (username) => {
+      // Use the computed currentUser property for reactivity
+      const currentUsername = currentUser.value?.username
+      if (!currentUsername || !username) {
+        return false
+      }
+      // Normalize usernames for comparison (case-insensitive, trimmed)
+      const normalizedCurrent = String(currentUsername).trim().toLowerCase()
+      const normalizedUsername = String(username).trim().toLowerCase()
+      return normalizedCurrent === normalizedUsername
+    }
+
     // Add jury member
-    const addJury = (username) => {
+    const addJury = async (username) => {
+      // Check if user is trying to add themselves
+      if (isCurrentUser(username)) {
+        // Show confirmation dialog before adding
+        const confirmed = window.confirm(
+          '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
+          'You are about to select yourself as a jury member.\n\n' +
+          'It is strongly recommended to select other users as jury members to maintain fairness and objectivity.\n\n' +
+          'Are you sure you want to proceed with selecting yourself?'
+        )
+
+        // If user cancels, don't add them
+        if (!confirmed) {
+          return
+        }
+      }
+
+      // Add the jury member if not already selected
       if (!selectedJury.value.includes(username)) {
         selectedJury.value.push(username)
         formData.jury_members = [...selectedJury.value]
@@ -285,6 +423,14 @@ export default {
         return
       }
 
+      // Validate byte count range
+      if (formData.min_byte_count !== null && formData.max_byte_count !== null) {
+        if (formData.min_byte_count > formData.max_byte_count) {
+          showAlert('Minimum byte count must be less than or equal to maximum byte count', 'warning')
+          return
+        }
+      }
+
       loading.value = true
       try {
         const contestData = {
@@ -293,7 +439,22 @@ export default {
           code_link: formData.code_link?.trim() || null,
           rules: {
             text: formData.rules_text.trim()
-          }
+          },
+          // Byte count fields: null if not set or invalid, otherwise use the value (including 0)
+          min_byte_count: (
+            formData.min_byte_count === null ||
+            formData.min_byte_count === undefined ||
+            isNaN(formData.min_byte_count)
+          )
+            ? null
+            : Number(formData.min_byte_count),
+          max_byte_count: (
+            formData.max_byte_count === null ||
+            formData.max_byte_count === undefined ||
+            isNaN(formData.max_byte_count)
+          )
+            ? null
+            : Number(formData.max_byte_count)
         }
 
         const result = await store.createContest(contestData)
@@ -327,6 +488,8 @@ export default {
       selectedJury.value = []
       formData.jury_members = []
       formData.rules_text = ''
+      formData.min_byte_count = null
+      formData.max_byte_count = null
 
       // Reset dates
       const today = new Date()
@@ -344,10 +507,13 @@ export default {
       jurySearchQuery,
       jurySearchResults,
       loading,
+      isCurrentUser,
+      currentUser,
       searchJury,
       addJury,
       removeJury,
-      handleSubmit
+      handleSubmit,
+      store
     }
   }
 }
@@ -540,6 +706,66 @@ input[type="date"].form-control {
   background-color: var(--wiki-hover-bg) !important;
 }
 
+/* Enhanced warning background for self-selection in dropdown */
+.jury-autocomplete .bg-warning-subtle.self-selection-warning {
+  background-color: rgba(255, 193, 7, 0.25) !important;
+  border-left: 5px solid #ffc107;
+  border-right: 2px solid rgba(255, 193, 7, 0.3);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+[data-theme="dark"] .jury-autocomplete .bg-warning-subtle.self-selection-warning {
+  background-color: rgba(255, 193, 7, 0.35) !important;
+  border-left: 5px solid #ffc107;
+  border-right: 2px solid rgba(255, 193, 7, 0.4);
+}
+
+.jury-autocomplete .bg-warning-subtle.self-selection-warning:hover {
+  background-color: rgba(255, 193, 7, 0.35) !important;
+  border-left: 5px solid #ff9800;
+}
+
+[data-theme="dark"] .jury-autocomplete .bg-warning-subtle.self-selection-warning:hover {
+  background-color: rgba(255, 193, 7, 0.45) !important;
+  border-left: 5px solid #ff9800;
+}
+
+/* Enhanced warning badge for self-selection */
+.self-warning-badge {
+  background-color: #ffc107;
+  color: #000;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.4);
+  border: 1px solid rgba(255, 193, 7, 0.6);
+}
+
+[data-theme="dark"] .self-warning-badge {
+  background-color: #ff9800;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.5);
+  border: 1px solid rgba(255, 152, 0, 0.7);
+}
+
+/* Subtle pulse animation for warning */
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 193, 7, 0);
+  }
+}
+
+[data-theme="dark"] .jury-autocomplete .bg-warning-subtle:hover {
+  background-color: rgba(255, 193, 7, 0.35) !important;
+}
+
 .jury-autocomplete .text-primary {
   color: var(--wiki-primary) !important;
 }
@@ -605,5 +831,43 @@ input[type="date"].form-control {
   border-width: 0.15em;
   border-color: currentColor;
   border-right-color: transparent;
+}
+
+/* Full screen modal styling */
+.modal-fullscreen {
+  width: 100vw;
+  max-width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-fullscreen .modal-content {
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-fullscreen .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Better spacing for full screen layout */
+.modal-fullscreen .modal-body .row {
+  margin-bottom: 1rem;
+}
+
+.modal-fullscreen .modal-body .mb-3 {
+  margin-bottom: 1.5rem !important;
+}
+
+/* Ensure form uses available space well */
+.modal-fullscreen .modal-body form {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 </style>
