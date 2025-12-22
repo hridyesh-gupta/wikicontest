@@ -56,7 +56,7 @@
         </div>
         <div class="modal-footer">
           <!--Show warning if already reviewed -->
-          <div v-if="isAlreadyReviewed" class="alert alert-warning m-3 flex-grow-1">
+          <div v-if="canReviewSubmission && isAlreadyReviewed" class="alert alert-warning m-3 flex-grow-1">
             <i class="fas fa-check-circle me-2"></i>
             <strong>This submission has already been reviewed.</strong>
             <div v-if="submission?.review_comment" class="mt-2 small">
@@ -65,7 +65,8 @@
           </div>
 
           <!-- Review Button - disabled if already reviewed -->
-          <button class="btn btn-primary" :disabled="isAlreadyReviewed" @click="openReviewModal">
+          <button class="btn btn-primary" v-if="canReviewSubmission" :disabled="isAlreadyReviewed"
+            @click="openReviewModal">
             <i class="fas fa-gavel me-2"></i>
             {{ isAlreadyReviewed ? 'Already Reviewed' : 'Review Submission' }}
           </button>
@@ -111,6 +112,10 @@ export default {
       type: Object,
       required: true
     },
+    canReview: {
+      type: Boolean,
+      default: false
+    }
   },
 
   emits: ['reviewed'],
@@ -123,13 +128,14 @@ export default {
     const articleMetadata = ref(null)
     let loadTimeout = null
     const iframeCheckInterval = null
+    const canReviewSubmission = computed(() => props.canReview === true)
+
 
     // Computed property that's always up-to-date
     const isAlreadyReviewed = computed(() => {
       return props.submission?.already_reviewed === true ||
         props.submission?.reviewed_at !== null
     })
-
 
     const isMediaWikiUrl = (url) => {
       if (!url) return false
@@ -147,6 +153,11 @@ export default {
     }
 
     const openReviewModal = () => {
+      if (!canReviewSubmission.value) {
+        showAlert('No permission', 'warning')
+        return
+      }
+
       //  Check if already reviewed
       if (isAlreadyReviewed.value) {
         showAlert('This submission has already been reviewed.')
@@ -402,7 +413,8 @@ export default {
       handleIframeError,
       formatDateShort,
       openReviewModal,
-      onReviewed
+      onReviewed,
+      canReviewSubmission
     }
   }
 }
