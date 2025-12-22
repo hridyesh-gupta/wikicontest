@@ -302,9 +302,9 @@
       @submitted="handleArticleSubmitted" />
 
     <!-- Article Preview Modal - Pass computed currentSubmission -->
-    <ArticlePreviewModal v-if="currentSubmission" :article-url="currentSubmission.article_link"
-      :article-title="currentSubmission.article_title" :submission-id="currentSubmission.id"
-      :submission="currentSubmission" @reviewed="handleSubmissionReviewed" />
+    <ArticlePreviewModal v-if="!!currentSubmission" :can-review="canUserReview"
+      :article-url="currentSubmission.article_link" :article-title="currentSubmission.article_title"
+      :submission-id="currentSubmission.id" :submission="currentSubmission" @reviewed="handleSubmissionReviewed" />
   </div>
   <!-- Edit Contest Modal -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
@@ -458,6 +458,7 @@ export default {
     SubmitArticleModal,
     ArticlePreviewModal
   },
+
   setup() {
     const router = useRouter()
     const route = useRoute()
@@ -1082,6 +1083,30 @@ export default {
         )
       }
     }
+    // Add computed property
+    const canUserReview = computed(() => {
+      if (!isAuthenticated.value || !contest.value || !currentUser.value) {
+        return false
+      }
+
+      const username = currentUser.value.username.trim().toLowerCase()
+
+
+      if (Array.isArray(contest.value.jury_members)) {
+        const jury = contest.value.jury_members
+          .filter(Boolean)
+          .map(j => String(j).trim().toLowerCase())
+
+        if (jury.includes(username)) {
+          return true
+        }
+      }
+console.log('Current user:', currentUser.value?.username)
+console.log('Jury members:', contest.value?.jury_members)
+
+      return false
+    })
+
 
     return {
       contest,
@@ -1124,7 +1149,8 @@ export default {
       previewArticleTitle,
       editForm,
       openEditModal,
-      saveContestEdits
+      saveContestEdits,
+      canUserReview
     }
   }
 }
@@ -1258,6 +1284,7 @@ export default {
 .badge.bg-primary {
   background-color: var(--wiki-primary) !important;
 }
+
 .badge.bg-info {
   background-color: var(--wiki-primary) !important;
   color: white;
@@ -1438,6 +1465,7 @@ export default {
 [data-theme="dark"] .description-text {
   color: var(--wiki-text);
 }
+
 .jury-autocomplete {
   border: 1px solid var(--wiki-border);
   border-top: none;
