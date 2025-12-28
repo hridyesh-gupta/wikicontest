@@ -125,6 +125,31 @@ class="btn btn-danger"
         </div>
       </div>
 
+      <!-- Required Categories Section -->
+      <div v-if="contest.categories && contest.categories.length > 0" class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Required Categories</h5>
+        </div>
+        <div class="card-body">
+          <p class="mb-2">
+            <strong>Articles must belong to the following MediaWiki categories:</strong>
+          </p>
+          <ul class="list-unstyled">
+            <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
+              <a :href="category"
+target="_blank"
+rel="noopener noreferrer"
+class="text-decoration-none">
+                <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
+              </a>
+            </li>
+          </ul>
+          <small class="text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Submitted articles must be categorized under at least one of these categories.
+          </small>
+        </div>
+      </div>
 
       <!-- Jury Members Section -->
       <div v-if="contest.jury_members && contest.jury_members.length > 0" class="card mb-4">
@@ -314,7 +339,7 @@ class="btn btn-sm btn-outline-primary"
   </div>
   <!-- Edit Contest Modal -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
 
         <div class="modal-header">
@@ -433,7 +458,8 @@ v-model.number="editForm.marks_setting_accepted"
 class="form-control"
 min="0" />
               <small class="form-text text-muted">
-                Maximum points that can be awarded. Jury can assign points from 0 up to this value for accepted submissions.
+                Maximum points that can be awarded. Jury can assign points from 0 up to
+                this value for accepted submissions.
               </small>
             </div>
 
@@ -457,6 +483,41 @@ min="0" />
                      placeholder="e.g., 1000"
                      required />
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
+            </div>
+
+            <!-- Category URLs -->
+            <div class="mb-3">
+              <label class="form-label">
+                Category URLs *
+                <span class="text-muted">(MediaWiki category pages)</span>
+              </label>
+
+              <div v-for="(category, index) in editForm.categories" :key="index" class="mb-2">
+                <div class="input-group">
+                  <input type="url"
+                         class="form-control"
+                         v-model="editForm.categories[index]"
+                         :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'"
+                         required />
+                  <button v-if="editForm.categories.length > 1"
+                          type="button"
+                          class="btn btn-outline-danger"
+                          @click="removeCategory(index)"
+                          title="Remove category">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="button"
+                      class="btn btn-outline-primary btn-sm"
+                      @click="addCategory">
+                <i class="fas fa-plus me-1"></i>Add Category
+              </button>
+
+              <small class="form-text text-muted d-block mt-2">
+                At least one MediaWiki category URL is required. Articles must belong to these categories.
+              </small>
             </div>
 
           </form>
@@ -683,6 +744,38 @@ export default {
       }
 
       return formatted
+    }
+
+    // Extract category name from MediaWiki category URL
+    // Example: "https://en.wikipedia.org/wiki/Category:Testcat" -> "Category:Testcat"
+    const getCategoryName = (categoryUrl) => {
+      if (!categoryUrl) return ''
+
+      try {
+        // Extract the page title from URL
+        const url = new URL(categoryUrl)
+        let pageTitle = ''
+
+        // Standard MediaWiki URL format: /wiki/Category:Name
+        if (url.pathname.includes('/wiki/')) {
+          pageTitle = decodeURIComponent(url.pathname.split('/wiki/')[1])
+        } else if (url.searchParams.has('title')) {
+          // Old style: /w/index.php?title=Category:Name
+          pageTitle = decodeURIComponent(url.searchParams.get('title'))
+        } else {
+          // Fallback: last path segment
+          const parts = url.pathname.split('/').filter(p => p)
+          if (parts.length > 0) {
+            pageTitle = decodeURIComponent(parts[parts.length - 1])
+          }
+        }
+
+        // Return the page title (which should be "Category:Name")
+        return pageTitle || categoryUrl
+      } catch (e) {
+        // If URL parsing fails, return the original URL
+        return categoryUrl
+      }
     }
 
     // Format raw byte count into a short human-readable string
@@ -968,7 +1061,8 @@ export default {
       jury_members: '',
       allowed_submission_type: '',
       selectedJuryMembers: [],
-      min_byte_count: 0
+      min_byte_count: 0,
+      categories: ['']
     })
 
     onMounted(() => {
@@ -1043,6 +1137,18 @@ export default {
       )
     }
 
+    // Add category field
+    const addCategory = () => {
+      editForm.categories.push('')
+    }
+
+    // Remove category field
+    const removeCategory = (index) => {
+      if (editForm.categories.length > 1) {
+        editForm.categories.splice(index, 1)
+      }
+    }
+
 
     let editModal = null
     const openEditModal = () => {
@@ -1062,6 +1168,14 @@ export default {
       editForm.marks_setting_accepted = Number(contest.value.marks_setting_accepted ?? 0)
       editForm.marks_setting_rejected = Number(contest.value.marks_setting_rejected ?? 0)
       editForm.min_byte_count = Number(contest.value.min_byte_count ?? 0)
+
+      // Load categories
+      if (Array.isArray(contest.value.categories) && contest.value.categories.length > 0) {
+        editForm.categories = [...contest.value.categories]
+      } else {
+        editForm.categories = ['']
+      }
+
       if (Array.isArray(contest.value.jury_members)) {
         editForm.selectedJuryMembers = [...contest.value.jury_members]
       } else {
@@ -1080,6 +1194,21 @@ export default {
 
     const saveContestEdits = async () => {
       try {
+        // Validate categories
+        const validCategories = editForm.categories.filter(cat => cat && cat.trim())
+        if (validCategories.length === 0) {
+          showAlert('At least one category URL is required', 'warning')
+          return
+        }
+
+        // Validate category URLs
+        for (const category of validCategories) {
+          if (!category.startsWith('http://') && !category.startsWith('https://')) {
+            showAlert('All category URLs must be valid HTTP/HTTPS URLs', 'warning')
+            return
+          }
+        }
+
         const payload = {
           name: editForm.name || '',
           project_name: editForm.project_name || '',
@@ -1091,7 +1220,8 @@ export default {
           marks_setting_rejected: Number(editForm.marks_setting_rejected) || 0,
           jury_members: editForm.selectedJuryMembers,
           allowed_submission_type: editForm.allowed_submission_type,
-          min_byte_count: Number(editForm.min_byte_count) || 0
+          min_byte_count: Number(editForm.min_byte_count) || 0,
+          categories: validCategories.map(cat => cat.trim())
         }
 
         // console.log("FINAL PAYLOAD SENT →", payload);
@@ -1158,6 +1288,7 @@ export default {
       getStatusLabel,
       formatWordCount,
       getStatusColor,
+      getCategoryName,
       loadSubmissions,
       refreshMetadata,
       refreshingMetadata,
@@ -1170,6 +1301,8 @@ export default {
       searchJuryMembers,
       addJuryMember,
       removeJuryMember,
+      addCategory,
+      removeCategory,
       isCurrentUser,
       goBack,
       showArticlePreview,
@@ -1566,5 +1699,43 @@ export default {
   .table tbody td {
     padding: 0.5rem;
   }
+}
+
+/* Full screen modal styling */
+.modal-fullscreen {
+  width: 100vw;
+  max-width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-fullscreen .modal-content {
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-fullscreen .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Better spacing for full screen layout */
+.modal-fullscreen .modal-body .row {
+  margin-bottom: 1rem;
+}
+
+.modal-fullscreen .modal-body .mb-3 {
+  margin-bottom: 1.5rem !important;
+}
+
+/* Ensure form uses available space well */
+.modal-fullscreen .modal-body form {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 </style>

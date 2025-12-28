@@ -142,7 +142,8 @@ id="marksAccepted"
                   v-model.number="formData.marks_setting_accepted"
 min="0" />
                 <small class="form-text text-muted">
-                  Maximum points that can be awarded. Jury can assign points from 0 up to this value for accepted submissions.
+                  Maximum points that can be awarded. Jury can assign points from 0 up to
+                  this value for accepted submissions.
                 </small>
               </div>
               <div class="col-md-6 mb-3">
@@ -170,6 +171,41 @@ min="0"
                 placeholder="e.g., 1000"
                 required />
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
+            </div>
+
+            <!-- Category URLs -->
+            <div class="mb-3">
+              <label class="form-label">
+                Category URLs *
+                <span class="text-muted">(MediaWiki category pages)</span>
+              </label>
+
+              <div v-for="(category, index) in formData.categories" :key="index" class="mb-2">
+                <div class="input-group">
+                  <input type="url"
+                         class="form-control"
+                         v-model="formData.categories[index]"
+                         :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'"
+                         required />
+                  <button v-if="formData.categories.length > 1"
+                          type="button"
+                          class="btn btn-outline-danger"
+                          @click="removeCategory(index)"
+                          title="Remove category">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="button"
+                      class="btn btn-outline-primary btn-sm"
+                      @click="addCategory">
+                <i class="fas fa-plus me-1"></i>Add Category
+              </button>
+
+              <small class="form-text text-muted d-block mt-2">
+                At least one MediaWiki category URL is required. Articles must belong to these categories.
+              </small>
             </div>
 
           </form>
@@ -232,7 +268,8 @@ export default {
       marks_setting_rejected: 0,
       rules_text: '',
       allowed_submission_type: 'both',
-      min_byte_count: 0
+      min_byte_count: 0,
+      categories: ['']
     })
 
     // Set default dates and ensure user is loaded
@@ -374,6 +411,18 @@ export default {
       formData.jury_members = [...selectedJury.value]
     }
 
+    // Add category field
+    const addCategory = () => {
+      formData.categories.push('')
+    }
+
+    // Remove category field
+    const removeCategory = (index) => {
+      if (formData.categories.length > 1) {
+        formData.categories.splice(index, 1)
+      }
+    }
+
     // Handle form submission
     const handleSubmit = async () => {
       // Validation
@@ -401,11 +450,33 @@ export default {
         showAlert('End date must be after start date', 'warning')
         return
       }
-      if (formData.min_byte_count === null || formData.min_byte_count === undefined || isNaN(formData.min_byte_count) || formData.min_byte_count < 0) {
-        showAlert('Minimum byte count is required and must be a non-negative number', 'warning')
+      if (
+        formData.min_byte_count === null ||
+        formData.min_byte_count === undefined ||
+        isNaN(formData.min_byte_count) ||
+        formData.min_byte_count < 0
+      ) {
+        showAlert(
+          'Minimum byte count is required and must be a non-negative number',
+          'warning'
+        )
         return
       }
 
+      // Validate categories
+      const validCategories = formData.categories.filter(cat => cat && cat.trim())
+      if (validCategories.length === 0) {
+        showAlert('At least one category URL is required', 'warning')
+        return
+      }
+
+      // Validate category URLs
+      for (const category of validCategories) {
+        if (!category.startsWith('http://') && !category.startsWith('https://')) {
+          showAlert('All category URLs must be valid HTTP/HTTPS URLs', 'warning')
+          return
+        }
+      }
 
       loading.value = true
       try {
@@ -416,7 +487,9 @@ export default {
             text: formData.rules_text.trim()
           },
           // Byte count field: required, must be a valid non-negative number
-          min_byte_count: Number(formData.min_byte_count)
+          min_byte_count: Number(formData.min_byte_count),
+          // Categories: filter out empty strings and trim
+          categories: formData.categories.filter(cat => cat && cat.trim()).map(cat => cat.trim())
         }
 
         const result = await store.createContest(contestData)
@@ -450,6 +523,7 @@ export default {
       formData.jury_members = []
       formData.rules_text = ''
       formData.min_byte_count = 0
+      formData.categories = ['']
 
       // Reset dates
       const today = new Date()
@@ -472,6 +546,8 @@ export default {
       searchJury,
       addJury,
       removeJury,
+      addCategory,
+      removeCategory,
       handleSubmit,
       store
     }

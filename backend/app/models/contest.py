@@ -58,6 +58,10 @@ class Contest(BaseModel):
     # Articles must have byte count at least min_byte_count
     min_byte_count = db.Column(db.Integer, nullable=False)  # Minimum byte count (required)
 
+    # MediaWiki category URLs (JSON array)
+    # Required categories that articles must belong to
+    categories = db.Column(db.Text, nullable=False, default='[]')  # JSON array of category URLs
+
     # Jury members (comma-separated usernames)
     jury_members = db.Column(db.Text, nullable=True)
 
@@ -94,6 +98,9 @@ class Contest(BaseModel):
         # Byte count requirement (required)
         # Articles must have byte count at least this value
         self.min_byte_count = kwargs.get('min_byte_count', 0)
+
+        # Handle categories (list of category URLs)
+        self.set_categories(kwargs.get("categories", []))
 
         # Handle rules and jury_members
         self.set_rules(kwargs.get("rules", {}))
@@ -150,6 +157,32 @@ class Contest(BaseModel):
                 for username in self.jury_members.split(",")
                 if username.strip()
             ]
+        return []
+
+    def set_categories(self, categories_list):
+        """
+        Set contest categories from list
+
+        Args:
+            categories_list: List of category URLs
+        """
+        if isinstance(categories_list, list):
+            self.categories = json.dumps(categories_list)
+        else:
+            self.categories = json.dumps([])
+
+    def get_categories(self):
+        """
+        Get contest categories as list
+
+        Returns:
+            list: List of category URLs
+        """
+        if self.categories:
+            try:
+                return json.loads(self.categories)
+            except json.JSONDecodeError:
+                return []
         return []
 
     def validate_byte_count(self, byte_count):
@@ -292,6 +325,7 @@ class Contest(BaseModel):
             'marks_setting_rejected': self.marks_setting_rejected,
             'allowed_submission_type': self.allowed_submission_type,
             'min_byte_count': self.min_byte_count,
+            'categories': self.get_categories(),
             'jury_members': self.get_jury_members(),
             # Format datetime as ISO string with 'Z' suffix to indicate UTC
             # This ensures JavaScript interprets it as UTC, not local time

@@ -172,6 +172,18 @@ def create_contest():
     except (ValueError, TypeError):
         return jsonify({'error': 'Minimum byte count must be a valid integer'}), 400
 
+    # Parse categories (required - list of category URLs)
+    categories = data.get('categories')
+    if not categories or not isinstance(categories, list) or len(categories) == 0:
+        return jsonify({'error': 'At least one category URL is required'}), 400
+
+    # Validate category URLs
+    for category_url in categories:
+        if not isinstance(category_url, str) or not category_url.strip():
+            return jsonify({'error': 'All category URLs must be non-empty strings'}), 400
+        if not (category_url.startswith('http://') or category_url.startswith('https://')):
+            return jsonify({'error': 'All category URLs must be valid HTTP/HTTPS URLs'}), 400
+
     # Create contest
     try:
         contest = Contest(
@@ -186,7 +198,8 @@ def create_contest():
             marks_setting_rejected=marks_rejected,
             jury_members=jury_members,
             allowed_submission_type=allowed_submission_type,
-            min_byte_count=min_byte_count
+            min_byte_count=min_byte_count,
+            categories=categories
         )
 
         contest.save()
@@ -427,6 +440,21 @@ def update_contest(contest_id):  # pylint: disable=too-many-return-statements
                 contest.min_byte_count = min_byte_count
             except (TypeError, ValueError):
                 return jsonify({'error': 'min_byte_count must be a valid integer'}), 400
+
+        # --- Categories ---
+        if 'categories' in data:
+            categories_value = data.get('categories')
+            if not categories_value or not isinstance(categories_value, list) or len(categories_value) == 0:
+                return jsonify({'error': 'At least one category URL is required'}), 400
+            
+            # Validate category URLs
+            for category_url in categories_value:
+                if not isinstance(category_url, str) or not category_url.strip():
+                    return jsonify({'error': 'All category URLs must be non-empty strings'}), 400
+                if not (category_url.startswith('http://') or category_url.startswith('https://')):
+                    return jsonify({'error': 'All category URLs must be valid HTTP/HTTPS URLs'}), 400
+            
+            contest.set_categories(categories_value)
 
         # --- Jury members: accept list or comma string ---
         if 'jury_members' in data:
