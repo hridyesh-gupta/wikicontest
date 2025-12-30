@@ -351,134 +351,160 @@ class="btn btn-sm btn-outline-primary"
 
         <div class="modal-body">
           <form @submit.prevent="saveContestEdits">
-
-            <div class="mb-3">
-              <label class="form-label">Contest Name</label>
-              <input v-model="editForm.name" class="form-control" required />
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="editContestName" class="form-label">Contest Name *</label>
+                <input type="text"
+                       class="form-control"
+                       id="editContestName"
+                       v-model="editForm.name"
+                       required />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="editProjectName" class="form-label">Project Name *</label>
+                <input type="text"
+                       class="form-control"
+                       id="editProjectName"
+                       v-model="editForm.project_name"
+                       required />
+              </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Project Name</label>
-              <input v-model="editForm.project_name" class="form-control" required />
+              <label for="editContestDescription" class="form-label">Description</label>
+              <textarea class="form-control"
+                        id="editContestDescription"
+                        rows="3"
+                        v-model="editForm.description"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="editContestRules" class="form-label">Contest Rules *</label>
+              <textarea class="form-control"
+                        id="editContestRules"
+                        rows="4"
+                        placeholder="Write rules about how articles must be submitted."
+                        v-model="editForm.rules"
+                        required></textarea>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea v-model="editForm.description" rows="4" class="form-control"></textarea>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Rules</label>
-              <textarea v-model="editForm.rules" rows="6" class="form-control"></textarea>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Allowed Submission Type</label>
-              <select class="form-control" v-model="editForm.allowed_submission_type">
-                <option value="new">New Articles Only</option>
+              <label for="editAllowedType" class="form-label">Allowed Submission Type</label>
+              <select id="editAllowedType" class="form-control" v-model="editForm.allowed_submission_type">
+                <option value="new">New Article Only</option>
                 <option value="expansion">Improved Article Only</option>
-                <option value="both">Both (New Article + Improved Article)</option>
+                <option value="both">Both(New Article + Improved Article)</option>
               </select>
             </div>
 
-
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label">Start Date</label>
-                <input type="date" v-model="editForm.start_date" class="form-control" />
+                <label for="editStartDate" class="form-label">Start Date *</label>
+                <input type="date"
+                       class="form-control"
+                       id="editStartDate"
+                       v-model="editForm.start_date"
+                       required />
               </div>
-
               <div class="col-md-6 mb-3">
-                <label class="form-label">End Date</label>
-                <input type="date" v-model="editForm.end_date" class="form-control" />
+                <label for="editEndDate" class="form-label">End Date *</label>
+                <input type="date"
+                       class="form-control"
+                       id="editEndDate"
+                       v-model="editForm.end_date"
+                       required />
               </div>
             </div>
+            <!-- Jury Members with Autocomplete -->
             <div class="mb-3">
-              <label class="form-label">
-                Jury Members
-                <span class="badge bg-info">Type to search and add users</span>
+              <label for="editJuryInput" class="form-label">
+                Jury Members *
+                <span class="badge bg-info">Type to search users</span>
               </label>
 
               <!-- Selected Jury Members Display -->
-              <div class="mb-2 p-2 border rounded bg-light jury-selection-box" style="min-height: 60px;">
-                <small v-if="editForm.selectedJuryMembers.length === 0" class="text-muted">
-                  No jury members selected
+              <div class="mb-2 p-2 border rounded bg-light jury-selection-box" style="min-height: 40px;">
+                <small v-if="editForm.selectedJuryMembers.length === 0" class="jury-placeholder-text">
+                  No jury members selected yet
                 </small>
                 <span v-for="username in editForm.selectedJuryMembers"
-:key="username"
-                  class="badge bg-primary me-2 mb-2"
-style="font-size: 0.9rem; cursor: pointer;">
+                      :key="username"
+                      class="badge bg-primary me-2 mb-2"
+                      style="font-size: 0.9rem; cursor: pointer;">
                   {{ username }}
                   <i class="fas fa-times ms-1" @click="removeJuryMember(username)"></i>
                 </span>
               </div>
 
-              <!-- Jury Search Input with Autocomplete -->
+              <!-- Jury Input with Autocomplete -->
               <div style="position: relative;">
                 <input type="text"
-class="form-control"
-v-model="jurySearchQuery"
-@input="searchJuryMembers"
-                  placeholder="Type username to search and add..."
-autocomplete="off" />
-
+                       class="form-control"
+                       id="editJuryInput"
+                       v-model="jurySearchQuery"
+                       @input="searchJuryMembers"
+                       placeholder="Type username to search..."
+                       autocomplete="off" />
                 <!-- Autocomplete Dropdown -->
                 <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
-                  class="jury-autocomplete position-absolute w-100 border rounded-bottom"
-                  style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div v-for="user in jurySearchResults"
-:key="user.username"
-class="p-2 border-bottom cursor-pointer"
-                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
-style="cursor: pointer;"
+                     class="jury-autocomplete position-absolute w-100 border rounded-bottom"
+                     style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                  <div
+                    v-for="user in jurySearchResults"
+                    :key="user.username"
+                    class="p-2 border-bottom cursor-pointer"
+                    :class="{ 'bg-warning-subtle self-selection-warning': isCurrentUser(user.username) }"
+                    style="cursor: pointer;"
                     @click="addJuryMember(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
                         <i class="fas fa-user me-2 text-primary"></i>
                         <strong>{{ user.username }}</strong>
                       </div>
+                      <!-- Enhanced warning indicator for self-selection -->
                       <div v-if="isCurrentUser(user.username)" class="self-warning-badge">
                         <i class="fas fa-exclamation-triangle me-1"></i>
-                        <small>This is you</small>
+                        <strong>This is you - Not Recommended</strong>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <small class="form-text text-muted mt-1">
-                Search and click to add jury members. Click × to remove.
-              </small>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="editMarksAccepted" class="form-label">Points for Accepted Submissions</label>
+                <input type="number"
+                       class="form-control"
+                       id="editMarksAccepted"
+                       v-model.number="editForm.marks_setting_accepted"
+                       min="0" />
+                <small class="form-text text-muted">
+                  Maximum points that can be awarded. Jury can assign points from 0 up to
+                  this value for accepted submissions.
+                </small>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="editMarksRejected" class="form-label">Points for Rejected Submissions</label>
+                <input type="number"
+                       class="form-control"
+                       id="editMarksRejected"
+                       v-model.number="editForm.marks_setting_rejected"
+                       min="0" />
+                <small class="form-text text-muted">
+                  Fixed points awarded automatically for rejected submissions (usually 0 or negative).
+                </small>
+              </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Accepted Points</label>
+              <label for="editMinByteCount" class="form-label">
+                Minimum Byte Count *
+              </label>
               <input type="number"
-v-model.number="editForm.marks_setting_accepted"
-class="form-control"
-min="0" />
-              <small class="form-text text-muted">
-                Maximum points that can be awarded. Jury can assign points from 0 up to
-                this value for accepted submissions.
-              </small>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Rejected Points</label>
-              <input type="number"
-v-model.number="editForm.marks_setting_rejected"
-class="form-control"
-min="0" />
-              <small class="form-text text-muted">
-                Fixed points awarded automatically for rejected submissions (usually 0 or negative).
-              </small>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Minimum Byte Count *</label>
-              <input type="number"
-                     v-model.number="editForm.min_byte_count"
                      class="form-control"
+                     id="editMinByteCount"
+                     v-model.number="editForm.min_byte_count"
                      min="0"
                      placeholder="e.g., 1000"
                      required />
@@ -520,13 +546,34 @@ min="0" />
               </small>
             </div>
 
+            <!-- Template Link (Optional) -->
+            <div class="mb-3">
+              <label for="editTemplateLink" class="form-label">
+                Contest Template Link
+                <span class="badge bg-secondary ms-1">Optional</span>
+              </label>
+              <input type="url"
+                     class="form-control"
+                     id="editTemplateLink"
+                     v-model="editForm.template_link"
+                     placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
+              <small class="form-text text-muted d-block mt-2">
+                <i class="fas fa-info-circle me-1"></i>
+                If set, this template will be automatically added to submitted articles that don't already have it.
+                The URL must point to a Wiki Template namespace page (e.g., Template:Editathon2025).
+              </small>
+            </div>
+
           </form>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" @click="saveContestEdits">
-            <i class="fas fa-save me-2"></i>Save Changes
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button"
+                  class="btn btn-primary"
+                  @click="saveContestEdits"
+                  :disabled="savingContest">
+            <span v-if="savingContest" class="spinner-border spinner-border-sm me-2"></span>
+            Save Changes
           </button>
         </div>
 
@@ -1062,8 +1109,10 @@ export default {
       allowed_submission_type: '',
       selectedJuryMembers: [],
       min_byte_count: 0,
-      categories: ['']
+      categories: [''],
+      template_link: ''
     })
+    const savingContest = ref(false)
 
     onMounted(() => {
       loadContest()
@@ -1111,18 +1160,23 @@ export default {
 
     // Add jury member
     const addJuryMember = (username) => {
-      // Check if trying to add self
+      // Check if user is trying to add themselves
       if (isCurrentUser(username)) {
+        // Show confirmation dialog before adding
         const confirmed = window.confirm(
           '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
-          'You are about to add yourself as a jury member.\n\n' +
-          'It is recommended to select other users as jury members.\n\n' +
-          'Continue?'
+          'You are about to select yourself as a jury member.\n\n' +
+          'It is strongly recommended to select other users as jury members to maintain fairness and objectivity.\n\n' +
+          'Are you sure you want to proceed with selecting yourself?'
         )
-        if (!confirmed) return
+
+        // If user cancels, don't add them
+        if (!confirmed) {
+          return
+        }
       }
 
-      // Add if not already in list
+      // Add the jury member if not already selected
       if (!editForm.selectedJuryMembers.includes(username)) {
         editForm.selectedJuryMembers.push(username)
         jurySearchQuery.value = ''
@@ -1176,6 +1230,9 @@ export default {
         editForm.categories = ['']
       }
 
+      // Load template link
+      editForm.template_link = contest.value.template_link || ''
+
       if (Array.isArray(contest.value.jury_members)) {
         editForm.selectedJuryMembers = [...contest.value.jury_members]
       } else {
@@ -1193,27 +1250,68 @@ export default {
 
 
     const saveContestEdits = async () => {
-      try {
-        // Validate categories
-        const validCategories = editForm.categories.filter(cat => cat && cat.trim())
-        if (validCategories.length === 0) {
-          showAlert('At least one category URL is required', 'warning')
+      // Validation
+      if (!editForm.name.trim()) {
+        showAlert('Contest name is required', 'warning')
+        return
+      }
+      if (!editForm.project_name.trim()) {
+        showAlert('Project name is required', 'warning')
+        return
+      }
+      if (!editForm.start_date) {
+        showAlert('Start date is required', 'warning')
+        return
+      }
+      if (!editForm.end_date) {
+        showAlert('End date is required', 'warning')
+        return
+      }
+      if (editForm.selectedJuryMembers.length === 0) {
+        showAlert('At least one jury member is required', 'warning')
+        return
+      }
+      if (new Date(editForm.start_date) >= new Date(editForm.end_date)) {
+        showAlert('End date must be after start date', 'warning')
+        return
+      }
+      if (
+        editForm.min_byte_count === null ||
+        editForm.min_byte_count === undefined ||
+        isNaN(editForm.min_byte_count) ||
+        editForm.min_byte_count < 0
+      ) {
+        showAlert(
+          'Minimum byte count is required and must be a non-negative number',
+          'warning'
+        )
+        return
+      }
+
+      // Validate categories
+      const validCategories = editForm.categories.filter(cat => cat && cat.trim())
+      if (validCategories.length === 0) {
+        showAlert('At least one category URL is required', 'warning')
+        return
+      }
+
+      // Validate category URLs
+      for (const category of validCategories) {
+        if (!category.startsWith('http://') && !category.startsWith('https://')) {
+          showAlert('All category URLs must be valid HTTP/HTTPS URLs', 'warning')
           return
         }
+      }
 
-        // Validate category URLs
-        for (const category of validCategories) {
-          if (!category.startsWith('http://') && !category.startsWith('https://')) {
-            showAlert('All category URLs must be valid HTTP/HTTPS URLs', 'warning')
-            return
-          }
-        }
-
+      savingContest.value = true
+      try {
         const payload = {
           name: editForm.name || '',
           project_name: editForm.project_name || '',
           description: editForm.description || '',
-          rules: editForm.rules?.trim() || '',
+          rules: {
+            text: editForm.rules?.trim() || ''
+          },
           start_date: editForm.start_date || null,
           end_date: editForm.end_date || null,
           marks_setting_accepted: Number(editForm.marks_setting_accepted) || 0,
@@ -1221,10 +1319,10 @@ export default {
           jury_members: editForm.selectedJuryMembers,
           allowed_submission_type: editForm.allowed_submission_type,
           min_byte_count: Number(editForm.min_byte_count) || 0,
-          categories: validCategories.map(cat => cat.trim())
+          categories: validCategories.map(cat => cat.trim()),
+          template_link: editForm.template_link && editForm.template_link.trim() ? editForm.template_link.trim() : null
         }
 
-        // console.log("FINAL PAYLOAD SENT →", payload);
         await api.put(`/contest/${contest.value.id}`, payload)
 
         showAlert('Contest updated successfully', 'success')
@@ -1240,6 +1338,8 @@ export default {
           'Failed to save: ' + (error.response?.data?.detail || error.message),
           'danger'
         )
+      } finally {
+        savingContest.value = false
       }
     }
     // Add computed property
@@ -1312,7 +1412,8 @@ export default {
       editForm,
       openEditModal,
       saveContestEdits,
-      canUserReview
+      canUserReview,
+      savingContest
     }
   }
 }
@@ -1737,5 +1838,299 @@ export default {
 .modal-fullscreen .modal-body form {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Edit Contest Modal Styling - Match Create Contest Modal */
+
+/* Modal header - solid color, no gradient */
+#editContestModal .modal-header {
+  background-color: var(--wiki-primary);
+  color: white;
+  border-bottom: none;
+  padding: 1.25rem 1.5rem;
+  transition: background-color 0.2s ease;
+}
+
+#editContestModal .modal-title {
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+
+#editContestModal .modal-header .btn-close {
+  filter: invert(1) brightness(1.2);
+  opacity: 0.9;
+}
+
+[data-theme="dark"] #editContestModal .modal-header .btn-close {
+  filter: invert(1) brightness(2);
+}
+
+/* Modal body */
+#editContestModal .modal-body {
+  background-color: var(--wiki-modal-bg);
+  color: var(--wiki-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Form styling in modal */
+#editContestModal .form-label {
+  color: var(--wiki-dark);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  transition: color 0.3s ease;
+}
+
+#editContestModal .form-control {
+  border-color: var(--wiki-input-border);
+  background-color: var(--wiki-input-bg);
+  color: var(--wiki-text);
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] #editContestModal .form-control {
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* Textarea specific styling */
+#editContestModal textarea.form-control {
+  resize: vertical;
+  min-height: 80px;
+}
+
+#editContestModal .form-control:focus {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 0 0 0.2rem rgba(0, 102, 153, 0.25);
+  background-color: var(--wiki-input-bg);
+  color: var(--wiki-text);
+  outline: none;
+}
+
+[data-theme="dark"] #editContestModal .form-control:focus {
+  box-shadow: 0 0 0 0.2rem rgba(93, 184, 230, 0.3);
+  border-color: var(--wiki-primary);
+}
+
+/* Placeholder text styling for dark mode */
+#editContestModal .form-control::placeholder {
+  color: var(--wiki-text-muted);
+  opacity: 0.7;
+  transition: color 0.3s ease;
+}
+
+[data-theme="dark"] #editContestModal .form-control::placeholder {
+  opacity: 0.6;
+}
+
+/* Jury input placeholder - more visible */
+#editJuryInput::placeholder {
+  color: #666666 !important;
+  opacity: 1 !important;
+  font-weight: 500;
+}
+
+[data-theme="dark"] #editJuryInput::placeholder {
+  color: #ffffff !important;
+  opacity: 0.9 !important;
+}
+
+/* Date input styling */
+#editContestModal input[type="date"].form-control {
+  color-scheme: light;
+}
+
+[data-theme="dark"] #editContestModal input[type="date"].form-control {
+  color-scheme: dark;
+}
+
+/* Badge styling in modal */
+#editContestModal .badge.bg-primary {
+  background-color: var(--wiki-primary) !important;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#editContestModal .badge.bg-primary:hover {
+  background-color: var(--wiki-primary-hover) !important;
+}
+
+#editContestModal .badge.bg-info {
+  background-color: var(--wiki-primary) !important;
+  color: white;
+}
+
+/* Jury members display - professional */
+#editContestModal .bg-light {
+  background-color: var(--wiki-hover-bg) !important;
+  border-color: var(--wiki-primary) !important;
+  border: 1px solid var(--wiki-border);
+  border-radius: 4px;
+  padding: 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] #editContestModal .bg-light {
+  background-color: rgba(93, 184, 230, 0.1) !important;
+}
+
+/* Jury selection box text - more visible */
+#editContestModal .jury-selection-box .jury-placeholder-text {
+  color: #333333 !important;
+  font-weight: 500;
+}
+
+[data-theme="dark"] #editContestModal .jury-selection-box .jury-placeholder-text {
+  color: #ffffff !important;
+}
+
+/* Autocomplete dropdown - professional */
+#editContestModal .jury-autocomplete {
+  border: 1px solid var(--wiki-border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--wiki-card-bg);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] #editContestModal .jury-autocomplete {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+#editContestModal .jury-autocomplete .p-2 {
+  transition: background-color 0.2s ease;
+  color: var(--wiki-text);
+}
+
+#editContestModal .jury-autocomplete .p-2:hover {
+  background-color: var(--wiki-hover-bg) !important;
+}
+
+/* Enhanced warning background for self-selection in dropdown */
+#editContestModal .jury-autocomplete .bg-warning-subtle.self-selection-warning {
+  background-color: rgba(255, 193, 7, 0.25) !important;
+  border-left: 5px solid #ffc107;
+  border-right: 2px solid rgba(255, 193, 7, 0.3);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+[data-theme="dark"] #editContestModal .jury-autocomplete .bg-warning-subtle.self-selection-warning {
+  background-color: rgba(255, 193, 7, 0.35) !important;
+  border-left: 5px solid #ffc107;
+  border-right: 2px solid rgba(255, 193, 7, 0.4);
+}
+
+#editContestModal .jury-autocomplete .bg-warning-subtle.self-selection-warning:hover {
+  background-color: rgba(255, 193, 7, 0.35) !important;
+  border-left: 5px solid #ff9800;
+}
+
+[data-theme="dark"] #editContestModal .jury-autocomplete .bg-warning-subtle.self-selection-warning:hover {
+  background-color: rgba(255, 193, 7, 0.45) !important;
+  border-left: 5px solid #ff9800;
+}
+
+/* Enhanced warning badge for self-selection */
+#editContestModal .self-warning-badge {
+  background-color: #ffc107;
+  color: #000;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.4);
+  border: 1px solid rgba(255, 193, 7, 0.6);
+}
+
+[data-theme="dark"] #editContestModal .self-warning-badge {
+  background-color: #ff9800;
+  color: #fff;
+  box-shadow: 0 2px 4px rgba(255, 152, 0, 0.5);
+  border: 1px solid rgba(255, 152, 0, 0.7);
+}
+
+/* Subtle pulse animation for warning */
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 193, 7, 0);
+  }
+}
+
+[data-theme="dark"] #editContestModal .jury-autocomplete .bg-warning-subtle:hover {
+  background-color: rgba(255, 193, 7, 0.35) !important;
+}
+
+#editContestModal .jury-autocomplete .text-primary {
+  color: var(--wiki-primary) !important;
+}
+
+/* Button styling in modal */
+#editContestModal .btn-primary {
+  background-color: var(--wiki-primary);
+  border-color: var(--wiki-primary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+#editContestModal .btn-primary:hover {
+  background-color: var(--wiki-primary-hover);
+  border-color: var(--wiki-primary-hover);
+  box-shadow: 0 2px 4px rgba(0, 102, 153, 0.2);
+}
+
+#editContestModal .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#editContestModal .btn-secondary {
+  background-color: var(--wiki-text-muted);
+  border-color: var(--wiki-text-muted);
+  transition: all 0.2s ease;
+}
+
+#editContestModal .btn-secondary:hover {
+  background-color: var(--wiki-text-muted);
+  border-color: var(--wiki-text-muted);
+}
+
+[data-theme="dark"] #editContestModal .btn-secondary {
+  background-color: #5a6268;
+  border-color: #5a6268;
+}
+
+[data-theme="dark"] #editContestModal .btn-secondary:hover {
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+/* Modal footer */
+#editContestModal .modal-footer {
+  border-top: 1px solid var(--wiki-border);
+  padding: 1rem 1.5rem;
+  background-color: var(--wiki-modal-bg);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Text muted in modal */
+#editContestModal .text-muted {
+  color: var(--wiki-text-muted) !important;
+  transition: color 0.3s ease;
+}
+
+/* Spinner in modal */
+#editContestModal .spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+  border-width: 0.15em;
+  border-color: currentColor;
+  border-right-color: transparent;
 }
 </style>
