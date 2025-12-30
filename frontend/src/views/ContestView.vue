@@ -166,18 +166,28 @@ class="text-decoration-none">
         <div class="card-header">
           <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submissions</h5>
-            <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary" disabled>
-              <span class="spinner-border spinner-border-sm me-2"></span>
-              {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
-            </button>
-            <button v-else
-class="btn btn-sm btn-outline-light"
-@click="refreshMetadata"
-              :disabled="submissions.length === 0"
-title="Refresh article metadata"
-              style="color: white; border-color: white;">
-              <i class="fas fa-database me-1"></i>Refresh Metadata
-            </button>
+            <div class="d-flex gap-2">
+              <button
+                class="btn btn-sm btn-outline-light"
+                @click="loadSubmissions"
+                :disabled="loadingSubmissions || refreshingMetadata"
+                title="Refresh submissions list"
+                style="color: white; border-color: white;">
+                <span v-if="loadingSubmissions" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="fas fa-sync-alt me-1"></i>
+                {{ loadingSubmissions ? 'Loading...' : 'Refresh' }}
+              </button>
+              <button
+                class="btn btn-sm btn-outline-light"
+                @click="refreshMetadata"
+                :disabled="submissions.length === 0 || loadingSubmissions || refreshingMetadata"
+                title="Refresh article metadata"
+                style="color: white; border-color: white;">
+                <span v-if="refreshingMetadata" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="fas fa-database me-1"></i>
+                {{ refreshingMetadata ? 'Refreshing...' : 'Refresh Metadata' }}
+              </button>
+            </div>
           </div>
         </div>
         <div class="card-body">
