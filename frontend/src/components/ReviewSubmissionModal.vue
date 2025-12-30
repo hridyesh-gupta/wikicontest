@@ -76,6 +76,15 @@ aria-label="Close"></button>
 
         <!-- Footer -->
         <div class="modal-footer">
+          <button
+            class="btn btn-danger me-auto"
+            :disabled="deleting"
+            @click="handleDelete">
+            <span v-if="deleting" class="spinner-border spinner-border-sm me-2"></span>
+            <i v-else class="fas fa-trash me-2"></i>
+            {{ deleting ? 'Deleting...' : 'Delete' }}
+          </button>
+
           <button class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times me-2"></i>Cancel
           </button>
@@ -112,13 +121,14 @@ export default {
       required: true
     }
   },
-  emits: ['reviewed'],
+  emits: ['reviewed', 'deleted'],
 
   setup(props, { emit }) {
     const status = ref('')
     const score = ref(null)
     const comment = ref('')
     const submitting = ref(false)
+    const deleting = ref(false)
 
     const submitReview = async () => {
       submitting.value = true
@@ -182,6 +192,57 @@ export default {
       }
     }
 
+    const handleDelete = async () => {
+      // Confirmation dialog
+      const confirmed = confirm(
+        'Are you sure you want to delete this submission?\n\n' +
+        'This action cannot be undone and will adjust the user\'s score.'
+      )
+
+      if (!confirmed) return
+
+      deleting.value = true
+
+      try {
+        const csrfToken = getCookie('csrf_access_token')
+
+        const res = await fetch(
+          `/api/submission/${props.submissionId}`,
+          {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: {
+              'X-CSRF-TOKEN': csrfToken
+            }
+          }
+        )
+
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text)
+        }
+
+        // Emit deleted event
+        emit('deleted', props.submissionId)
+
+        // Close modal
+        const modalEl = document.getElementById('reviewSubmissionModal')
+        const modalInstance = bootstrap.Modal.getInstance(modalEl)
+        if (modalInstance) {
+          modalInstance.hide()
+        }
+
+        // Reset form
+        status.value = ''
+        score.value = null
+        comment.value = ''
+      } catch (err) {
+        alert('Failed to delete submission: ' + err.message)
+      } finally {
+        deleting.value = false
+      }
+    }
+
     watch(status, (newVal) => {
       if (newVal === 'rejected') {
         score.value = null
@@ -207,7 +268,9 @@ export default {
       score,
       comment,
       submitting,
-      submitReview
+      deleting,
+      submitReview,
+      handleDelete
     }
   }
 }
