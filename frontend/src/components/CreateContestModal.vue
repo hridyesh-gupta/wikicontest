@@ -208,6 +208,24 @@ min="0"
               </small>
             </div>
 
+            <!-- Template Link (Optional) -->
+            <div class="mb-3">
+              <label for="templateLink" class="form-label">
+                Contest Template Link
+                <span class="badge bg-secondary ms-1">Optional</span>
+              </label>
+              <input type="url"
+                     class="form-control"
+                     id="templateLink"
+                     v-model="formData.template_link"
+                     placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
+              <small class="form-text text-muted d-block mt-2">
+                <i class="fas fa-info-circle me-1"></i>
+                If set, this template will be automatically added to submitted articles that don't already have it.
+                The URL must point to a Wiki Template namespace page (e.g., Template:Editathon2025).
+              </small>
+            </div>
+
           </form>
         </div>
         <div class="modal-footer">
@@ -269,7 +287,8 @@ export default {
       rules_text: '',
       allowed_submission_type: 'both',
       min_byte_count: 0,
-      categories: ['']
+      categories: [''],
+      template_link: ''
     })
 
     // Set default dates and ensure user is loaded
@@ -489,7 +508,9 @@ export default {
           // Byte count field: required, must be a valid non-negative number
           min_byte_count: Number(formData.min_byte_count),
           // Categories: filter out empty strings and trim
-          categories: formData.categories.filter(cat => cat && cat.trim()).map(cat => cat.trim())
+          categories: formData.categories.filter(cat => cat && cat.trim()).map(cat => cat.trim()),
+          // Template link (optional): trim or set to null if empty
+          template_link: formData.template_link && formData.template_link.trim() ? formData.template_link.trim() : null
         }
 
         const result = await store.createContest(contestData)
@@ -524,6 +545,7 @@ export default {
       formData.rules_text = ''
       formData.min_byte_count = 0
       formData.categories = ['']
+      formData.template_link = ''
 
       // Reset dates
       const today = new Date()
