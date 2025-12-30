@@ -30,6 +30,13 @@ __all__ = [
     "get_latest_revision_author",
     "build_mediawiki_revisions_api_params",
     "get_mediawiki_headers",
+    # Template enforcement utilities
+    "validate_template_link",
+    "extract_template_name_from_url",
+    "check_article_has_template",
+    "get_article_wikitext",
+    "prepend_template_to_article",
+    "get_csrf_token",
 ]
 
 
@@ -201,6 +208,287 @@ def get_latest_revision_author(revisions: Iterable[Dict[str, Any]]) -> Optional[
     return None
 
 
+def extract_template_name_from_url(template_url: str) -> Optional[str]:
+    """
+    Extract the template name from a Wiki template URL.
+
+    Supports URLs like:
+    - https://en.wikipedia.org/wiki/Template:Editathon2025
+    - https://en.wikipedia.org/w/index.php?title=Template:Editathon2025
+
+    Args:
+        template_url: Full URL to a Wiki template page.
+
+    Returns:
+        Template name without 'Template:' prefix (e.g., 'Editathon2025'),
+        or None if extraction fails.
+    """
+    page_title = extract_page_title_from_url(template_url)
+    if not page_title:
+        return None
+
+    # Check if it's in the Template namespace
+    # Handle different language prefixes (Template:, Vorlage:, Plantilla:, etc.)
+    # For simplicity, we check for common patterns
+    template_prefixes = [
+        "Template:", "template:",
+        "Vorlage:",  # German
+        "Plantilla:",  # Spanish
+        "Modèle:",  # French
+        "Szablon:",  # Polish
+        "Шаблон:",  # Russian
+        "模板:",  # Chinese
+    ]
+
+    for prefix in template_prefixes:
+        if page_title.startswith(prefix):
+            return page_title[len(prefix):]
+
+    # If no prefix found, return None (not a template page)
+    return None
+
+
+def validate_template_link(template_url: str) -> Dict[str, Any]:
+    """
+    Validate a template link by checking:
+    1. URL is valid and well-formed
+    2. Page exists on the wiki
+    3. Page is in the Template namespace
+
+    Args:
+        template_url: Full URL to a Wiki template page.
+
+    Returns:
+        Dict with:
+        - 'valid': bool indicating if template is valid
+        - 'error': error message if invalid, None if valid
+        - 'template_name': extracted template name if valid
+        - 'page_exists': whether the page exists
+        - 'is_template': whether it's in Template namespace
+    """
+    result = {
+        'valid': False,
+        'error': None,
+        'template_name': None,
+        'page_exists': False,
+        'is_template': False,
+    }
+
+    # Check URL format
+    if not template_url:
+        result['error'] = 'Template link is required'
+        return result
+
+    if not (template_url.startswith('http://') or template_url.startswith('https://')):
+        result['error'] = 'Template link must be a valid HTTP/HTTPS URL'
+        return result
+
+    # Extract page title
+    page_title = extract_page_title_from_url(template_url)
+    if not page_title:
+        result['error'] = 'Could not extract page title from URL'
+        return result
+
+    # Check if it's a template page
+    template_name = extract_template_name_from_url(template_url)
+    if template_name:
+        result['is_template'] = True
+        result['template_name'] = template_name
+    else:
+        result['error'] = 'URL must point to a Template namespace page (e.g., Template:YourTemplate)'
+        return result
+
+    # Verify page exists via MediaWiki API
+    url_obj = urlparse(template_url)
+    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    api_url = f"{base_url}/w/api.php"
+
+    params = {
+        "action": "query",
+        "titles": page_title,
+        "format": "json",
+        "formatversion": "2",
+        "prop": "info",
+        "redirects": "true",
+    }
+
+    try:
+        response = requests.get(api_url, params=params, headers=get_mediawiki_headers(), timeout=10)
+    except requests.RequestException as e:
+        result['error'] = f'Failed to verify template: network error ({str(e)})'
+        return result
+
+    if response.status_code != 200:
+        result['error'] = f'Failed to verify template: HTTP {response.status_code}'
+        return result
+
+    try:
+        data = response.json()
+    except ValueError:
+        result['error'] = 'Failed to parse API response'
+        return result
+
+    if 'error' in data:
+        result['error'] = f"API error: {data['error'].get('info', 'Unknown error')}"
+        return result
+
+    pages = data.get('query', {}).get('pages', [])
+    if not pages:
+        result['error'] = 'Template page not found'
+        return result
+
+    page_data = pages[0]
+    is_missing = page_data.get('missing', False)
+
+    if is_missing:
+        result['error'] = 'Template page does not exist'
+        return result
+
+    result['page_exists'] = True
+    result['valid'] = True
+    return result
+
+
+def get_article_wikitext(article_url: str) -> Optional[str]:
+    """
+    Fetch the wikitext content of an article.
+
+    Args:
+        article_url: Full URL to the wiki article.
+
+    Returns:
+        Wikitext content as string, or None if fetch fails.
+    """
+    page_title = extract_page_title_from_url(article_url)
+    if not page_title:
+        return None
+
+    url_obj = urlparse(article_url)
+    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    api_url = f"{base_url}/w/api.php"
+
+    params = {
+        "action": "query",
+        "titles": page_title,
+        "format": "json",
+        "formatversion": "2",
+        "prop": "revisions",
+        "rvprop": "content",
+        "rvslots": "main",
+        "rvlimit": "1",
+        "redirects": "true",
+    }
+
+    try:
+        response = requests.get(api_url, params=params, headers=get_mediawiki_headers(), timeout=15)
+    except requests.RequestException:
+        return None
+
+    if response.status_code != 200:
+        return None
+
+    try:
+        data = response.json()
+    except ValueError:
+        return None
+
+    if 'error' in data:
+        return None
+
+    pages = data.get('query', {}).get('pages', [])
+    if not pages:
+        return None
+
+    page_data = pages[0]
+    if page_data.get('missing', False):
+        return None
+
+    revisions = page_data.get('revisions', [])
+    if not revisions:
+        return None
+
+    # Get content from main slot
+    slots = revisions[0].get('slots', {})
+    main_slot = slots.get('main', {})
+    content = main_slot.get('content')
+
+    return content
+
+
+def check_article_has_template(article_url: str, template_name: str) -> Dict[str, Any]:
+    """
+    Check if an article begins with the specified template.
+
+    This normalizes whitespace and handles minor formatting differences.
+
+    Args:
+        article_url: Full URL to the wiki article.
+        template_name: Template name without 'Template:' prefix.
+
+    Returns:
+        Dict with:
+        - 'has_template': bool indicating if template is present at beginning
+        - 'error': error message if check failed, None otherwise
+        - 'article_content': first 500 chars of article for debugging
+    """
+    result = {
+        'has_template': False,
+        'error': None,
+        'article_content': None,
+    }
+
+    wikitext = get_article_wikitext(article_url)
+    if wikitext is None:
+        result['error'] = 'Failed to fetch article content'
+        return result
+
+    result['article_content'] = wikitext[:500] if len(wikitext) > 500 else wikitext
+
+    # Normalize the content for comparison
+    # Strip leading whitespace and normalize line breaks
+    normalized_content = wikitext.lstrip()
+
+    # Build possible template invocations to check
+    # Handle variations: {{TemplateName}}, {{Template_Name}}, {{ TemplateName }}
+    template_variations = [
+        f"{{{{{template_name}}}}}",
+        f"{{{{{template_name.replace(' ', '_')}}}}}",
+        f"{{{{{template_name.replace('_', ' ')}}}}}",
+    ]
+
+    # Also check for template with parameters: {{TemplateName|...}}
+    # Check if article starts with any variation of the template
+    for variation in template_variations:
+        if normalized_content.startswith(variation):
+            result['has_template'] = True
+            return result
+
+    # Check for template with parameters (starts with {{TemplateName| or {{TemplateName\n)
+    template_start_patterns = [
+        f"{{{{{template_name}|",
+        f"{{{{{template_name}\n",
+        f"{{{{{template_name}\r",
+        f"{{{{{template_name.replace(' ', '_')}|",
+        f"{{{{{template_name.replace('_', ' ')}|",
+    ]
+
+    for pattern in template_start_patterns:
+        if normalized_content.startswith(pattern):
+            result['has_template'] = True
+            return result
+
+    # Also handle case-insensitive matching for the template name
+    lower_content = normalized_content.lower()
+    lower_template = template_name.lower()
+
+    if lower_content.startswith(f"{{{{{lower_template}}}}}") or \
+       lower_content.startswith(f"{{{{{lower_template}|"):
+        result['has_template'] = True
+        return result
+
+    return result
+
+
 def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[int]:
     """
     Get the article size (bytes) at or before a specific timestamp.
@@ -271,3 +559,193 @@ def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[
     # Single revision because we requested `rvlimit=1`.
     rev = revisions[0]
     return rev.get("size")
+
+
+# ---------------------------------------------------------------------------
+# OAuth-based Wiki editing utilities
+# ---------------------------------------------------------------------------
+
+def get_csrf_token(
+    api_url: str,
+    oauth_token: str,
+    oauth_token_secret: str,
+    consumer_key: str,
+    consumer_secret: str
+) -> Optional[str]:
+    """
+    Fetch a CSRF token from MediaWiki API using OAuth1 authentication.
+
+    This token is required for any write operations (edits, moves, etc.).
+
+    Args:
+        api_url: MediaWiki API URL (e.g., 'https://en.wikipedia.org/w/api.php')
+        oauth_token: User's OAuth access token
+        oauth_token_secret: User's OAuth access token secret
+        consumer_key: Application's OAuth consumer key
+        consumer_secret: Application's OAuth consumer secret
+
+    Returns:
+        CSRF token string, or None if fetch fails.
+    """
+    try:
+        from requests_oauthlib import OAuth1
+    except ImportError:
+        # requests-oauthlib not installed
+        return None
+
+    auth = OAuth1(
+        consumer_key,
+        client_secret=consumer_secret,
+        resource_owner_key=oauth_token,
+        resource_owner_secret=oauth_token_secret
+    )
+
+    params = {
+        "action": "query",
+        "meta": "tokens",
+        "type": "csrf",
+        "format": "json"
+    }
+
+    try:
+        response = requests.get(api_url, params=params, auth=auth, timeout=15)
+    except requests.RequestException:
+        return None
+
+    if response.status_code != 200:
+        return None
+
+    try:
+        data = response.json()
+    except ValueError:
+        return None
+
+    try:
+        return data['query']['tokens']['csrftoken']
+    except KeyError:
+        return None
+
+
+def prepend_template_to_article(
+    article_url: str,
+    template_name: str,
+    oauth_token: str,
+    oauth_token_secret: str,
+    consumer_key: str,
+    consumer_secret: str,
+    edit_summary: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Prepend a template to the beginning of a Wikipedia article.
+
+    Uses the MediaWiki API's 'prependtext' parameter to safely add content
+    at the beginning of the page without risking edit conflicts.
+
+    Args:
+        article_url: Full URL to the wiki article
+        template_name: Template name without 'Template:' prefix
+        oauth_token: User's OAuth access token
+        oauth_token_secret: User's OAuth access token secret
+        consumer_key: Application's OAuth consumer key
+        consumer_secret: Application's OAuth consumer secret
+        edit_summary: Optional edit summary (defaults to auto-generated)
+
+    Returns:
+        Dict with:
+        - 'success': bool indicating if edit succeeded
+        - 'error': error message if failed, None if succeeded
+        - 'new_revid': new revision ID if succeeded
+        - 'response': raw API response for debugging
+    """
+    result = {
+        'success': False,
+        'error': None,
+        'new_revid': None,
+        'response': None,
+    }
+
+    try:
+        from requests_oauthlib import OAuth1
+    except ImportError:
+        result['error'] = 'OAuth library not installed (requests-oauthlib required)'
+        return result
+
+    # Extract page title and build API URL
+    page_title = extract_page_title_from_url(article_url)
+    if not page_title:
+        result['error'] = 'Could not extract page title from URL'
+        return result
+
+    url_obj = urlparse(article_url)
+    base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+    api_url = f"{base_url}/w/api.php"
+
+    # Create OAuth1 auth object
+    auth = OAuth1(
+        consumer_key,
+        client_secret=consumer_secret,
+        resource_owner_key=oauth_token,
+        resource_owner_secret=oauth_token_secret
+    )
+
+    # Get CSRF token
+    csrf_token = get_csrf_token(
+        api_url, oauth_token, oauth_token_secret, consumer_key, consumer_secret
+    )
+    if not csrf_token:
+        result['error'] = 'Failed to obtain CSRF token. Check OAuth permissions.'
+        return result
+
+    # Build the template invocation
+    # Format: {{TemplateName}}\n (with newline for proper spacing)
+    template_text = f"{{{{{template_name}}}}}\n\n"
+
+    # Prepare edit summary
+    if not edit_summary:
+        edit_summary = f"Adding {{{{{template_name}}}}} contest template (via WikiContest)"
+
+    # Prepare the edit request
+    edit_params = {
+        "action": "edit",
+        "title": page_title,
+        "prependtext": template_text,  # Add to beginning of page
+        "summary": edit_summary,
+        "token": csrf_token,
+        "format": "json",
+    }
+
+    try:
+        response = requests.post(api_url, data=edit_params, auth=auth, timeout=30)
+    except requests.RequestException as e:
+        result['error'] = f'Network error during edit: {str(e)}'
+        return result
+
+    if response.status_code != 200:
+        result['error'] = f'HTTP error during edit: {response.status_code}'
+        return result
+
+    try:
+        data = response.json()
+    except ValueError:
+        result['error'] = 'Failed to parse API response'
+        return result
+
+    result['response'] = data
+
+    # Check for success
+    if 'edit' in data:
+        edit_result = data['edit'].get('result', '')
+        if edit_result == 'Success':
+            result['success'] = True
+            result['new_revid'] = data['edit'].get('newrevid')
+            return result
+        else:
+            result['error'] = f"Edit failed: {edit_result}"
+            return result
+    elif 'error' in data:
+        error_info = data['error']
+        result['error'] = f"API error: {error_info.get('code', 'unknown')} - {error_info.get('info', 'Unknown error')}"
+        return result
+    else:
+        result['error'] = 'Unknown API response format'
+        return result
