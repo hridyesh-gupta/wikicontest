@@ -643,11 +643,17 @@ def oauth_callback():
                 password=random_password,  # Random password (OAuth users won't use it)
                 role='user'
             )
+            # Store OAuth tokens for MediaWiki API editing (template enforcement)
+            user.oauth_token = access_token.key
+            user.oauth_token_secret = access_token.secret
             user.save()
         else:
-            # Update existing user if needed
-            # OAuth users might not have a password set
-            pass
+            # Update existing user's OAuth tokens
+            # Store the new OAuth tokens each time user authenticates
+            # This ensures we always have valid, up-to-date tokens for MediaWiki editing
+            user.oauth_token = access_token.key
+            user.oauth_token_secret = access_token.secret
+            user.save()
 
         # Create JWT token for the user
         access_token_jwt = create_access_token(identity=str(user.id))
