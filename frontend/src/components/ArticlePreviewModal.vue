@@ -92,7 +92,7 @@ class="btn btn-outline-primary">
         </div>
       </div>
     </div>
-    <ReviewSubmissionModal :submission-id="submissionId" @reviewed="onReviewed" />
+    <ReviewSubmissionModal :submission-id="submissionId" @reviewed="onReviewed" @deleted="onDeleted" />
   </div>
 </template>
 
@@ -130,7 +130,7 @@ export default {
     }
   },
 
-  emits: ['reviewed'],
+  emits: ['reviewed', 'deleted'],
 
   setup(props, { emit }) {
     const loading = ref(true)
@@ -196,6 +196,22 @@ export default {
 
       // Emit to parent (ContestView)
       emit('reviewed', reviewData)
+
+      // Close the article preview modal
+      const modalEl = document.getElementById('articlePreviewModal')
+      if (modalEl) {
+        const modal = window.bootstrap.Modal.getInstance(modalEl)
+        if (modal) {
+          modal.hide()
+        }
+      }
+    }
+
+    const onDeleted = (submissionId) => {
+      console.log('ArticlePreviewModal received deleted event:', submissionId)
+
+      // Emit to parent (ContestView)
+      emit('deleted', submissionId)
 
       // Close the article preview modal
       const modalEl = document.getElementById('articlePreviewModal')
@@ -426,6 +442,7 @@ export default {
       formatDateShort,
       openReviewModal,
       onReviewed,
+      onDeleted,
       canReviewSubmission
     }
   }
