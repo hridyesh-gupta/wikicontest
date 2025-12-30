@@ -32,6 +32,24 @@
             <p>{{ contest.jury_members.join(', ') }}</p>
           </div>
 
+          <!-- Template Link Section -->
+          <div v-if="contest.template_link" class="mt-3 template-section">
+            <h6>
+              <i class="fas fa-file-code me-1"></i>
+              Contest Template
+            </h6>
+            <p class="mb-1">
+              <a :href="contest.template_link" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                {{ contest.template_link }}
+                <i class="fas fa-external-link-alt ms-1" style="font-size: 0.8em;"></i>
+              </a>
+            </p>
+            <small class="text-muted">
+              <i class="fas fa-info-circle me-1"></i>
+              This template will be automatically added to submitted articles that don't already have it.
+            </small>
+          </div>
+
           <!-- Submissions Section (for jury and contest creators) -->
           <div v-if="canViewSubmissions" class="mt-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
