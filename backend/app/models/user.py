@@ -41,6 +41,12 @@ class User(BaseModel):
     # User score tracking
     score = db.Column(db.Integer, default=0, nullable=False)
 
+    # OAuth tokens for MediaWiki API access
+    # These are stored when user authenticates via OAuth and allow
+    # the application to make edits on behalf of the user
+    oauth_token = db.Column(db.String(255), nullable=True)
+    oauth_token_secret = db.Column(db.String(255), nullable=True)
+
     # Timestamp
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
