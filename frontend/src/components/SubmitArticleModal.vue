@@ -17,6 +17,22 @@
               The system will automatically fetch article information including title and author.
             </div>
 
+            <!-- Template Enforcement Info (if contest has template) -->
+            <div v-if="contest && contest.template_link" class="alert alert-warning mb-3">
+              <i class="fas fa-file-code me-2"></i>
+              <strong>Contest Template:</strong> This contest requires the 
+              <a :href="contest.template_link" target="_blank" rel="noopener noreferrer" class="alert-link">
+                contest template
+                <i class="fas fa-external-link-alt ms-1" style="font-size: 0.8em;"></i>
+              </a>
+              to be present on submitted articles.
+              <br/>
+              <small class="text-muted d-block mt-1">
+                <i class="fas fa-magic me-1"></i>
+                If your article doesn't have this template, it will be automatically added during submission.
+              </small>
+            </div>
+
             <div class="mb-3">
               <label for="articleUrl" class="form-label">
                 <i class="fas fa-link me-2 text-primary"></i>Article URL <span class="text-danger">*</span>
