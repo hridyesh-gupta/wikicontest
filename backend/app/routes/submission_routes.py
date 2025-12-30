@@ -538,3 +538,38 @@ def review_submission(submission_id):
         "message": "Submission reviewed successfully",
         "submission": submission.to_dict(include_user_info=True)
     }), 200
+
+@submission_bp.route('/<int:submission_id>', methods=['DELETE'])
+@require_auth
+@handle_errors
+def delete_submission(submission_id):
+    """
+    Delete a submission (jury, creator, or admin only)
+    
+    Args:
+        submission_id: Submission ID
+        
+    Returns:
+        JSON response with success message
+    """
+    user = request.current_user
+    
+    # Load submission with relationships to avoid lazy loading issues
+    submission = Submission.query.options(
+        joinedload(Submission.submitter),
+        joinedload(Submission.contest)
+    ).get_or_404(submission_id)
+    
+    # Permission check
+    if not submission.can_be_deleted_by(user):
+        return jsonify({'error': 'Not allowed to delete this submission'}), 403
+    
+    # Adjust user score (subtract the submission's score)
+    if submission.score != 0 and submission.submitter:
+        submission.submitter.update_score(-submission.score)
+    
+    # Delete the submission
+    db.session.delete(submission)
+    db.session.commit()
+    
+    return jsonify({'message': 'Submission deleted successfully'}), 200
