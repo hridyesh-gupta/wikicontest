@@ -236,6 +236,30 @@ class Submission(BaseModel):
 
         return False
 
+    def can_be_deleted_by(self, user):
+        """
+        Check if a user can delete this submission
+
+        Args:
+            user: User instance to check
+
+        Returns:
+            bool: True if user can delete submission, False otherwise
+        """
+        # Admin can delete all submissions
+        if user.is_admin():
+            return True
+
+        # Jury members can delete submissions in their contests
+        if user.is_jury_member(self.contest):
+            return True
+
+        # Contest creators can delete submissions in their contests
+        if user.is_contest_creator(self.contest):
+            return True
+
+        return False
+
     def can_be_viewed_by(self, user):
         """
         Check if a user can view this submission
