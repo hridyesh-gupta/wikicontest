@@ -68,13 +68,13 @@ def oauth_callback():
 
 ###  Incorrect URLs
 
-| Wrong URL | Issue |
-|-----------|-------|
-| `https://localhost:5000/api/user/oauth/callback` | Using `https://` instead of `http://` |
-| `http://127.0.0.1:5000/api/user/oauth/callback` | Using IP address instead of `localhost` |
-| `http://localhost:5000/oauth/callback` | Missing `/api/user` prefix |
-| `http://localhost/api/user/oauth/callback` | Missing port number (`:5000`) |
-| `http://localhost:5000/api/user/oauth/callback/` | Extra trailing slash |
+| Wrong URL                                          | Issue                                      |
+|----------------------------------------------------|--------------------------------------------|
+| `https://localhost:5000/api/user/oauth/callback`   | Using `https://` instead of `http://`      |
+| `http://127.0.0.1:5000/api/user/oauth/callback`    | Using IP address instead of `localhost`    |
+| `http://localhost:5000/oauth/callback`             | Missing `/api/user` prefix                 |
+| `http://localhost/api/user/oauth/callback`         | Missing port number (`:5000`)              |
+| `http://localhost:5000/api/user/oauth/callback/`   | Extra trailing slash                       |
 | `https://wikicontest.toolforge.org/oauth/callback` | Using production URL for local development |
 
 ###  Correct URL
