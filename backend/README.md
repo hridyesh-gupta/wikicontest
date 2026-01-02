@@ -19,7 +19,6 @@ A Python Flask backend application for the WikiContest platform, converted from 
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
----
 
 ## Overview
 
@@ -40,7 +39,6 @@ This backend provides a comprehensive API for managing Wikipedia article contest
 - **RESTful API** - Clean, documented endpoints for frontend integration
 - **OAuth Support** - Wikimedia OAuth 1.0a integration for Toolforge deployment
 
----
 
 ## Project Structure
 
@@ -102,8 +100,6 @@ backend/
 - **Layered Configuration** - Separate configs for development, testing, and production
 - **Centralized Database** - Single SQLAlchemy instance with base model inheritance
 
----
-
 ## Prerequisites
 
 Ensure you have the following installed:
@@ -111,8 +107,6 @@ Ensure you have the following installed:
 - **Python** 3.8 or higher
 - **MySQL** 5.7 or higher (or SQLite for development)
 - **pip** Python package manager
-
----
 
 ## Installation
 
@@ -155,8 +149,6 @@ GRANT ALL PRIVILEGES ON wikicontest.* TO 'wikicontest_user'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
----
-
 ## Configuration
 
 ### Environment Variables
@@ -192,8 +184,6 @@ python -m alembic current
 **Important:** Do not use `init_db.py` or any other scripts to create tables manually. Alembic handles all schema changes.
 
 For detailed setup instructions, see [`docs/SETUP_NEW_DATABASE.md`](docs/SETUP_NEW_DATABASE.md).
-
----
 
 ## Running the Application
 
@@ -237,8 +227,6 @@ For production environments, use a WSGI server like Gunicorn:
 pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:5000 "app:app"
 ```
-
----
 
 ## API Documentation
 
@@ -410,8 +398,6 @@ Fetch article metadata from MediaWiki API:
 python scripts/get_article_metadata.py "https://en.wikipedia.org/wiki/Article"
 ```
 
----
-
 ## Authentication & Authorization
 
 The application implements JWT-based authentication with comprehensive security features.
@@ -434,8 +420,6 @@ Located in `app/middleware/auth.py`:
 - `require_submission_permission` - Require permission for submission access
 - `validate_json_data` - Validate JSON request data
 - `handle_errors` - Error handling decorator
-
----
 
 ## Development
 
@@ -474,8 +458,6 @@ When contributing:
 - Update documentation for API changes
 - Use the modular structure (models, routes, middleware, utils)
 - Keep files focused and under 200 lines when possible
-
----
 
 ## Production Deployment
 
@@ -537,7 +519,6 @@ For Wikimedia Toolforge deployment:
 - See the `toolforge/` directory for deployment files
 - Use the `deploy_to_toolforge.sh` script for automated deployment
 
----
 ## Project Architecture
 
 ### Application Factory Pattern
@@ -630,8 +611,6 @@ Application logs are written to console by default.
 - Use appropriate log levels (INFO, WARNING, ERROR)
 - Log files are stored in the `logs/` directory (created automatically)
 
----
-
 ## Contributing
 
 We welcome contributions to the WikiContest platform!
@@ -645,13 +624,10 @@ We welcome contributions to the WikiContest platform!
 5. **Architecture** - Use the modular structure (models, routes, middleware, utils)
 6. **File Size** - Keep files focused and under 200 lines when possible
 
----
 
 ## License
 
 This project is part of the WikiContest platform.
-
----
 
 ## Additional Resources
 

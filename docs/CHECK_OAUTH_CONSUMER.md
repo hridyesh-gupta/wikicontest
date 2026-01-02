@@ -118,8 +118,6 @@ The following must be **identical** between your OAuth consumer registration and
    - Missing path prefix: `/oauth/callback` 
    - Wrong protocol: `https://` instead of `http://` 
 
----
-
 ## Quick Fix: Enable Out-of-Band
 
 If you need OAuth working immediately and can't update your consumer:

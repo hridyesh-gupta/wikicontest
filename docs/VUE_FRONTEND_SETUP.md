@@ -17,7 +17,7 @@ A comprehensive guide for setting up and working with the Vue.js 3 frontend for 
 - [Migration Notes](#migration-notes)
 - [Resources](#resources)
 
----
+
 
 ## Overview
 
@@ -36,7 +36,7 @@ The WikiContest frontend has been migrated from vanilla JavaScript to **Vue.js 3
 - Easy integration with existing Flask backend
 - Production-ready build tooling with Vite
 
----
+
 
 ## Technology Stack
 
@@ -48,7 +48,7 @@ The WikiContest frontend has been migrated from vanilla JavaScript to **Vue.js 3
 | **Axios** | 1.x | HTTP client for API requests |
 | **Bootstrap** | 5.x | CSS framework and components |
 
----
+
 
 ## Prerequisites
 
@@ -64,7 +64,7 @@ node --version  # Should show v16.0.0 or higher
 npm --version   # Should show 7.0.0 or higher
 ```
 
----
+
 
 ## Development Setup
 
@@ -134,7 +134,7 @@ Open your browser to:
 - Returns responses to frontend
 - No CORS issues in development!
 
----
+
 
 ## Building for Production
 
@@ -188,7 +188,7 @@ The Flask backend automatically detects and serves the built Vue.js files:
 
 **No additional configuration needed!** Flask handles the switching automatically.
 
----
+
 
 ## Project Structure
 
@@ -233,7 +233,7 @@ frontend/
 | **`src/store/`** | Application state management |
 | **`src/utils/`** | Helper functions and utilities |
 
----
+
 
 ## Key Features
 
@@ -360,7 +360,7 @@ try {
 }
 ```
 
----
+
 
 ## Adding New Features
 
@@ -515,7 +515,7 @@ export default {
 </script>
 ```
 
----
+
 
 ## Deployment
 
@@ -576,7 +576,7 @@ See [`docs/TOOLFORGE_DEPLOYMENT.md`](../docs/TOOLFORGE_DEPLOYMENT.md)
 - [ ] Enable production mode in Flask
 - [ ] Test all functionality in production environment
 
----
+
 
 ## Troubleshooting
 
@@ -722,7 +722,7 @@ npm install
 4. Enable code splitting
 5. Use production build optimizations
 
----
+
 
 ## Migration Notes
 
@@ -788,7 +788,7 @@ All existing functionality has been preserved and enhanced:
 - **Stack Overflow** - Tag questions with `vue.js`
 - **GitHub Discussions** - Project-specific questions
 
----
+
 
 ## Next Steps
 
@@ -800,4 +800,4 @@ After setting up the Vue.js frontend:
 4.   Read Vue.js documentation for deeper understanding
 5.   Start building new features!
 
----
+

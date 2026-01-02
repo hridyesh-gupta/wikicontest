@@ -16,7 +16,7 @@ A comprehensive web platform for hosting and managing collaborative Wikipedia ar
 - [Frontend Technology](#frontend-technology)
 - [Contributing](#contributing)
 
----
+
 
 ## Overview
 
@@ -29,7 +29,7 @@ A comprehensive web platform for hosting and managing collaborative Wikipedia ar
 - **Responsive Design** - Optimized for desktop and mobile devices
 - **Real-time Updates** - Dynamic content loading and notifications
 
----
+
 
 ## Prerequisites
 
@@ -39,7 +39,7 @@ Before you begin, ensure you have the following installed:
 - **MySQL** 8.0 or higher (or use SQLite for quick testing)
 - **Node.js** 16+ (for frontend development)
 
----
+
 
 ## Quick Start
 
@@ -166,7 +166,7 @@ python main.py
 
 You should see the WikiContest login page. Register a new account to get started!
 
----
+
 
 ## Configuration
 
@@ -198,7 +198,7 @@ CONSUMER_SECRET=your-consumer-secret-here
 - **CORS**: Add your frontend URLs to allow cross-origin requests during development
 - **OAuth**: Optional feature for Wikimedia login (see [OAuth Setup](#oauth-setup))
 
----
+
 
 ## Running the Application
 
@@ -240,7 +240,7 @@ The `.env.example` file contains all configuration options. Copy it to `.env` an
 - **Frontend Development**: Use the Vue.js dev server (`npm run dev`) for the best experience
 - **API Access**: Backend API is available at `http://localhost:5000/api/`
 
----
+
 
 ## OAuth Setup
 
@@ -275,7 +275,7 @@ CONSUMER_SECRET=your-consumer-secret-from-registration
 
 **Note:** OAuth login works alongside regular email/password authentication. Users can choose either method.
 
----
+
 
 ## Testing
 
@@ -313,7 +313,7 @@ pytest
 pytest --cov=app tests/
 ```
 
----
+
 
 ## Production Deployment
 
@@ -374,7 +374,7 @@ server {
 }
 ```
 
----
+
 
 ## Project Structure
 
@@ -420,7 +420,7 @@ wikicontest/
 - **`frontend/src/views/`** - Vue page components
 - **`frontend/src/components/`** - Reusable Vue components
 
----
+
 
 ## Frontend Technology
 
@@ -464,7 +464,7 @@ npm run build
 npm run preview
 ```
 
----
+
 
 ## Contributing
 
@@ -497,7 +497,7 @@ We welcome contributions to the WikiContest platform!
 - Comment complex logic
 - Keep functions focused and under 50 lines when possible
 
----
+
 
 ## Additional Resources
 
@@ -506,12 +506,12 @@ We welcome contributions to the WikiContest platform!
 - **Database Migrations:** [`docs/ALEMBIC_USAGE_GUIDE.md`](docs/ALEMBIC_USAGE_GUIDE.md)
 - **API Documentation:** See backend README for complete endpoint list
 
----
+
 
 ## License
 
 This project is part of the WikiContest platform.
 
----
+
 
 **WikiContest Platform** - Empowering collaborative Wikipedia article competitions! 

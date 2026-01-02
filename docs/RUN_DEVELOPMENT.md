@@ -2,7 +2,7 @@
 
 This guide explains how to run the Flask backend and Vue.js frontend during development.
 
----
+
 
 ## Development Setup Options
 
@@ -45,7 +45,7 @@ The Vue.js dev server automatically proxies API requests to Flask, so you can ac
 -   Clear, detailed error messages
 -   Full Vue DevTools support for debugging
 
----
+
 
 ### Option 2: Production Build (Flask Serves Everything)
 
@@ -88,7 +88,7 @@ npm run build
 
 Changes won't appear until you rebuild and refresh the browser.
 
----
+
 
 ## Quick Start Scripts
 
@@ -145,7 +145,7 @@ Run with:
 ./start-dev.sh
 ```
 
----
+
 
 ## Troubleshooting
 
@@ -199,7 +199,7 @@ If you encounter build errors:
   npm install
 ```
 
----
+
 
 ## Recommended Development Workflow
 
@@ -227,7 +227,7 @@ This workflow provides:
 
 For testing production builds or simulating the deployment environment, **use Option 2** (Flask serves built files).
 
----
+
 
 ## Summary
 

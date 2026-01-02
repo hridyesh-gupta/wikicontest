@@ -8,7 +8,7 @@ Alembic is configured to work with Flask's application factory pattern. The data
 
 ### How Alembic Works
 
-Alembic tracks database schema changes through:
+Alembic tracks database schema changes through several key mechanisms:
 
 1. **Migration Files**: Python files in `alembic/versions/` that define schema changes
 2. **Version Tracking**: An `alembic_version` table in your database stores the current migration version
@@ -22,10 +22,11 @@ Alembic tracks database schema changes through:
 - **`alembic/versions/`**: Directory containing all migration files
 - **`alembic_version` table**: Database table tracking current migration version
 
+---
+
 ## Initial Setup
 
-Alembic is already initialized. If you need to reinitialize:
-
+Alembic is already initialized in this project. If you need to reinitialize:
 ```bash
 alembic init alembic
 ```
@@ -35,7 +36,6 @@ alembic init alembic
 ### Auto-generate Migration from Models (Recommended)
 
 Alembic can automatically detect changes in your SQLAlchemy models and generate migration code:
-
 ```bash
 # Using Makefile (recommended)
 make migrate-create MSG="Description of changes"
@@ -43,11 +43,12 @@ make migrate-create MSG="Description of changes"
 # Direct Alembic command
 alembic revision --autogenerate -m "Description of changes"
 
-# Example:
+# Example
 alembic revision --autogenerate -m "Add user profile fields"
 ```
 
 **How it works:**
+
 1. Alembic scans your models (imported in `alembic/env.py`)
 2. Compares them to the current database schema
 3. Generates migration code with `upgrade()` and `downgrade()` functions
@@ -58,13 +59,11 @@ alembic revision --autogenerate -m "Add user profile fields"
 ### Manual Migration
 
 To create an empty migration file for manual SQL or complex operations:
-
 ```bash
 alembic revision -m "Description of changes"
 ```
 
 Then edit the generated file in `alembic/versions/` to add your migration logic:
-
 ```python
 def upgrade():
     # Your custom SQL here
@@ -78,7 +77,6 @@ def downgrade():
 ## Running Migrations
 
 ### Apply All Pending Migrations
-
 ```bash
 # Using Makefile (recommended)
 make db-upgrade
@@ -94,13 +92,13 @@ alembic upgrade +1
 ```
 
 **What happens:**
+
 1. Alembic checks the `alembic_version` table for current version
 2. Finds all migrations between current and target
 3. Executes `upgrade()` functions in order
 4. Updates `alembic_version` table with new version
 
 ### Rollback Migrations
-
 ```bash
 # Using Makefile (recommended)
 make db-downgrade
@@ -116,13 +114,13 @@ alembic downgrade base
 ```
 
 **What happens:**
+
 1. Alembic gets current version from `alembic_version` table
 2. Finds the previous migration in the chain
 3. Executes current migration's `downgrade()` function
 4. Updates `alembic_version` table to previous revision
 
 ## Checking Migration Status
-
 ```bash
 # Using Makefile (recommended)
 make db-current    # Show current revision
@@ -137,82 +135,74 @@ alembic heads                # Show all head revisions (for branching)
 
 **Understanding the output:**
 
-- **`alembic current`**: Shows the revision ID currently applied to your database
-  ```
-  82d86aae966e (head)
-  ```
+**`alembic current`** shows the revision ID currently applied to your database:
+```
+82d86aae966e (head)
+```
 
-- **`alembic history`**: Shows the migration chain
-  ```
-  82d86aae966e -> abc123def456 (head), Add user bio field
-  82d86aae966e (initial), Initial migration
-  ```
+**`alembic history`** shows the migration chain:
+```
+82d86aae966e -> abc123def456 (head), Add user bio field
+82d86aae966e (initial), Initial migration
+```
 
 ## Migration Workflow
 
 ### Complete Example: Adding a New Field
 
-1. **Modify your model** in `app/models/`:
-   ```python
-   # app/models/user.py
-   class User(BaseModel):
-       username = db.Column(db.String(50), unique=True, nullable=False)
-       email = db.Column(db.String(100), unique=True, nullable=False)
-       phone = db.Column(db.String(20), nullable=True)  # NEW FIELD
-   ```
+**Step 1: Modify your model** in `app/models/`:
+```python
+# app/models/user.py
+class User(BaseModel):
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    phone = db.Column(db.String(20), nullable=True)  # NEW FIELD
+```
 
-2. **Generate migration**:
-   ```bash
-   make migrate-create MSG="Add phone number to users"
-   # or
-   alembic revision --autogenerate -m "Add phone number to users"
-   ```
+**Step 2: Generate migration**:
+```bash
+make migrate-create MSG="Add phone number to users"
+# or
+alembic revision --autogenerate -m "Add phone number to users"
+```
 
-3. **Review the generated migration** in `alembic/versions/`:
-   ```python
-   def upgrade():
-       op.add_column('users', sa.Column('phone', sa.String(20), nullable=True))
-   
-   def downgrade():
-       op.drop_column('users', 'phone')
-   ```
+**Step 3: Review the generated migration** in `alembic/versions/`:
+```python
+def upgrade():
+    op.add_column('users', sa.Column('phone', sa.String(20), nullable=True))
 
-4. **Test the migration**:
-   ```bash
-   make db-upgrade
-   # or
-   alembic upgrade head
-   ```
+def downgrade():
+    op.drop_column('users', 'phone')
+```
 
-5. **Verify the change**:
-   ```bash
-   make db-current
-   # Check your database to confirm the column was added
-   ```
+**Step 4: Test the migration**:
+```bash
+make db-upgrade
+# or
+alembic upgrade head
+```
 
-6. **Commit to version control**:
-   ```bash
-   git add alembic/versions/[revision]_add_phone_number_to_users.py
-   git commit -m "Add phone number field to users"
-   ```
+**Step 5: Verify the change**:
+```bash
+make db-current
+# Check your database to confirm the column was added
+```
+
+**Step 6: Commit to version control**:
+```bash
+git add alembic/versions/[revision]_add_phone_number_to_users.py
+git commit -m "Add phone number field to users"
+```
 
 ### Daily Development Workflow
 
-```bash
-# 1. Make model changes
-# 2. Create migration
-make migrate-create MSG="Description"
-
-# 3. Review generated file
-# 4. Apply migration
-make db-upgrade
-
-# 5. Test your application
-# 6. If issues, rollback
-make db-downgrade
-
-# 7. Fix and repeat
-```
+1. Make model changes
+2. Create migration: `make migrate-create MSG="Description"`
+3. Review generated file
+4. Apply migration: `make db-upgrade`
+5. Test your application
+6. If issues, rollback: `make db-downgrade`
+7. Fix and repeat
 
 ## Important Notes
 
@@ -228,13 +218,13 @@ make db-downgrade
 ## Configuration
 
 The Alembic configuration is in:
-- `alembic.ini` - Main configuration file
-- `alembic/env.py` - Environment setup (connects to Flask app)
+
+- **`alembic.ini`**: Main configuration file
+- **`alembic/env.py`**: Environment setup (connects to Flask app)
 
 ## Advanced Commands
 
 ### View SQL Without Executing
-
 ```bash
 # See what SQL would be executed
 alembic upgrade head --sql
@@ -244,7 +234,6 @@ alembic downgrade -1 --sql
 ```
 
 ### Stamping (Mark Version Without Running)
-
 ```bash
 # Mark database as being at a specific version (useful for existing databases)
 alembic stamp <revision_id>
@@ -256,11 +245,12 @@ alembic stamp head
 ### Merging Branches
 
 If you have multiple migration branches (from parallel development):
-
 ```bash
 # Merge two branches
 alembic merge -m "Merge user and contest changes" <revision1> <revision2>
 ```
+
+---
 
 ## Troubleshooting
 
@@ -276,11 +266,12 @@ alembic upgrade head
 ### "Can't locate revision identified by 'xxx'"
 
 The migration file is missing. Options:
+
 1. Restore the missing migration file from version control
 2. Or stamp the database to skip it (if safe):
-   ```bash
-   alembic stamp <revision_id>
-   ```
+```bash
+alembic stamp <revision_id>
+```
 
 ### "Multiple heads detected"
 
@@ -299,6 +290,7 @@ from app.models.submission import Submission
 ```
 
 Also check:
+
 - Models inherit from `db.Model` (or your base model)
 - Models are properly defined with columns
 - Database connection is working
@@ -313,6 +305,7 @@ Also check:
 ### Migration Conflicts
 
 If you have conflicts with existing migrations:
+
 1. Check current revision: `alembic current`
 2. Review migration history: `alembic history`
 3. Resolve conflicts manually or create a merge migration
@@ -321,23 +314,24 @@ If you have conflicts with existing migrations:
 ## Best Practices
 
 1. **One logical change per migration** - Keep migrations focused and atomic
+
 2. **Use descriptive names** - Migration names should clearly describe the change
-   ```bash
+```bash
    # Good
    alembic revision --autogenerate -m "Add user phone number field"
    
    # Bad
    alembic revision --autogenerate -m "update"
-   ```
+```
 
 3. **Test both upgrade and downgrade** - Ensure migrations are reversible
-   ```bash
+```bash
    alembic upgrade head
    # Test application
    alembic downgrade -1
    # Verify rollback worked
    alembic upgrade head
-   ```
+```
 
 4. **Don't modify applied migrations** - If a migration has been applied to production, create a new migration for fixes
 
@@ -353,6 +347,7 @@ If you have conflicts with existing migrations:
 
 10. **Use transactions** - Alembic wraps migrations in transactions by default, but be aware of database-specific limitations
 
+
 ## Migration Strategy
 
 The project uses **Alembic exclusively** for all database migrations:
@@ -361,6 +356,7 @@ The project uses **Alembic exclusively** for all database migrations:
 - **Alembic** handles both schema changes (adding columns, tables, indexes, etc.) and data migrations
 
 **Guidelines:**
+
 - **Use Alembic** for all database changes (schema and data migrations)
 - Create migrations using `alembic revision --autogenerate` for schema changes
 - Create manual migrations using `alembic revision` for data migrations or complex operations
@@ -368,7 +364,6 @@ The project uses **Alembic exclusively** for all database migrations:
 ## Quick Reference
 
 ### Common Commands
-
 ```bash
 # Using Makefile (recommended)
 make migrate-create MSG="Description"  # Create migration
@@ -388,10 +383,11 @@ alembic history
 ### Migration File Structure
 
 Each migration file contains:
-- `revision`: Unique identifier (hash-based)
-- `down_revision`: Points to previous migration (None = first)
-- `upgrade()`: Function to apply the migration
-- `downgrade()`: Function to reverse the migration
+
+- **`revision`**: Unique identifier (hash-based)
+- **`down_revision`**: Points to previous migration (None = first)
+- **`upgrade()`**: Function to apply the migration
+- **`downgrade()`**: Function to reverse the migration
 
 ### Understanding the Chain
 
@@ -401,7 +397,7 @@ base → 82d86aae966e → abc123def456 → xyz789ghi012 → head
 ```
 
 Each migration's `down_revision` points to the previous one, allowing Alembic to:
+
 - Track the migration chain
 - Apply migrations in order
 - Rollback migrations in reverse order
-

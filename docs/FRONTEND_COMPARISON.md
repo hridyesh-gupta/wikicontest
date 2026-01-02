@@ -2,7 +2,7 @@
 
 This guide explains the differences between the old Vanilla JavaScript frontend and the new Vue.js frontend implementation.
 
----
+
 
 ## What Changed
 
@@ -20,7 +20,7 @@ This guide explains the differences between the old Vanilla JavaScript frontend 
 - **Files:** `frontend/src/` directory
 - **Status:** Current active implementation
 
----
+
 
 ## Key Differences
 
@@ -67,7 +67,7 @@ This guide explains the differences between the old Vanilla JavaScript frontend 
 - Vue.js detects the parameter and updates authentication state
 - **Callback URL:** `http://localhost:5000/api/user/oauth/callback` (unchanged)
 
----
+
 
 ## Usage Instructions
 
@@ -98,7 +98,7 @@ Vue.js dev server runs on: `http://localhost:5173`
 - Login buttons should appear in the navbar
 - Click **"Login"** to see the **"Login with Wikimedia"** option
 
----
+
 
 ### Production Mode (Single Server)
 
@@ -157,7 +157,7 @@ If OAuth authentication fails:
 4. Ensure `OAUTH_USE_OOB=False` in your `.env` file
 5. Confirm the OAuth consumer is approved
 
----
+
 
 ## Migration Status
 
@@ -170,7 +170,7 @@ All features from the old Vanilla JavaScript frontend have been successfully mig
 -   API data fetching and display
 -   All UI components and layouts
 
----
+
 
 ## Advantages of Vue.js Frontend
 
@@ -202,7 +202,7 @@ The new Vue.js implementation provides several improvements over the old fronten
 - Component inspection and debugging
 - Time-travel debugging for state changes
 
----
+
 
 ## Summary
 

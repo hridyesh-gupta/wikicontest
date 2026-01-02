@@ -20,13 +20,13 @@ A modern, responsive Vue.js 3 frontend for the WikiContest platform, providing a
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 
----
+
 
 ## Overview
 
 The WikiContest frontend is a single-page application (SPA) built with Vue.js 3 that provides a complete user interface for the WikiContest platform. It features responsive design, real-time updates, and seamless integration with the Flask backend API.
 
----
+
 
 ## Technology Stack
 
@@ -80,7 +80,7 @@ frontend/
 - **`src/services/`** - API communication layer with backend
 - **`src/store/`** - Application state management using Composition API
 
----
+
 
 ## Prerequisites
 
@@ -89,7 +89,7 @@ Ensure you have the following installed:
 - **Node.js** 16 or higher
 - **npm** (comes with Node.js)
 
----
+
 
 ## Installation
 
@@ -114,7 +114,7 @@ This will install all required packages including Vue.js, Vue Router, Vite, Axio
 npm list --depth=0
 ```
 
----
+
 
 ## Development Workflow
 
@@ -152,7 +152,7 @@ Frontend will be available at `http://localhost:5173`
 2. The frontend makes API requests to `http://localhost:5173/api/*`
 3. Vite proxies these requests to Flask at `http://localhost:5000/api/*`
 
----
+
 
 ## Building for Production
 
@@ -186,7 +186,7 @@ The Flask backend automatically serves built files from the `frontend/dist/` dir
 2. Start Flask: `cd ../backend && python main.py`
 3. Access at: `http://localhost:5000`
 
----
+
 
 ## Features
 
@@ -225,7 +225,7 @@ The Flask backend automatically serves built files from the `frontend/dist/` dir
 - **Error Handling** - User-friendly error messages
 - **Accessibility** - ARIA labels and keyboard navigation support
 
----
+
 
 ## API Integration
 
@@ -262,7 +262,7 @@ const newContest = await api.post('/contest', {
 - **Credentials** - Cookies sent with every request for authentication
 - **HTTPS Support** - Ready for secure production deployment
 
----
+
 
 ## State Management
 
@@ -297,7 +297,7 @@ console.log(store.user.value)
 store.setUser(userData)
 ```
 
----
+
 
 ## Routing
 
@@ -335,7 +335,7 @@ Routes requiring authentication automatically redirect to login:
 | `/dashboard`| Dashboard | Yes           |
 | `/profile`  | Profile   | Yes           |
 
----
+
 
 ## Styling
 
@@ -365,7 +365,7 @@ Global styles are defined in `src/style.css`:
 - **Bootstrap Classes** - Utility classes for rapid development
 - **Custom Classes** - Additional styling for unique components
 
----
+
 
 ## Deployment
 
@@ -403,7 +403,7 @@ See [`docs/TOOLFORGE_DEPLOYMENT.md`](../docs/TOOLFORGE_DEPLOYMENT.md) for detail
 - **Caching** - Configure appropriate cache headers
 - **Monitoring** - Set up error tracking (e.g., Sentry)
 
----
+
 
 ## Troubleshooting
 
@@ -492,7 +492,7 @@ NODE_OPTIONS="--max-old-space-size=4096" npm run build
 - Verify Flask JWT configuration
 - Check cookie domain and path settings
 
----
+
 
 ## Contributing
 
@@ -573,7 +573,7 @@ Add state management in `src/store/index.js` if your feature requires shared sta
 - Write meaningful commit messages
 - Document complex logic with comments
 
----
+
 
 ## Additional Resources
 
@@ -584,12 +584,12 @@ Add state management in `src/store/index.js` if your feature requires shared sta
 - **Backend Documentation:** [`../backend/README.md`](../backend/README.md)
 - **Deployment Guide:** [`../docs/TOOLFORGE_DEPLOYMENT.md`](../docs/TOOLFORGE_DEPLOYMENT.md)
 
----
+
 
 ## License
 
 Part of the WikiContest platform project.
 
----
+
 
 **Built with using Vue.js 3 and modern web technologies**

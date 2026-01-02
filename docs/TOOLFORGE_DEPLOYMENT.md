@@ -2,7 +2,7 @@
 
 This guide provides step-by-step instructions for deploying the WikiContest Flask application to Wikimedia Toolforge.
 
----
+
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ Before you begin, ensure you have:
 - Basic knowledge of Python and Flask
 - Node.js and npm installed locally (for building the frontend)
 
----
+
 
 ## Deployment Steps
 
@@ -163,7 +163,7 @@ Test your deployment by accessing these URLs:
 2. **API health check:** https://wikicontest.toolforge.org/api/health
 3. **OAuth login:** https://wikicontest.toolforge.org/login
 
----
+
 
 ## File Structure on Toolforge
 ```
@@ -191,7 +191,7 @@ $HOME/
 
 **Note:** The Vue.js frontend is built locally and deployed as static files. Flask automatically serves the production build from the `frontend/dist/` directory.
 
----
+
 
 ## Frontend Technology Stack
 
@@ -212,7 +212,7 @@ The frontend is built locally using `npm run build`, and the production files ar
 - Compatibility with MediaWiki/Toolforge infrastructure
 - Simple updates and deployments
 
----
+
 
 ## Troubleshooting
 
@@ -270,7 +270,7 @@ webservice python3.13 shell
 python3 -c "from app import app, db; app.app_context().push(); print('Database OK')"
 ```
 
----
+
 
 ## Security Considerations
 
@@ -281,7 +281,7 @@ Follow these security best practices:
 3. **OAuth secrets** – Keep consumer key and secret secure
 4. **Database security** – Store SQLite file in a secure location with proper permissions
 
----
+
 
 ## Production Optimizations
 
@@ -292,7 +292,7 @@ Consider these optimizations for production use:
 3. **Static files** – Consider using a CDN for better frontend performance
 4. **Monitoring** – Set up proper logging and monitoring for your application
 
----
+
 
 ## Updates and Maintenance
 
@@ -321,7 +321,7 @@ exit
 webservice restart
 ```
 
----
+
 
 ## Additional Resources
 
@@ -332,7 +332,7 @@ webservice restart
 - [Vite Documentation](https://vitejs.dev/)
 - [OAuth Documentation](https://www.mediawiki.org/wiki/OAuth)
 
----
+
 
 ## Getting Help
 
@@ -342,7 +342,7 @@ If you encounter issues:
 - **Toolforge Mailing List:** cloud@lists.wikimedia.org
 - **Phabricator:** #Cloud-Services project
 
----
+
 
 ## Important Notes
 

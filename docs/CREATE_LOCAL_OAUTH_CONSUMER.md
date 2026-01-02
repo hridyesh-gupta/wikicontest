@@ -2,7 +2,7 @@
 
 Complete guide to creating a separate OAuth consumer for local development.
 
----
+
 
 ## Problem
 
@@ -11,13 +11,13 @@ Your current OAuth consumer is registered for Toolforge production:
 - **Environment:** Production (Toolforge)
 - **Problem:** This won't work for localhost development!
 
----
+
 
 ## Solution: Create a NEW OAuth Consumer
 
 You need a separate OAuth consumer specifically for local development with a localhost callback URL.
 
----
+
 
 ## Step-by-Step Registration
 
@@ -27,7 +27,7 @@ Visit: **https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration**
 
 Click **"Propose an OAuth 1.0a consumer"** (or similar button)
 
----
+
 
 ### Step 2: Complete the Registration Form
 
@@ -83,7 +83,7 @@ http://localhost:5000/api/user/oauth/callback
 ```
 Select the permissions your application needs. For WikiContest, basic rights are typically sufficient.
 
----
+
 
 ### Step 3: Submit and Save Credentials
 
@@ -96,7 +96,7 @@ After clicking **"Propose consumer"**, you'll receive:
 
 **Save them to a secure location temporarily.**
 
----
+
 
 ### Step 4: Update Your Configuration
 
@@ -113,7 +113,7 @@ OAUTH_USE_OOB=False
 
 Replace `your-new-local-consumer-key-here` and `your-new-local-consumer-secret-here` with your actual credentials from Step 3.
 
----
+
 
 ### Step 5: Restart Flask Server
 
@@ -125,7 +125,7 @@ python app.py
 
 Verify the server starts successfully on `http://localhost:5000`.
 
----
+
 
 ### Step 6: Test OAuth Authentication
 
@@ -140,14 +140,14 @@ Verify the server starts successfully on `http://localhost:5000`.
    - The application processes the callback and logs you in
    - You should be redirected to the home page with an active session
 
----
+
 
 ## Why You Need Separate Consumers
 
 OAuth consumers are environment-specific because callback URLs are fixed and cannot be changed after registration.
 
 | Environment                                           | Consumer | Callback URL       |
-|-------------------------------------------------------|----------|--------------------|
+|-|-|--|
 | **Local Development**                                 | WikiContest Local Development | `http://localhost:5000/api/user/oauth/callback` |
 | **Production (Toolforge)**                            | WikiContest                   | `https://wikicontest.toolforge.org/oauth/callback` |
 
@@ -157,7 +157,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 - Separate credentials for better security
 - Independent consumer management
 
----
+
 
 ## Troubleshooting
 
@@ -171,7 +171,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 3. Check there are no typos (extra spaces, wrong protocol, wrong port)
 4. If incorrect, you must create a new consumer with the correct callback URL
 
----
+
 
 ### Error: "Owner-only consumer"
 
@@ -182,7 +182,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 2. Set **"Owner-only"** to **"No"** during registration
 3. Update your `.env` file with the new credentials
 
----
+
 
 ### Still Redirecting to Toolforge
 
@@ -193,7 +193,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 2. Ensure they match the credentials from your **local development consumer** (not Toolforge)
 3. Restart Flask server after updating `.env`
 
----
+
 
 ### OAuth Callback Returns 404
 
@@ -212,7 +212,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
        # OAuth callback handler
 ```
 
----
+
 
 ### Error: "oauth_callback must be set to oob"
 
@@ -223,7 +223,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 2. Ensure you provide a callback URL: `http://localhost:5000/api/user/oauth/callback`
 3. Do NOT select "out-of-band" authentication
 
----
+
 
 ### Consumer Not Approved Yet
 
@@ -234,7 +234,7 @@ OAuth consumers are environment-specific because callback URLs are fixed and can
 - Check your consumer status at: https://meta.wikimedia.org/wiki/Special:OAuthConsumerRegistration
 - If approval is delayed, you may need to contact Wikimedia administrators
 
----
+
 
 ## Verification Checklist
 
@@ -249,7 +249,7 @@ After completing all steps, verify:
 - [ ] OAuth callback redirects back to localhost
 - [ ] User successfully authenticated and logged in
 
----
+
 
 ## Summary
 
@@ -264,14 +264,14 @@ After completing all steps, verify:
 **Environment Comparison:**
 
 | Setting                     | Local Development             | Production (Toolforge) |
-|-----------------------------|-------------------------------|------------------------|
+|--|-||
 | **Consumer Name**           | WikiContest Local Development | WikiContest            |
 | **Callback URL**            |`http://localhost:5000/api/user/oauth/callback`|`https://wikicontest.toolforge.org/oauth/callback`                                                          |
 | **Protocol**                | HTTP                          | HTTPS                  |
 | **Config File**             | `.env`                        | `config.toml`          |
 | **OAUTH_CALLBACK_PATH**     | Not set (uses default)        | `/oauth/callback`      |
 
----
+
 
 ## Related Documentation
 
