@@ -2,8 +2,6 @@
 
 Quick reference guide for the exact OAuth callback URL to use when registering an OAuth consumer for local development.
 
----
-
 ## Exact Callback URL
 
 Use this **exact** callback URL when registering your OAuth consumer:
@@ -113,7 +111,7 @@ After successfully registering your OAuth consumer:
    - Authorize the application
    - Verify successful redirect and login
 
----
+
 
 ## Troubleshooting
 
@@ -134,7 +132,7 @@ If the callback returns a 404 error:
 2. Check that the user blueprint is registered with the correct prefix
 3. Confirm the route exists in `routes/user_routes.py`
 
----
+
 
 ## Related Documentation
 

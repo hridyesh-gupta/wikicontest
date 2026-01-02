@@ -2,7 +2,7 @@
 
 Complete technical documentation for the WikiContest platform – a web-based system for organizing and managing Wikipedia editing contests (Edit-a-thons).
 
----
+
 
 ## Project Overview
 
@@ -17,7 +17,7 @@ Complete technical documentation for the WikiContest platform – a web-based sy
 5. **Admin Controls** – Contest creators and jury members can review submissions and assign scores
 6. **Toolforge Integration** – Deployable on Wikimedia's Toolforge platform with OAuth authentication
 
----
+
 
 ## Technology Stack
 
@@ -39,7 +39,7 @@ Complete technical documentation for the WikiContest platform – a web-based sy
 - **Local:** Flask development server
 - **Production:** Wikimedia Toolforge platform
 
----
+
 
 ## Project Structure
 ```
@@ -73,7 +73,7 @@ wikicontest/
 └── README.md                       # Quick start and setup guide
 ```
 
----
+
 
 ## Database Configuration
 
@@ -99,7 +99,7 @@ SQLALCHEMY_DATABASE_URI = "mysql://username:password@tools-db/database_name"
 - **Host:** `tools-db` (Toolforge's MySQL server)
 - **Purpose:** Production-grade performance and reliability
 
----
+
 
 ## Database Schema
 
@@ -146,7 +146,7 @@ class Submission(db.Model):
 
 **Purpose:** Tracks user submissions, scores, and approval status for each contest.
 
----
+
 
 ## Backend Architecture
 
@@ -176,7 +176,7 @@ Toolforge-specific Flask application for production deployment.
 - Jinja2 template rendering
 - Production-ready error handling
 
----
+
 
 ## API Routes
 
@@ -553,7 +553,7 @@ Verify authentication and retrieve current user information.
 }
 ```
 
----
+
 
 ## Authentication and Security
 
@@ -584,7 +584,7 @@ X-CSRF-TOKEN: <value from csrf_access_token cookie>
 - Enforces role-based permissions
 - Provides current user context to routes
 
----
+
 
 ## Frontend Architecture
 
@@ -612,7 +612,7 @@ Frontend JavaScript logic and API communication.
 - Form validation and submission handling
 - Error handling and user feedback
 
----
+
 
 ## Deployment Options
 
@@ -638,7 +638,7 @@ Frontend JavaScript logic and API communication.
 4. **Authentication:** OAuth 1.0a with Wikimedia accounts
 5. **URL:** `https://wikicontest.toolforge.org`
 
----
+
 
 ## Security Features
 
@@ -650,7 +650,7 @@ Frontend JavaScript logic and API communication.
 6. **OAuth Integration** – Wikimedia account authentication for Toolforge
 7. **Input Validation** – Server-side validation for all user inputs
 
----
+
 
 ## User Capabilities
 
@@ -683,7 +683,7 @@ Frontend JavaScript logic and API communication.
 - Update scores and statuses
 - Access system-wide analytics and reporting
 
----
+
 
 ## Development Workflow
 
@@ -693,7 +693,7 @@ Frontend JavaScript logic and API communication.
 4. **Development:** Use `python backend/app.py` for local development server
 5. **Deployment:** Use `bash backend/deploy_to_toolforge.sh` for Toolforge deployment
 
----
+
 
 ## Future Enhancements
 
@@ -705,7 +705,7 @@ Frontend JavaScript logic and API communication.
 - Contest templates and presets for common contest types
 - Multi-language support for international contests
 
----
+
 
 ## External Integrations
 
@@ -715,6 +715,6 @@ Frontend JavaScript logic and API communication.
 - **MySQL Database** – Production database on Toolforge (recommended)
 - **SQLite Database** – Development and testing database
 
----
+
 
 This documentation provides a comprehensive overview of the WikiContest platform's architecture, features, and capabilities for organizing and managing Wikipedia editing contests.

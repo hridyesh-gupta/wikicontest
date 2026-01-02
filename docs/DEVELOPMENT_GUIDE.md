@@ -2,7 +2,7 @@
 
 Comprehensive technical guide for developers working on the WikiContest platform, covering architecture, coding standards, best practices, and development workflows.
 
----
+
 
 ## Architecture Overview
 
@@ -52,7 +52,7 @@ let currentContests = { current: [], upcoming: [], past: [] };
 
 **Modern Alternative:** Vue.js 3 implementation available with component-based architecture, reactive state management, and Vue Router.
 
----
+
 
 ## Development Setup
 
@@ -112,7 +112,7 @@ python app.py
 - **Frontend:** http://localhost:5000 (served by Flask)
 - **Vue.js Dev Server (if using Vue):** http://localhost:5173
 
----
+
 
 ## Coding Standards
 
@@ -304,7 +304,7 @@ function clearUserState() {
 }
 ```
 
----
+
 
 ## Adding New Features
 
@@ -651,7 +651,7 @@ async function loadFeatures() {
 }
 ```
 
----
+
 
 ## Testing Guidelines
 
@@ -821,7 +821,7 @@ Test in multiple browsers to ensure compatibility:
 -  Edge (latest version)
 -  Mobile browsers (iOS Safari, Chrome Mobile)
 
----
+
 
 ## Deployment Process
 
@@ -900,7 +900,7 @@ gunicorn -w 4 -b 0.0.0.0:5000 --timeout 120 app:app
 - [ ] Error logging is functional
 - [ ] SSL/HTTPS is working correctly
 
----
+
 
 ## Debugging Guide
 
@@ -1042,7 +1042,7 @@ debugger; // Pause execution here
 // - Time-travel debugging
 ```
 
----
+
 
 ## Additional Resources
 
@@ -1094,7 +1094,7 @@ debugger; // Pause execution here
    - JavaScript: Use consistent indentation (2 or 4 spaces)
    - Use linters (pylint, ESLint)
 
----
+
 
 ## Contributing
 

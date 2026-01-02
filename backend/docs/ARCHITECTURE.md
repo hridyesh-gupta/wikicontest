@@ -2,7 +2,7 @@
 
 Comprehensive documentation of the WikiContest Flask backend architecture, design patterns, and implementation details.
 
----
+
 
 ## Overview
 
@@ -15,7 +15,7 @@ The WikiContest backend is a Flask application built using modern Python best pr
 - **Migrations:** Alembic (database schema versioning)
 - **Validation:** Custom middleware and decorators
 
----
+
 
 ## Directory Structure
 ```
@@ -62,7 +62,7 @@ backend/
 └── run.py                     # Development server entry point
 ```
 
----
+
 
 ## Application Factory Pattern
 
@@ -131,7 +131,7 @@ app = create_app('testing')
 app = create_app('production')
 ```
 
----
+
 
 ## Configuration Management
 
@@ -212,7 +212,7 @@ CONSUMER_KEY=your-consumer-key
 CONSUMER_SECRET=your-consumer-secret
 ```
 
----
+
 
 ## Database Layer
 
@@ -395,7 +395,7 @@ Submission
 └── contest (relationship to Contest)
 ```
 
----
+
 
 ## Routing Architecture
 
@@ -467,7 +467,7 @@ def register():
     return success_response('User registered successfully', user.to_dict(), 201)
 ```
 
----
+
 
 ## Middleware
 
@@ -563,7 +563,7 @@ def handle_errors(fn):
     return wrapper
 ```
 
----
+
 
 ## Authentication & Authorization
 
@@ -622,7 +622,7 @@ Permissions are contextual based on:
 - **User role** (admin, user)
 - **Contest relationships** (creator, jury member)
 - **Submission ownership** (submission author)
----
+
 
 ## Error Handling
 
@@ -675,7 +675,7 @@ def create_contest():
     return success_response('Contest created', contest.to_dict(), 201)
 ```
 
----
+
 
 ## Database Migrations
 
@@ -714,7 +714,7 @@ alembic current
 
 For detailed migration documentation, see the Alembic Usage Guide.
 
----
+
 
 ## Utility Functions
 
@@ -782,7 +782,7 @@ def validate_wikipedia_article(article_title):
     return '-1' not in pages  # -1 indicates page doesn't exist
 ```
 
----
+
 
 ## Testing Structure
 
@@ -875,7 +875,7 @@ def test_user_login(client):
     assert response.json['success'] == True
 ```
 
----
+
 
 ## Logging
 
@@ -921,7 +921,7 @@ current_app.logger.error('Failed to create contest: %s', str(error))
 current_app.logger.warning('Invalid submission attempt: %s', submission_id)
 ```
 
----
+
 
 ## Security Considerations
 
@@ -952,7 +952,7 @@ current_app.logger.warning('Invalid submission attempt: %s', submission_id)
 - **Credentials support** enabled for cookie-based auth
 - **Specific methods** and headers allowed
 
----
+
 
 ## Performance Optimizations
 
@@ -983,7 +983,7 @@ class User(BaseModel):
 - **Query result caching** for read-heavy operations
 - **Redis integration** (future enhancement)
 
----
+
 
 ## Deployment
 
@@ -1021,7 +1021,7 @@ Specialized deployment for Wikimedia Toolforge platform:
 - **Configuration:** TOML-based config files
 - **Server:** uWSGI with Kubernetes
 
----
+
 
 ## Code Organization Principles
 

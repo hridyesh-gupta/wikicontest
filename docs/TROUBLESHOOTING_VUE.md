@@ -2,7 +2,7 @@
 
 This guide helps you diagnose and resolve common issues when running the Vue.js frontend with the Flask backend.
 
----
+
 
 ## Login Buttons Not Showing
 
@@ -49,7 +49,7 @@ Verify that Flask allows requests from the Vue.js dev server:
 - Open `backend/app.py`
 - Confirm `'http://localhost:5173'` is included in the CORS origins list
 
----
+
 
 ## OAuth Callback Not Working
 
@@ -73,7 +73,7 @@ If the OAuth redirect is not working:
 3. **Check browser console** for redirect errors or blocked requests
 4. **Verify cookies are being set** by checking the **Application** tab in DevTools (look under Cookies → `localhost`)
 
----
+
 
 ## API Requests Failing
 
@@ -100,7 +100,7 @@ Verify both direct and proxied API access:
 
 If the direct endpoint works but the proxied one doesn't, the issue is with the Vite proxy configuration.
 
----
+
 
 ## Components Not Rendering
 
@@ -124,7 +124,7 @@ cd frontend
 npm install
 ```
 
----
+
 
 ## Quick Fixes
 
@@ -148,7 +148,7 @@ rm -rf node_modules
 npm install
 ```
 
----
+
 
 ## Still Having Issues?
 

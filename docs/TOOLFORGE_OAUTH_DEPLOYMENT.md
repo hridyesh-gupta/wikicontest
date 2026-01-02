@@ -2,7 +2,7 @@
 
 This guide explains how to configure OAuth authentication when deploying your application to Toolforge.
 
----
+
 
 ## Quick Summary
 
@@ -12,7 +12,7 @@ When deploying to Toolforge, you need to update **three configuration settings**
 2. **Callback Path** – Set `OAUTH_CALLBACK_PATH = "/oauth/callback"`
 3. **Callback URL** – Ensure your Toolforge consumer uses: `https://wikicontest.toolforge.org/oauth/callback`
 
----
+
 
 ## Environment Differences: Local vs. Production
 
@@ -30,7 +30,7 @@ When deploying to Toolforge, you need to update **three configuration settings**
 - **Callback URL:** `https://wikicontest.toolforge.org/oauth/callback`
 - **OAUTH_CALLBACK_PATH:** `/oauth/callback` (must be set)
 
----
+
 
 ## Step-by-Step Configuration
 
@@ -98,7 +98,7 @@ def oauth_callback():
 
 This route redirects to the blueprint handler, so the actual OAuth processing happens at `/api/user/oauth/callback`. No code changes are required.
 
----
+
 
 ## Complete Toolforge Configuration
 
@@ -130,7 +130,7 @@ OAUTH_CALLBACK_PATH = "/oauth/callback"
 OAUTH_USE_OOB = false
 ```
 
----
+
 
 ## Configuration File Locations
 
@@ -162,7 +162,7 @@ OAUTH_CALLBACK_PATH = "/oauth/callback"  # MUST SET THIS!
 
 Simply update the configuration file for your target environment.
 
----
+
 
 ## Pre-Deployment Checklist
 
@@ -175,7 +175,7 @@ Before deploying to Toolforge, verify the following:
 - [ ] Route `/oauth/callback` exists in `app.py` (already present)
 - [ ] Test OAuth login flow after deployment
 
----
+
 
 ## Verification and Testing
 
@@ -194,7 +194,7 @@ When a user clicks "Login with Wikimedia" on Toolforge:
 4. Verify redirect back to Toolforge after authentication
 5. Confirm successful login
 
----
+
 
 ## Troubleshooting
 
@@ -216,7 +216,7 @@ When a user clicks "Login with Wikimedia" on Toolforge:
 
 **Solution:** The cache fallback mechanism should handle this. If the issue persists, verify your session configuration settings.
 
----
+
 
 ## Summary
 

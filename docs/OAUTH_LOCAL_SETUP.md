@@ -2,13 +2,13 @@
 
 This guide walks you through setting up OAuth 1.0a authentication for local development with Wikimedia accounts.
 
----
+
 
 ## Overview
 
 OAuth 1.0a allows users to authenticate using their Wikimedia accounts. For local development, you need to register a separate OAuth consumer with a callback URL pointing to your local server.
 
----
+
 
 ## Step 1: Register OAuth Consumer
 
@@ -41,7 +41,7 @@ Register an OAuth consumer for local development on Wikimedia Meta.
    
    Copy both values – you'll need them in the next step.
 
----
+
 
 ## Step 2: Configure Your Application
 
@@ -61,7 +61,7 @@ OAUTH_USE_OOB=False
 
 Replace `your-new-consumer-key-here` and `your-new-consumer-secret-here` with the credentials from Step 1.
 
----
+
 
 ## Step 3: Test OAuth Authentication
 
@@ -92,7 +92,7 @@ Verify that OAuth authentication is working correctly.
    - The application processes the OAuth callback and logs you in
    - You'll be redirected to the home page with an active session
 
----
+
 
 ## Troubleshooting
 
@@ -102,7 +102,7 @@ Verify that OAuth authentication is working correctly.
 
 **Solution:** Register a new OAuth consumer with the callback URL set to: `http://localhost:5000/api/user/oauth/callback`
 
----
+
 
 ### Error: "Invalid redirect URI" or "Callback URL mismatch"
 
@@ -116,7 +116,7 @@ Verify that OAuth authentication is working correctly.
    - Update the OAuth consumer registration to use the correct URL, **OR**
    - Update `OAUTH_CALLBACK_PATH` in your `.env` file to match the registered URL
 
----
+
 
 ### Error: "OAuth not configured"
 
@@ -124,7 +124,7 @@ Verify that OAuth authentication is working correctly.
 
 **Solution:** Verify that both `CONSUMER_KEY` and `CONSUMER_SECRET` are set in your `backend/.env` file.
 
----
+
 
 ### OAuth Callback Returns 404
 
@@ -144,7 +144,7 @@ Verify that OAuth authentication is working correctly.
        # OAuth callback handler
 ```
 
----
+
 
 ## Important Notes
 
