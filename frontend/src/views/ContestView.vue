@@ -57,19 +57,26 @@
             </div>
             <div class="card-body">
               <p><strong>Project:</strong> {{ contest.project_name }}</p>
-              <p><strong>Created by:</strong> {{ contest.created_by }}</p>
               <p><strong>Status:</strong> <span class="badge bg-primary">{{ contest.status }}</span></p>
               <p v-if="contest.start_date"><strong>Start Date:</strong> {{ formatDate(contest.start_date) }}</p>
               <p v-if="contest.end_date"><strong>End Date:</strong> {{ formatDate(contest.end_date) }}</p>
+              
+              <strong>Organizers:</strong>
+              <div v-if="contest.organizers && contest.organizers.length > 0" class="organizers-flex">
+                <div v-for="organizer in contest.organizers" :key="organizer" class="organizer-chip">
+                  <i class="fas fa-user-tie me-2"></i>
+                  <strong>{{ organizer }}</strong>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <!-- Scoring Column (for jury and contest creators) -->
+
+      <!-- Scoring Column -->
       <div class="col-md-12">
         <div class="scoring-card">
           <div class="card-header">
-
             <h5 class="mb-0"><i class="fas fa-chart-line"></i> Scoring System</h5>
           </div>
 
@@ -117,12 +124,11 @@
 
             <div class="submissions-info">
               <span>Submissions</span>
-              <strong>1</strong>
+              <strong>{{ submissions.length }}</strong>
             </div>
           </div>
         </div>
       </div>
-
 
       <!-- Description Section -->
       <div v-if="contest.description" class="card mb-4 description-section">
@@ -133,16 +139,16 @@
           <p class="description-text">{{ contest.description }}</p>
         </div>
       </div>
+
       <div v-if="contest.rules && contest.rules.text" class="card mb-4">
         <div class="card-header">
           <h5 class="mb-0"><i class="fas fa-book me-2"></i>Contest Rules</h5>
         </div>
         <div class="card-body">
-          <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">
-{{ contest.rules.text }}
-    </pre>
+          <pre class="rules-text" style="white-space: pre-wrap; font-size: 1rem;">{{ contest.rules.text }}</pre>
         </div>
       </div>
+
       <div class="card mb-4">
         <div class="card-header">
           <h3>Submission Type Allowed</h3>
@@ -160,12 +166,10 @@
             </strong>
           </p>
 
-          <!-- Small explanatory note -->
           <p class="mt-2 small text-muted">
             <em>
               • <strong>New Articles</strong> = Completely new Wikipedia article created during the contest.<br />
-              • <strong>Improved Articles</strong> = An existing article improved or expanded with substantial
-              content.
+              • <strong>Improved Articles</strong> = An existing article improved or expanded with substantial content.
             </em>
           </p>
         </div>
@@ -200,12 +204,16 @@
           <h5 class="mb-0"><i class="fas fa-users me-2"></i>Jury Members</h5>
         </div>
         <div class="card-body">
-          <p>{{ contest.jury_members.join(', ') }}</p>
+          <div class="organizers-flex">
+            <div v-for="jury in contest.jury_members" :key="jury" class="organizer-chip">
+              <i class="fas fa-gavel me-2"></i>
+              <strong>{{ jury }}</strong>
+            </div>
+          </div>
         </div>
       </div>
 
-
-      <!-- Submissions Section (for jury and contest creators) -->
+      <!-- Submissions Section -->
       <div v-if="canViewSubmissions" class="card mb-4">
         <div class="card-header">
           <div class="d-flex justify-content-between align-items-center">
@@ -247,28 +255,16 @@
                       {{ submission.article_title }}
                       <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                     </a>
-                    <!-- Metadata display -->
                     <div v-if="submission.article_word_count !== null" class="text-muted small mt-1">
                       <i class="fas fa-file-alt me-1"></i>Total bytes:
                       {{ formatByteCountWithExact((submission.article_word_count || 0) +
                         (submission.article_expansion_bytes || 0)) }}
                     </div>
-                    <!-- NOTE: We intentionally show only three metrics for clarity:
-                         1) Total bytes
-                         2) Original bytes
-                         3) Expansion bytes
-                         The previous extra "word count" line was removed to avoid duplicate numbers
-                         and to match the simplified UI requested by the user. -->
                     <div v-if="submission.article_word_count !== null &&
                       submission.article_word_count !== undefined" class="text-muted small mt-1">
                       <i class="fas fa-clock me-1"></i>Original bytes:
                       {{ formatByteCountWithExact(submission.article_word_count) }}
                     </div>
-                    <!-- Show expansion bytes (0 if no change, +X if increased, -X if decreased)
-                         We also show different directional arrows to make this very clear:
-                         - Up arrow for positive (bytes increased)
-                         - Down arrow for negative (bytes decreased)
-                         - Left-right arrow for zero change -->
                     <div v-if="submission.article_expansion_bytes !== null &&
                       submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
                       <i class="me-1" :class="submission.article_expansion_bytes > 0
@@ -297,7 +293,6 @@
                     <div v-if="submission.article_created_at" class="text-muted small mt-1">
                       <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
                     </div>
-                    <!-- Latest revision author (from latest revision, shown below original) -->
                     <div v-if="submission.latest_revision_author" class="mt-2 pt-2"
                       style="border-top: 1px solid #dee2e6;">
                       <div>
@@ -315,7 +310,6 @@
                     <span :class="`badge bg-${getStatusColor(submission.status)}`">
                       {{ submission.status }}
                     </span>
-                    <!-- Show reviewed indicator -->
                     <div v-if="submission.already_reviewed" class="text-muted small mt-1">
                       <i class="fas fa-check-circle me-1"></i>Reviewed
                     </div>
@@ -336,9 +330,7 @@
       </div>
 
       <!-- Bottom Action Row -->
-      <!-- This row stays at the end of the contest view so users naturally read everything before seeing submit -->
       <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
-        <!-- Debug info and auth status (left aligned, technical info only for edge cases) -->
         <div v-if="contest && !currentUser && !checkingAuth" class="alert alert-warning py-1 px-2 mb-0 me-auto">
           <i class="fas fa-exclamation-triangle me-1"></i>
           <strong>User not loaded!</strong>
@@ -347,8 +339,6 @@
           </button>
         </div>
 
-        <!-- Main submit button shown at the bottom of the page -->
-        <!-- Simple rule: show only for logged-in users when contest is current and they are not jury/creator -->
         <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
           class="btn btn-primary ms-auto" @click="handleSubmitArticle">
           <i class="fas fa-paper-plane me-2"></i>Submit Article
@@ -356,20 +346,21 @@
       </div>
     </div>
   </div>
+
   <!-- Submit Article Modal -->
   <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
     @submitted="handleArticleSubmitted" />
 
-  <!-- Article Preview Modal - Pass computed currentSubmission -->
+  <!-- Article Preview Modal -->
   <ArticlePreviewModal v-if="!!currentSubmission" :can-review="canUserReview"
     :article-url="currentSubmission.article_link" :article-title="currentSubmission.article_title"
     :submission-id="currentSubmission.id" :submission="currentSubmission"
     :contest-scoring-config="contest?.scoring_parameters" @reviewed="handleSubmissionReviewed" />
+
   <!-- Edit Contest Modal -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
-
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="fas fa-edit me-2"></i>Edit Contest
@@ -379,7 +370,6 @@
 
         <div class="modal-body">
           <form @submit.prevent="saveContestEdits">
-
             <div class="mb-3">
               <label class="form-label">Contest Name</label>
               <input v-model="editForm.name" class="form-control" required />
@@ -409,7 +399,6 @@
               </select>
             </div>
 
-
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label class="form-label">Start Date</label>
@@ -421,6 +410,59 @@
                 <input type="date" v-model="editForm.end_date" class="form-control" />
               </div>
             </div>
+
+            <!-- Organizers Section -->
+            <div class="mb-3">
+              <label class="form-label">
+                Contest Organizers
+                <span class="badge bg-info">Type to search and add users</span>
+              </label>
+
+              <!-- Selected Organizers Display -->
+              <div class="mb-2 p-2 border rounded bg-light organizer-selection-box" style="min-height: 60px;">
+                <small v-if="editForm.selectedOrganizers.length === 0" class="text-muted">
+                  No organizers selected
+                </small>
+                <span v-for="username in editForm.selectedOrganizers" :key="username"
+                  class="badge bg-success me-2 mb-2" style="font-size: 0.9rem; cursor: pointer;">
+                  <i class="fas fa-user-tie me-1"></i>{{ username }}
+                  <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
+                </span>
+              </div>
+
+              <!-- Organizer Search Input with Autocomplete -->
+              <div style="position: relative;">
+                <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
+                  placeholder="Type username to search and add..." autocomplete="off" />
+
+                <!-- Autocomplete Dropdown -->
+                <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
+                  class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
+                  style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                  <div v-for="user in organizerSearchResults" :key="user.username"
+                    class="p-2 border-bottom cursor-pointer"
+                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }" style="cursor: pointer;"
+                    @click="addOrganizer(user.username)">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="d-flex align-items-center">
+                        <i class="fas fa-user me-2 text-success"></i>
+                        <strong>{{ user.username }}</strong>
+                      </div>
+                      <div v-if="isCurrentUser(user.username)" class="self-warning-badge">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        <small>This is you</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <small class="form-text text-muted mt-1">
+                Search and click to add organizers. Click × to remove. Organizers can manage this contest.
+              </small>
+            </div>
+
+            <!-- Jury Members Section -->
             <div class="mb-3">
               <label class="form-label">
                 Jury Members
@@ -434,7 +476,7 @@
                 </small>
                 <span v-for="username in editForm.selectedJuryMembers" :key="username"
                   class="badge bg-primary me-2 mb-2" style="font-size: 0.9rem; cursor: pointer;">
-                  {{ username }}
+                  <i class="fas fa-gavel me-1"></i>{{ username }}
                   <i class="fas fa-times ms-1" @click="removeJuryMember(username)"></i>
                 </span>
               </div>
@@ -470,6 +512,7 @@
               </small>
             </div>
 
+            <!-- Scoring Configuration -->
             <div v-if="editForm.scoring_mode === 'simple'">
               <div class="mb-3">
                 <label class="form-label">Accepted Points</label>
@@ -527,8 +570,6 @@
               </button>
             </div>
 
-
-
             <div class="mb-3">
               <label class="form-label">Minimum Byte Count *</label>
               <input type="number" v-model.number="editForm.min_byte_count" class="form-control" min="0"
@@ -563,7 +604,6 @@
                 At least one MediaWiki category URL is required. Articles must belong to these categories.
               </small>
             </div>
-
           </form>
         </div>
 
@@ -573,11 +613,9 @@
             <i class="fas fa-save me-2"></i>Save Changes
           </button>
         </div>
-
       </div>
     </div>
   </div>
-
 </template>
 
 <script>
@@ -588,7 +626,6 @@ import api from '../services/api'
 import { showAlert } from '../utils/alerts'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
 import ArticlePreviewModal from '../components/ArticlePreviewModal.vue'
-import slugify from 'slugify'
 
 export default {
   name: 'ContestView',
@@ -617,13 +654,16 @@ export default {
     const previewArticleTitle = ref('')
     const jurySearchQuery = ref('')
     const jurySearchResults = ref([])
+    const organizerSearchQuery = ref('')
+    const organizerSearchResults = ref([])
     let jurySearchTimeout = null
+    let organizerSearchTimeout = null
     const scoringMode = ref('simple')
 
-    // FIXED: Store submission ID instead of all preview data
+    // Current submission ID for preview
     const currentSubmissionId = ref(null)
 
-    // FIXED: Computed property to get current submission reactively
+    // Computed property to get current submission reactively
     const currentSubmission = computed(() => {
       if (!currentSubmissionId.value) return null
       return submissions.value.find(s => s.id === currentSubmissionId.value)
@@ -697,6 +737,7 @@ export default {
       // Allow delete if:
       // - user is contest creator, OR
       // - user is admin-level (admin or superadmin)
+
       if (usernameLower === creatorLower) {
         canDeleteContest.value = true
         return
@@ -792,7 +833,7 @@ export default {
       return formatted
     }
 
-    // Extract category name from MediaWiki category URL
+        // Extract category name from MediaWiki category URL
     // Example: "https://en.wikipedia.org/wiki/Category:Testcat" -> "Category:Testcat"
     const getCategoryName = (categoryUrl) => {
       if (!categoryUrl) return ''
@@ -815,14 +856,15 @@ export default {
             pageTitle = decodeURIComponent(parts[parts.length - 1])
           }
         }
-
-        // Return the page title (which should be "Category:Name")
+        
+ // Return the page title (which should be "Category:Name")
         return pageTitle || categoryUrl
       } catch (e) {
-        // If URL parsing fails, return the original URL
+                // If URL parsing fails, return the original URL
         return categoryUrl
       }
     }
+
 
     // Format raw byte count into a short human-readable string
     // Keeps it simple to avoid template crashes when data is present
@@ -837,9 +879,7 @@ export default {
       }
       return `${absBytes} bytes`
     }
-
-    // Get status label
-
+// Get status label
     const getStatusLabel = (status) => {
       const labels = {
         current: 'Active',
@@ -849,7 +889,9 @@ export default {
       }
       return labels[status] || 'Unknown'
     }
+
     // Get status badge color
+
     const getStatusColor = (status) => {
       switch (status?.toLowerCase()) {
         case 'accepted':
@@ -863,7 +905,7 @@ export default {
       }
     }
 
-    // Load contest data by name (slug)
+    // Load contest data by name
     const loadContest = async (id = null) => {
       loading.value = true
       error.value = null
@@ -886,10 +928,12 @@ export default {
         }
 
 
-        // Check auth and permissions after loading contest
+         // Check auth and permissions after loading contest
+
         await checkAuthAndPermissions()
 
         // Load submissions if user can view them
+
         if (canViewSubmissions.value) loadSubmissions()
       } catch (err) {
         console.error('Error loading contest:', err)
@@ -900,6 +944,7 @@ export default {
     }
 
     // Check auth and permissions
+
     const checkAuthAndPermissions = async () => {
       checkingAuth.value = true
       canDeleteContest.value = false
@@ -915,10 +960,10 @@ export default {
           loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
         }
 
-        // Wait for reactive state to propagate
+// Wait for reactive state to propagate
         await new Promise(resolve => setTimeout(resolve, 100))
 
-        // Check delete permission
+// Check delete permission
         checkDeletePermission()
       } catch (error) {
         console.error('Failed to check auth:', error)
@@ -929,6 +974,8 @@ export default {
     }
 
     // Load submissions for the contest
+
+
     const loadSubmissions = async () => {
       if (!contest.value || !canViewSubmissions.value) {
         return
@@ -938,18 +985,6 @@ export default {
       try {
         const data = await api.get(`/contest/${contest.value.id}/submissions`)
         submissions.value = data || []
-
-        // Debug: Log submission data to verify author and word count are present
-        console.log('Loaded submissions:', submissions.value)
-        submissions.value.forEach((sub, index) => {
-          console.log(`Submission ${index + 1}:`, {
-            id: sub.id,
-            title: sub.article_title,
-            author: sub.article_author,
-            word_count: sub.article_word_count,
-            created_at: sub.article_created_at
-          })
-        })
       } catch (error) {
         console.error('Failed to load submissions:', error)
         showAlert('Failed to load submissions: ' + error.message, 'danger')
@@ -959,7 +994,7 @@ export default {
       }
     }
 
-    // Refresh article metadata for all submissions in the contes
+// Refresh article metadata for all submissions in the contes
     const refreshMetadata = async () => {
       if (!contest.value || !canViewSubmissions.value || submissions.value.length === 0) {
         return
@@ -982,6 +1017,7 @@ export default {
       }
     }
 
+
     // Handle delete contest
     const handleDeleteContest = async () => {
       if (!contest.value) return
@@ -997,7 +1033,7 @@ export default {
       try {
         await api.delete(`/contest/${contest.value.id}`)
         showAlert('Contest deleted successfully', 'success')
-        // Navigate back to contests list
+         // Navigate back to contests list
         router.push({ name: 'Contests' })
       } catch (error) {
         console.error('Failed to delete contest:', error)
@@ -1006,15 +1042,13 @@ export default {
         deletingContest.value = false
       }
     }
-    // Handle submit article
-
+ // Handle submit article
     const handleSubmitArticle = () => {
       if (!store.isAuthenticated) {
         showAlert('Please login to submit an article', 'warning')
         return
       }
       submittingToContestId.value = contest.value.id
-      // Show submit modal using Bootstrap
       setTimeout(() => {
         const modalElement = document.getElementById('submitArticleModal')
         if (modalElement) {
@@ -1024,14 +1058,11 @@ export default {
       }, 100)
     }
 
-    // Handle article submitted
     const handleArticleSubmitted = () => {
       submittingToContestId.value = null
-      // Reload contest to update submission count
       loadContest()
     }
 
-    // Force auth refresh manually
     const forceAuthRefresh = async () => {
       checkingAuth.value = true
       try {
@@ -1045,12 +1076,11 @@ export default {
       }
     }
 
-    // Go back to contests list
     const goBack = () => {
       router.push({ name: 'Contests' })
     }
 
-    // store only submission ID, rely on computed property
+     // store only submission ID, rely on computed property
     const showArticlePreview = (submission) => {
       currentSubmissionId.value = submission.id
 
@@ -1063,7 +1093,7 @@ export default {
       }, 100)
     }
 
-    // Update the actual submission in the array
+     // Update the actual submission in the array
     const handleSubmissionReviewed = (reviewData) => {
       console.log('Review received:', reviewData)
 
@@ -1073,7 +1103,6 @@ export default {
       )
 
       if (submissionIndex !== -1) {
-        // Update the submission object
         submissions.value[submissionIndex] = {
           ...submissions.value[submissionIndex],
           status: reviewData.status,
@@ -1083,9 +1112,6 @@ export default {
           reviewed_at: new Date().toISOString()
         }
 
-        console.log('Updated submission:', submissions.value[submissionIndex])
-
-        // Force reactivity update
         submissions.value = [...submissions.value]
 
         showAlert('Submission reviewed successfully', 'success')
@@ -1101,6 +1127,7 @@ export default {
         canDeleteContest.value = false
       }
     }, { deep: true })
+
     const editForm = reactive({
       name: '',
       project_name: '',
@@ -1113,6 +1140,7 @@ export default {
       jury_members: '',
       allowed_submission_type: '',
       selectedJuryMembers: [],
+      selectedOrganizers: [],
       min_byte_count: 0,
       categories: [''],
       scoring_mode: '',
@@ -1123,14 +1151,14 @@ export default {
       }
     })
 
+    let editModal = null
+
     onMounted(() => {
       loadContest()
       const modalEl = document.getElementById('editContestModal')
       if (modalEl) editModal = new bootstrap.Modal(modalEl)
     })
 
-
-    // Check if username is current user
     const isCurrentUser = (username) => {
       const currentUsername = currentUser.value?.username
       if (!currentUsername || !username) return false
@@ -1147,7 +1175,6 @@ export default {
         return
       }
 
-      // Debounce search
       if (jurySearchTimeout) {
         clearTimeout(jurySearchTimeout)
       }
@@ -1155,11 +1182,9 @@ export default {
       jurySearchTimeout = setTimeout(async () => {
         try {
           const response = await api.get(`/user/search?q=${encodeURIComponent(query)}&limit=10`)
-          // Filter out already selected jury members
           jurySearchResults.value = (response.users || []).filter(
             user => !editForm.selectedJuryMembers.includes(user.username)
           )
-          console.log('🔍 Jury search results:', jurySearchResults.value)
         } catch (error) {
           console.error('Jury search error:', error)
           jurySearchResults.value = []
@@ -1167,9 +1192,7 @@ export default {
       }, 300)
     }
 
-    // Add jury member
     const addJuryMember = (username) => {
-      // Check if trying to add self
       if (isCurrentUser(username)) {
         const confirmed = window.confirm(
           '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
@@ -1180,7 +1203,6 @@ export default {
         if (!confirmed) return
       }
 
-      // Add if not already in list
       if (!editForm.selectedJuryMembers.includes(username)) {
         editForm.selectedJuryMembers.push(username)
         jurySearchQuery.value = ''
@@ -1188,30 +1210,74 @@ export default {
       }
     }
 
-    // Remove jury member
     const removeJuryMember = (username) => {
       editForm.selectedJuryMembers = editForm.selectedJuryMembers.filter(
         u => u !== username
       )
     }
 
-    // Add category field
+    // Search for organizers
+    const searchOrganizers = async () => {
+      const query = organizerSearchQuery.value.trim()
+
+      if (query.length < 2) {
+        organizerSearchResults.value = []
+        return
+      }
+
+      if (organizerSearchTimeout) {
+        clearTimeout(organizerSearchTimeout)
+      }
+
+      organizerSearchTimeout = setTimeout(async () => {
+        try {
+          const response = await api.get(`/user/search?q=${encodeURIComponent(query)}&limit=10`)
+          organizerSearchResults.value = (response.users || []).filter(
+            user => !editForm.selectedOrganizers.includes(user.username)
+          )
+        } catch (error) {
+          console.error('Organizer search error:', error)
+          organizerSearchResults.value = []
+        }
+      }, 300)
+    }
+
+    const addOrganizer = (username) => {
+      if (isCurrentUser(username)) {
+        const confirmed = window.confirm(
+          '⚠️ WARNING: Self-Selection as Organizer\n\n' +
+          'You are about to add yourself as an organizer.\n\n' +
+          'Continue?'
+        )
+        if (!confirmed) return
+      }
+
+      if (!editForm.selectedOrganizers.includes(username)) {
+        editForm.selectedOrganizers.push(username)
+        organizerSearchQuery.value = ''
+        organizerSearchResults.value = []
+      }
+    }
+
+    const removeOrganizer = (username) => {
+      editForm.selectedOrganizers = editForm.selectedOrganizers.filter(
+        u => u !== username
+      )
+    }
+
     const addCategory = () => {
       editForm.categories.push('')
     }
 
-    // Remove category field
     const removeCategory = (index) => {
       if (editForm.categories.length > 1) {
         editForm.categories.splice(index, 1)
       }
     }
 
-    let editModal = null
     const openEditModal = () => {
       if (!contest.value) return
 
-      // Basic fields
       editForm.name = contest.value.name
       editForm.project_name = contest.value.project_name || ''
       editForm.description = contest.value.description || ''
@@ -1221,25 +1287,27 @@ export default {
       editForm.end_date = contest.value.end_date || ''
       editForm.min_byte_count = Number(contest.value.min_byte_count ?? 0)
 
-      // Jury members
       if (Array.isArray(contest.value.jury_members)) {
         editForm.selectedJuryMembers = [...contest.value.jury_members]
       } else {
         editForm.selectedJuryMembers = []
       }
 
-      // Categories
+      if (Array.isArray(contest.value.organizers)) {
+        editForm.selectedOrganizers = [...contest.value.organizers]
+      } else {
+        editForm.selectedOrganizers = []
+      }
+
       if (Array.isArray(contest.value.categories) && contest.value.categories.length > 0) {
         editForm.categories = [...contest.value.categories]
       } else {
         editForm.categories = ['']
       }
 
-      // Scoring Mode and Parameters
       if (contest.value.scoring_parameters?.enabled) {
         editForm.scoring_mode = 'multi'
 
-        // Replace the whole object to ensure reactivity
         editForm.scoring_parameters = {
           max_score: contest.value.scoring_parameters.max_score ?? 10,
           min_score: contest.value.scoring_parameters.min_score ?? 0,
@@ -1252,7 +1320,6 @@ export default {
         editForm.marks_setting_accepted = Number(contest.value.marks_setting_accepted ?? 0)
         editForm.marks_setting_rejected = Number(contest.value.marks_setting_rejected ?? 0)
 
-        // Reset multi parameters to empty
         editForm.scoring_parameters = {
           max_score: 10,
           min_score: 0,
@@ -1260,18 +1327,16 @@ export default {
         }
       }
 
-      // Reset jury search
       jurySearchQuery.value = ''
       jurySearchResults.value = []
+      organizerSearchQuery.value = ''
+      organizerSearchResults.value = []
 
-      console.log('📝 Edit modal opened with jury members:', editForm.selectedJuryMembers)
-
-      // Show modal
       if (editModal) editModal.show()
     }
+
     const saveContestEdits = async () => {
       try {
-        // MULTI PARAMETER VALIDATION FIRST
         if (editForm.scoring_mode === 'multi') {
           const totalWeight = editForm.scoring_parameters.parameters
             .reduce((sum, p) => sum + Number(p.weight || 0), 0)
@@ -1282,14 +1347,12 @@ export default {
           }
         }
 
-        // Validate categories
         const validCategories = editForm.categories.filter(cat => cat && cat.trim())
         if (validCategories.length === 0) {
           showAlert('At least one category URL is required', 'warning')
           return
         }
 
-        // Base payload
         const payload = {
           name: editForm.name,
           project_name: editForm.project_name,
@@ -1298,6 +1361,7 @@ export default {
           start_date: editForm.start_date || null,
           end_date: editForm.end_date || null,
           jury_members: editForm.selectedJuryMembers,
+          organizers: editForm.selectedOrganizers,
           allowed_submission_type: editForm.allowed_submission_type,
           min_byte_count: Number(editForm.min_byte_count),
           categories: validCategories
@@ -1321,7 +1385,6 @@ export default {
         showAlert('Contest updated successfully', 'success')
         editModal.hide()
 
-        // 🔥 IMPORTANT: reload contest AFTER save
         await loadContest(contest.value.id)
       } catch (error) {
         showAlert(
@@ -1331,14 +1394,12 @@ export default {
       }
     }
 
-    // Add computed property
     const canUserReview = computed(() => {
       if (!isAuthenticated.value || !contest.value || !currentUser.value) {
         return false
       }
 
       const username = currentUser.value.username.trim().toLowerCase()
-
 
       if (Array.isArray(contest.value.jury_members)) {
         const jury = contest.value.jury_members
@@ -1349,11 +1410,10 @@ export default {
           return true
         }
       }
-      console.log('Current user:', currentUser.value?.username)
-      console.log('Jury members:', contest.value?.jury_members)
 
       return false
     })
+
     const goToLeaderboard = () => {
       if (!contest.value) return
 
@@ -1362,6 +1422,7 @@ export default {
         params: { name: route.params.name }
       })
     }
+
     return {
       contest,
       loading,
@@ -1393,9 +1454,14 @@ export default {
       forceAuthRefresh,
       jurySearchQuery,
       jurySearchResults,
+      organizerSearchQuery,
+      organizerSearchResults,
       searchJuryMembers,
       addJuryMember,
       removeJuryMember,
+      searchOrganizers,
+      addOrganizer,
+      removeOrganizer,
       addCategory,
       removeCategory,
       isCurrentUser,
@@ -1416,14 +1482,11 @@ export default {
 </script>
 
 <style scoped>
-/* Contest View Styling with Wikipedia Colors */
-
 .contest-view {
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* Header Section */
 .contest-header-section {
   border-bottom: 2px solid var(--wiki-primary);
   padding-bottom: 1rem;
@@ -1448,49 +1511,6 @@ export default {
   flex-wrap: wrap;
 }
 
-/* Code Link Input Field Styling - Match other fields in Contest View */
-.contest-view .form-label {
-  font-weight: 600;
-  color: var(--wiki-dark);
-}
-
-.contest-view input.form-control {
-  border: 1px solid var(--wiki-border);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  transition: all 0.2s ease;
-  background-color: white;
-  color: var(--wiki-dark);
-}
-
-[data-theme="dark"] .contest-view input.form-control {
-  background-color: #2a2a2a;
-  color: #ffffff;
-  border-color: #444;
-}
-
-.contest-view input.form-control:focus {
-  border-color: var(--wiki-primary);
-  box-shadow: 0 0 0 0.2rem rgba(0, 102, 153, 0.25);
-  outline: none;
-}
-
-.contest-view .btn-warning {
-  background-color: var(--wiki-primary);
-  border-color: var(--wiki-primary);
-  color: white;
-  transition: all 0.2s ease;
-}
-
-.contest-view .btn-warning:hover {
-  background-color: var(--wiki-primary-hover);
-  border-color: var(--wiki-primary-hover);
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 102, 153, 0.3);
-}
-
-/* Card Styling */
 .card {
   border: 1px solid var(--wiki-border);
   border-radius: 8px;
@@ -1517,6 +1537,7 @@ export default {
 
 .card-body {
   padding: 1.5rem;
+  color: var(--wiki-dark);
 }
 
 .card-body p {
@@ -1524,16 +1545,10 @@ export default {
   color: var(--wiki-text);
 }
 
-.card-body strong {
-  color: var(--wiki-dark);
-  font-weight: 600;
-}
-
 [data-theme="dark"] .card-body strong {
   color: #ffffff;
 }
 
-/* Badge Styling */
 .badge {
   font-weight: 500;
   padding: 0.4em 0.8em;
@@ -1549,7 +1564,6 @@ export default {
   color: white;
 }
 
-/* Table Styling */
 .table {
   margin-top: 0;
 }
@@ -1577,7 +1591,6 @@ export default {
   background-color: var(--wiki-hover-bg);
 }
 
-/* Link Styling */
 .table a {
   color: var(--wiki-primary);
   font-weight: 500;
@@ -1589,7 +1602,6 @@ export default {
   text-decoration: underline;
 }
 
-/* Article title link - clickable for preview */
 .article-title-link {
   cursor: pointer;
   color: var(--wiki-primary);
@@ -1602,7 +1614,6 @@ export default {
   text-decoration: underline;
 }
 
-/* Button Styling */
 .btn-outline-primary {
   border-color: var(--wiki-primary);
   color: var(--wiki-primary);
@@ -1634,7 +1645,7 @@ export default {
   background-color: var(--wiki-danger);
   border-color: var(--wiki-danger);
   color: white;
-  transition: all 0.2s ease;
+  transition: all 0.2s
 }
 
 .btn-danger:hover {
@@ -1856,7 +1867,7 @@ export default {
 /* Tags */
 .tag {
   display: inline-block;
-  padding: 0.375rem 0.875rem;
+  padding: 0.375rem 0.5rem;
   border-radius: 4px;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -1870,7 +1881,6 @@ export default {
 .tag-simple {
   background: #17a2b8;
   color: white;
-  margin-bottom: 1.25rem;
 }
 
 .scoring-meta {
@@ -1892,12 +1902,12 @@ export default {
 .params-list {
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
 .param-item {
-  padding: 0.875rem;
+  padding: 0.5rem;
   background: #f9fafb;
   border-radius: 6px;
   border: 1px solid var(--wiki-primary);
@@ -1975,7 +1985,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.875rem;
+  padding: 0.5rem;
   background: #f9fafb;
   border-radius: 6px;
   border: 2px solid var(--wiki-border);
@@ -1988,7 +1998,7 @@ export default {
 .point-label {
   font-weight: 500;
   color: #6b7280;
-  font-size: 0.875rem;
+  font-size: 15px;
 }
 
 .point-value {
@@ -2002,7 +2012,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.875rem;
+  padding: 0.5rem;
   background: #f9fafb;
   border-radius: 6px;
   margin-top: 1.25rem;
@@ -2034,6 +2044,111 @@ export default {
 
   .points-row {
     grid-template-columns: 1fr;
+  }
+}
+
+.organizers-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Manage Organizers Modal */
+.organizers-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.organizer-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--wiki-hover-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.organizer-card:hover {
+  background-color: rgba(0, 102, 153, 0.05);
+  border-color: var(--wiki-primary);
+}
+
+[data-theme="dark"] .organizer-card {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+[data-theme="dark"] .organizer-card:hover {
+  background-color: rgba(93, 184, 230, 0.1);
+}
+
+/* Organizer Info Text */
+.organizer-info-text {
+  color: var(--wiki-text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.75rem;
+  background-color: rgba(40, 167, 69, 0.05);
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .organizer-info-text {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* Organizers Flex Container */
+.organizers-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Organizer Chip */
+.organizer-chip {
+  display: flex;
+  align-items: center;
+  padding: 0.50rem 1rem;
+  background-color: var(--wiki-primary);
+  color: white;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.organizer-chip:hover {
+  background-color: var(--wiki-primary);
+  transform: translateY(-2px);
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .organizer-chip {
+  background-color: var(--wiki-primary);
+  ;
+}
+
+[data-theme="dark"] .organizer-chip:hover {
+  background-color: var(--wiki-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .organizers-flex {
+    gap: 0.5rem;
+  }
+
+  .organizer-chip {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .organizer-info-text {
+    font-size: 0.85rem;
+    padding: 0.5rem;
   }
 }
 </style>

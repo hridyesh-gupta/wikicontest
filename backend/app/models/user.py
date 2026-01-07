@@ -176,6 +176,32 @@ class User(BaseModel):
             bool: True if user created contest, False otherwise
         """
         return self.username == contest.created_by
+    
+    def is_contest_organizer(self, contest):
+      """
+      Check if user is an organizer for a specific contest
+      
+      Args:
+          contest: Contest instance to check
+      
+      Returns:
+          bool: True if user is organizer, False otherwise
+      """
+      if not contest:
+          return False
+      
+      # Get organizers list from contest
+      organizers = contest.get_organizers()
+      if not organizers:
+          return False
+      
+      # Normalize usernames for comparison (case-insensitive)
+      username_lower = self.username.strip().lower()
+      organizer_usernames = [org.strip().lower() for org in organizers]
+      
+      return username_lower in organizer_usernames
+
+
 
     def can_access_submission(self, submission):
         """
@@ -201,6 +227,9 @@ class User(BaseModel):
 
         # Contest creators can access submissions in their contests
         if self.is_contest_creator(submission.contest):
+            return True
+        # Contest organizers can access submissions in their contests
+        if self.is_contest_organizer(submission.contest):
             return True
 
         return False
