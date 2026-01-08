@@ -183,6 +183,18 @@ def create_contest():
     except (ValueError, TypeError):
         return jsonify({"error": "Minimum byte count must be a valid integer"}), 400
 
+
+     # Parse minimum reference count (optional, default 0)
+    min_reference_count = data.get("min_reference_count", 0)
+    
+    # Convert to integer
+    try:
+        min_reference_count = int(min_reference_count)
+        if min_reference_count < 0:
+            return jsonify({"error": "Minimum reference count must be non-negative"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Minimum reference count must be a valid integer"}), 400
+        
     # Parse categories (required - list of category URLs)
     categories = data.get("categories")
     if not categories or not isinstance(categories, list) or len(categories) == 0:
@@ -270,6 +282,7 @@ def create_contest():
             categories=categories,
             scoring_parameters=scoring_parameters,
             organizers=additional_organizers,
+            min_reference_count=min_reference_count,
         )
 
         contest.save()
@@ -655,6 +668,20 @@ def update_contest(contest_id):
             except (TypeError, ValueError):
                 return jsonify({"error": "min_byte_count must be a valid integer"}), 400
 
+        # --- Reference count requirement ---
+        if "min_reference_count" in data:
+            min_reference_count_value = data.get("min_reference_count")
+            try:
+                min_reference_count = int(min_reference_count_value)
+                if min_reference_count < 0:
+                    return (
+                        jsonify({"error": "Minimum reference count must be non-negative"}),
+                        400,
+                    )
+                contest.min_reference_count = min_reference_count
+            except (TypeError, ValueError):
+                return jsonify({"error": "min_reference_count must be a valid integer"}), 400
+
         # --- Categories ---
         if "categories" in data:
             categories_value = data.get("categories")
@@ -746,19 +773,21 @@ def update_contest(contest_id):
                 except ValueError as ve:
                     return jsonify({"error": str(ve)}), 400
 
+        # --- Organizers ---
         if "organizers" in data:
-                   organizers_payload = data.get("organizers")
-                   
-                   if organizers_payload is not None:
-                       if isinstance(organizers_payload, list):
-                           # List of usernames provided
-                           contest.set_organizers(organizers_payload, contest.created_by)
-                       elif isinstance(organizers_payload, str):
-                           # Comma-separated string provided
-                           organizers_list = [
-                               u.strip() for u in organizers_payload.split(',') if u.strip()
-                           ]
-                           contest.set_organizers(organizers_list, contest.created_by)
+            organizers_payload = data.get("organizers")
+            
+            if organizers_payload is not None:
+                if isinstance(organizers_payload, list):
+                    # List of usernames provided
+                    contest.set_organizers(organizers_payload, contest.created_by)
+                elif isinstance(organizers_payload, str):
+                    # Comma-separated string provided
+                    organizers_list = [
+                        u.strip() for u in organizers_payload.split(',') if u.strip()
+                    ]
+                    contest.set_organizers(organizers_list, contest.created_by)
+
         # Persist
         db.session.add(contest)
         db.session.commit()
@@ -773,7 +802,7 @@ def update_contest(contest_id):
         current_app.logger.error("Error updating contest %s: %s", contest_id, exc)
         current_app.logger.error(traceback.format_exc())
         return jsonify({"error": "Internal server error"}), 500
-
+    
 @contest_bp.route("/<int:contest_id>/submit", methods=["POST"])
 @require_auth
 @handle_errors
@@ -844,6 +873,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     article_page_id = None
     article_size_at_start = None
     article_expansion_bytes = None
+    article_reference_count = None
 
     # MediaWiki API fetching has deep nesting due to complex error handling
     # pylint: disable=too-many-nested-blocks
@@ -1186,6 +1216,12 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     if not is_valid:
         return jsonify({"error": error_message}), 400
 
+    # Validate article reference count against contest requirements (if set)
+    if contest.min_reference_count > 0:
+        is_valid_refs, error_message_refs = contest.validate_reference_count(article_reference_count)
+        if not is_valid_refs:
+            return jsonify({"error": error_message_refs}), 400
+        
     # Create submission with fetched information
     try:
         submission = Submission(

@@ -698,7 +698,7 @@ h2 {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0.10rem 0.5rem;
   background-color: #f0f7ff;
   border: 1px solid #b3d9ff;
   border-radius: 4px;

@@ -271,3 +271,73 @@ def get_article_size_at_timestamp(article_url: str, when: datetime) -> Optional[
     # Single revision because we requested `rvlimit=1`.
     rev = revisions[0]
     return rev.get("size")
+
+
+def get_article_reference_count(article_url):
+    """
+    Get the number of references in a Wikipedia article using MediaWiki API
+
+    Args:
+        article_url: URL to the article
+
+    Returns:
+        int: Number of references, or None if fetch fails
+    """
+    import requests
+    from urllib.parse import urlparse
+
+    try:
+        # Extract page title from URL
+        page_title = extract_page_title_from_url(article_url)
+        if not page_title:
+            return None
+
+        # Parse URL to get base URL
+        url_obj = urlparse(article_url)
+        base_url = f"{url_obj.scheme}://{url_obj.netloc}"
+        api_url = f"{base_url}/w/api.php"
+
+        # MediaWiki API parameters to get references
+        # We use prop=extlinks to count external links (references)
+        api_params = {
+            "action": "query",
+            "titles": page_title,
+            "format": "json",
+            "formatversion": "2",
+            "prop": "extlinks",
+            "ellimit": "max",  # Get all external links
+            "redirects": "true",
+        }
+
+        # Make API request
+        headers = get_mediawiki_headers()
+        response = requests.get(
+            api_url, params=api_params, headers=headers, timeout=10
+        )
+
+        if response.status_code == 200:
+            api_data = response.json()
+
+            # Extract pages
+            pages = api_data.get("query", {}).get("pages", [])
+            if pages and len(pages) > 0:
+                page_data = pages[0]
+
+                # Check if page exists
+                if not page_data.get("missing", False):
+                    # Count external links (references)
+                    extlinks = page_data.get("extlinks", [])
+                    return len(extlinks)
+
+        return None
+
+    except Exception as error:
+        # Log error but don't fail
+        try:
+            from flask import current_app
+            current_app.logger.warning(
+                f"Failed to fetch reference count: {str(error)}"
+            )
+        except Exception:
+            pass
+        return None
