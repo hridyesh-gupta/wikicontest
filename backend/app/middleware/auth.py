@@ -13,6 +13,11 @@ from flask_jwt_extended import (
 )
 from app.models.user import User
 
+
+# ------------------------------------------------------------------------
+# USER AUTHENTICATION UTILITIES
+# ------------------------------------------------------------------------
+
 def get_current_user():
     """
     Get the current authenticated user from JWT token
@@ -21,12 +26,23 @@ def get_current_user():
         User: Current user instance or None if not authenticated
     """
     try:
+        # Verify JWT token exists and is valid in current request
         verify_jwt_in_request()
+        
+        # Extract user ID from JWT claims
         user_id = get_jwt_identity()
+        
         # Convert string user_id back to integer for database query
+        # JWT stores identity as string, but database expects integer
         return User.query.get(int(user_id))
     except Exception:
+        # Return None if token is invalid, expired, or missing
         return None
+
+
+# ------------------------------------------------------------------------
+# BASIC AUTHENTICATION DECORATORS
+# ------------------------------------------------------------------------
 
 def require_auth(f):
     """
@@ -41,15 +57,18 @@ def require_auth(f):
     @wraps(f)
     @jwt_required()
     def decorated_function(*args, **kwargs):
+        # Fetch authenticated user from JWT token
         user = get_current_user()
         if not user:
+            # User not found in database (deleted user with valid token)
             return jsonify({'error': 'Invalid user'}), 401
         
-        # Add user to request context
+        # Attach user to request context for easy access in route handlers
         request.current_user = user
         return f(*args, **kwargs)
     
     return decorated_function
+
 
 def require_role(roles):
     """
@@ -65,25 +84,32 @@ def require_role(roles):
         @wraps(f)
         @jwt_required()
         def decorated_function(*args, **kwargs):
+            # Authenticate user first
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
             
-            # Convert single role to list
+            # Normalize roles to list format for consistent checking
             if isinstance(roles, str):
                 allowed_roles = [roles]
             else:
                 allowed_roles = roles
             
-            # Check if user has required role
+            # Check if user has required role or is admin (admins bypass all role checks)
             if user.role not in allowed_roles and not user.is_admin():
                 return jsonify({'error': 'Insufficient permissions'}), 403
             
+            # Attach user to request context
             request.current_user = user
             return f(*args, **kwargs)
         
         return decorated_function
     return decorator
+
+
+# ------------------------------------------------------------------------
+# CONTEST-SPECIFIC PERMISSION DECORATORS
+# ------------------------------------------------------------------------
 
 def require_contest_permission(permission_type):
     """
@@ -99,41 +125,46 @@ def require_contest_permission(permission_type):
         @wraps(f)
         @jwt_required()
         def decorated_function(*args, **kwargs):
+            # Authenticate user
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
             
-            # Get contest_id from URL parameters
+            # Extract contest_id from URL route parameters
             contest_id = kwargs.get('id')
             if not contest_id:
                 return jsonify({'error': 'Contest ID required'}), 400
             
-            # Get contest from database
+            # Fetch contest from database
             from app.models.contest import Contest
             contest = Contest.query.get(contest_id)
             if not contest:
                 return jsonify({'error': 'Contest not found'}), 404
             
-            # Check permissions
+            # Check permissions based on requested permission type
             has_permission = False
             
             if permission_type == 'creator':
+                # Only contest creator or admin can access
                 has_permission = user.is_contest_creator(contest) or user.is_admin()
             elif permission_type == 'jury':
+                # Only jury members or admin can access
                 has_permission = user.is_jury_member(contest) or user.is_admin()
             elif permission_type == 'participant':
-                # For now, any authenticated user can participate
+                # Any authenticated user can participate
                 has_permission = True
             
             if not has_permission:
                 return jsonify({'error': 'Insufficient permissions for this contest'}), 403
             
+            # Attach both user and contest to request context for route handlers
             request.current_user = user
             request.current_contest = contest
             return f(*args, **kwargs)
         
         return decorated_function
     return decorator
+
 
 def require_submission_permission(permission_type):
     """
@@ -149,40 +180,50 @@ def require_submission_permission(permission_type):
         @wraps(f)
         @jwt_required()
         def decorated_function(*args, **kwargs):
+            # Authenticate user
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
             
-            # Get submission_id from URL parameters
+            # Extract submission_id from URL route parameters
             submission_id = kwargs.get('id')
             if not submission_id:
                 return jsonify({'error': 'Submission ID required'}), 400
             
-            # Get submission from database
+            # Fetch submission from database
             from app.models.submission import Submission
             submission = Submission.query.get(submission_id)
             if not submission:
                 return jsonify({'error': 'Submission not found'}), 404
             
-            # Check permissions
+            # Check permissions based on requested permission type
             has_permission = False
             
             if permission_type == 'owner':
+                # Only submission owner or admin can access
                 has_permission = (submission.user_id == user.id) or user.is_admin()
             elif permission_type == 'jury':
+                # Only jury members who can judge this submission
                 has_permission = submission.can_be_judged_by(user)
             elif permission_type == 'view':
+                # Anyone with view permission (jury, organizers, owner)
                 has_permission = submission.can_be_viewed_by(user)
             
             if not has_permission:
                 return jsonify({'error': 'Insufficient permissions for this submission'}), 403
             
+            # Attach both user and submission to request context
             request.current_user = user
             request.current_submission = submission
             return f(*args, **kwargs)
         
         return decorated_function
     return decorator
+
+
+# ------------------------------------------------------------------------
+# REQUEST VALIDATION DECORATORS
+# ------------------------------------------------------------------------
 
 def validate_json_data(required_fields):
     """
@@ -197,26 +238,33 @@ def validate_json_data(required_fields):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            # Ensure request content-type is JSON
             if not request.is_json:
                 return jsonify({'error': 'Request must be JSON'}), 400
             
+            # Parse JSON body
             data = request.get_json()
             if not data:
                 return jsonify({'error': 'No JSON data provided'}), 400
             
-            # Check for required fields
+            # Validate all required fields are present
             missing_fields = [field for field in required_fields if field not in data]
             if missing_fields:
                 return jsonify({
                     'error': f'Missing required fields: {", ".join(missing_fields)}'
                 }), 400
             
-            # Add validated data to request context
+            # Attach validated data to request context for easy access
             request.validated_data = data
             return f(*args, **kwargs)
         
         return decorated_function
     return decorator
+
+
+# ------------------------------------------------------------------------
+# ERROR HANDLING DECORATOR
+# ------------------------------------------------------------------------
 
 def handle_errors(f):
     """
@@ -231,11 +279,15 @@ def handle_errors(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         try:
+            # Execute the wrapped function
             return f(*args, **kwargs)
         except ValueError as e:
+            # Handle validation errors (400 Bad Request)
             return jsonify({'error': str(e)}), 400
         except Exception as e:
+            # Log unexpected errors for debugging
             current_app.logger.error(f"Error in {f.__name__}: {str(e)}")
+            # Return generic error to avoid exposing internal details
             return jsonify({'error': 'Internal server error'}), 500
     
     return decorated_function
