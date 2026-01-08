@@ -23,9 +23,18 @@ from app.utils import (
     get_mediawiki_headers,
 )
 
-# Create blueprint
+
+# ------------------------------------------------------------------------
+# BLUEPRINT SETUP
+# ------------------------------------------------------------------------
+
+# Create Flask blueprint for contest-related routes
 contest_bp = Blueprint("contest", __name__)
 
+
+# ------------------------------------------------------------------------
+# HELPER FUNCTIONS
+# ------------------------------------------------------------------------
 
 def validate_date_string(date_str):
     """
@@ -46,19 +55,49 @@ def validate_date_string(date_str):
         return None
 
 
+def parse_date_or_none(date_str):
+    """
+    Parse a date string with multiple format fallbacks
+
+    Tries YYYY-MM-DD format first, then ISO format
+
+    Args:
+        date_str: Date string to parse
+
+    Returns:
+        date: Parsed date object or None if invalid
+    """
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        try:
+            return datetime.fromisoformat(date_str).date()
+        except ValueError:
+            return None
+
+
+# ------------------------------------------------------------------------
+# CONTEST RETRIEVAL ROUTES
+# ------------------------------------------------------------------------
+
 @contest_bp.route("/", methods=["GET"])
 @require_auth
 @handle_errors
 def get_all_contests():
     """
-    Get all contests categorized by status
+    Get all contests categorized by status (current, upcoming, past)
+
     Requires authentication - users must be logged in to view contests.
 
     Returns:
-        JSON response with contests categorized as current, upcoming, and past
+        JSON response with contests categorized by status
     """
+    # Fetch all contests, newest first
     contests = Contest.query.order_by(Contest.created_at.desc()).all()
 
+    # Categorize contests by status
     current = []
     upcoming = []
     past = []
@@ -66,6 +105,7 @@ def get_all_contests():
     for contest in contests:
         contest_data = contest.to_dict()
 
+        # Categorize based on date ranges
         if contest.is_active():
             current.append(contest_data)
         elif contest.is_upcoming():
@@ -76,235 +116,13 @@ def get_all_contests():
     return jsonify({"current": current, "upcoming": upcoming, "past": past}), 200
 
 
-@contest_bp.route("/", methods=["POST"])
-@require_auth
-@handle_errors
-@validate_json_data(["name", "project_name", "jury_members"])
-def create_contest():
-    """
-    Create a new contest
-
-    Expected JSON data:
-        name: Name of the contest
-        project_name: Name of the associated project
-        jury_members: List of jury member usernames
-        description: Optional description of the contest
-        start_date: Optional start date (YYYY-MM-DD)
-        end_date: Optional end date (YYYY-MM-DD)
-        rules: Optional rules object
-        marks_setting_accepted: Optional points for accepted submissions
-        marks_setting_rejected: Optional points for rejected submissions
-
-    Returns:
-        JSON response with success message and contest ID
-    """
-    user = request.current_user
-    data = request.validated_data
-
-    # Validate required fields
-    name = data["name"].strip()
-    project_name = data["project_name"].strip()
-    jury_members = data["jury_members"]
-
-    if not name:
-        return jsonify({"error": "Contest name is required"}), 400
-
-    if not project_name:
-        return jsonify({"error": "Project name is required"}), 400
-
-    if not isinstance(jury_members, list) or len(jury_members) == 0:
-        return (
-            jsonify({"error": "Jury members must be a non-empty array of usernames"}),
-            400,
-        )
-
-    # Validate jury members exist
-    existing_users = User.query.filter(User.username.in_(jury_members)).all()
-    existing_usernames = [user.username for user in existing_users]
-    missing_users = [
-        username for username in jury_members if username not in existing_usernames
-    ]
-
-    if missing_users:
-        return (
-            jsonify(
-                {
-                    "error": f'These jury members do not exist: {", ".join(missing_users)}'
-                }
-            ),
-            400,
-        )
-
-    # Parse optional fields
-    # Handle description: can be None, empty string, or text
-    description_value = data.get("description")
-    if description_value is None or description_value == "":
-        description = None
-    else:
-        description = str(description_value).strip() or None
-
-    # Parse dates
-    start_date = validate_date_string(data.get("start_date"))
-    end_date = validate_date_string(data.get("end_date"))
-
-    # Validate date logic
-    if start_date and end_date and start_date >= end_date:
-        return jsonify({"error": "End date must be after start date"}), 400
-
-    # Parse rules
-    rules = data.get("rules", {})
-    if not isinstance(rules, dict):
-        rules = {}
-
-    # Parse scoring settings
-    marks_accepted = data.get("marks_setting_accepted", 0)
-    marks_rejected = data.get("marks_setting_rejected", 0)
-    allowed_submission_type = data.get("allowed_submission_type", "both")
-
-    try:
-        marks_accepted = int(marks_accepted)
-        marks_rejected = int(marks_rejected)
-    except (ValueError, TypeError):
-        return jsonify({"error": "Marks settings must be valid integers"}), 400
-
-    # Parse minimum byte count (required)
-    # This field defines the minimum byte count required for article submissions
-    min_byte_count = data.get("min_byte_count")
-
-    # Validate that min_byte_count is provided
-    if min_byte_count is None:
-        return jsonify({"error": "Minimum byte count is required"}), 400
-
-    # Convert to integer
-    try:
-        min_byte_count = int(min_byte_count)
-        if min_byte_count < 0:
-            return jsonify({"error": "Minimum byte count must be non-negative"}), 400
-    except (ValueError, TypeError):
-        return jsonify({"error": "Minimum byte count must be a valid integer"}), 400
-
-
-     # Parse minimum reference count (optional, default 0)
-    min_reference_count = data.get("min_reference_count", 0)
-    
-    # Convert to integer
-    try:
-        min_reference_count = int(min_reference_count)
-        if min_reference_count < 0:
-            return jsonify({"error": "Minimum reference count must be non-negative"}), 400
-    except (ValueError, TypeError):
-        return jsonify({"error": "Minimum reference count must be a valid integer"}), 400
-        
-    # Parse categories (required - list of category URLs)
-    categories = data.get("categories")
-    if not categories or not isinstance(categories, list) or len(categories) == 0:
-        return jsonify({"error": "At least one category URL is required"}), 400
-
-    # Validate category URLs
-    for category_url in categories:
-        if not isinstance(category_url, str) or not category_url.strip():
-            return (
-                jsonify({"error": "All category URLs must be non-empty strings"}),
-                400,
-            )
-        if not (
-            category_url.startswith("http://") or category_url.startswith("https://")
-        ):
-            return (
-                jsonify({"error": "All category URLs must be valid HTTP/HTTPS URLs"}),
-                400,
-            )
-
-    scoring_parameters = data.get("scoring_parameters")
-    if scoring_parameters:
-        if not isinstance(scoring_parameters, dict):
-            return jsonify({"error": "Scoring parameters must be an object"}), 400
-
-        if scoring_parameters.get("enabled"):
-            if "parameters" not in scoring_parameters:
-                return (
-                    jsonify(
-                        {"error": 'Scoring parameters must include "parameters" array'}
-                    ),
-                    400,
-                )
-
-            parameters = scoring_parameters["parameters"]
-            if not isinstance(parameters, list) or len(parameters) == 0:
-                return (
-                    jsonify({"error": "At least one scoring parameter is required"}),
-                    400,
-                )
-
-            # Validate weights
-            total_weight = 0
-            for param in parameters:
-                if not isinstance(param, dict):
-                    return jsonify({"error": "Each parameter must be an object"}), 400
-                if "name" not in param or "weight" not in param:
-                    return (
-                        jsonify(
-                            {"error": 'Each parameter must have "name" and "weight"'}
-                        ),
-                        400,
-                    )
-                try:
-                    weight = int(param["weight"])
-                    if weight < 0 or weight > 100:
-                        return jsonify({"error": f"Weight must be 0-100"}), 400
-                    total_weight += weight
-                except (ValueError, TypeError):
-                    return jsonify({"error": "Weight must be a valid integer"}), 400
-
-            if total_weight != 100:
-                return (
-                    jsonify({"error": f"Weights must sum to 100, got {total_weight}"}),
-                    400,
-                )
-    # Create contest
-    try:
-        additional_organizers = data.get('organizers', [])
-        if not isinstance(additional_organizers, list):
-                additional_organizers = []
-        contest = Contest(
-            name=name,
-            project_name=project_name,
-            created_by=user.username,
-            description=description,
-            start_date=start_date,
-            end_date=end_date,
-            rules=rules,
-            marks_setting_accepted=marks_accepted,
-            marks_setting_rejected=marks_rejected,
-            jury_members=jury_members,
-            allowed_submission_type=allowed_submission_type,
-            min_byte_count=min_byte_count,
-            categories=categories,
-            scoring_parameters=scoring_parameters,
-            organizers=additional_organizers,
-            min_reference_count=min_reference_count,
-        )
-
-        contest.save()
-
-        return (
-            jsonify(
-                {"message": "Contest created successfully", "contestId": contest.id}
-            ),
-            201,
-        )
-
-    except Exception:  # pylint: disable=broad-exception-caught
-        # Log error for debugging but don't expose details to client
-        return jsonify({"error": "Failed to create contest"}), 500
-
-
 @contest_bp.route("/<int:contest_id>", methods=["GET"])
 @require_auth
 @handle_errors
 def get_contest_by_id(contest_id):
     """
     Get a specific contest by ID
+
     Requires authentication - users must be logged in to view contest details.
 
     Args:
@@ -326,36 +144,34 @@ def get_contest_by_id(contest_id):
 @handle_errors
 def get_contest_by_name(name):
     """
-    Get a specific contest by name (slugified)
+    Get a specific contest by name (slugified URL format)
+
+    Handles various name formats and special characters by normalizing slugs
     Requires authentication - users must be logged in to view contest details.
 
     Args:
-        name: Contest name in slug format (e.g., "price-sanford")
+        name: Contest name in slug format (e.g., "my-contest-2024")
 
     Returns:
         JSON response with contest data
     """
     import re
 
-    # Get all contests and find the one matching the slug
-    # This approach handles various name formats and special characters
+    # Fetch all contests for slug matching
     contests = Contest.query.all()
     contest = None
 
-    # Normalize the input slug (lowercase, remove extra hyphens)
+    # Normalize the input slug (lowercase, collapse multiple hyphens)
     normalized_slug = re.sub(r"[-\s]+", "-", name.lower().strip())
 
+    # Find matching contest by generating slug from each contest name
     for contest_item in contests:
-        # Create slug from contest name (same logic as frontend slugify)
+        # Generate slug using same logic as frontend
         contest_slug = contest_item.name.lower().strip()
-        # Replace spaces with hyphens
-        contest_slug = re.sub(r"\s+", "-", contest_slug)
-        # Remove special characters except hyphens
-        contest_slug = re.sub(r"[^\w\-]+", "", contest_slug)
-        # Replace multiple hyphens with single hyphen
-        contest_slug = re.sub(r"\-\-+", "-", contest_slug)
-        # Remove leading/trailing hyphens
-        contest_slug = contest_slug.strip("-")
+        contest_slug = re.sub(r"\s+", "-", contest_slug)  # Spaces to hyphens
+        contest_slug = re.sub(r"[^\w\-]+", "", contest_slug)  # Remove special chars
+        contest_slug = re.sub(r"\-\-+", "-", contest_slug)  # Collapse hyphens
+        contest_slug = contest_slug.strip("-")  # Remove leading/trailing hyphens
 
         # Compare normalized slugs
         if contest_slug == normalized_slug:
@@ -373,7 +189,9 @@ def get_contest_by_name(name):
 @handle_errors
 def get_contest_leaderboard_detailed(contest_id):
     """
-    Get detailed leaderboard for a specific contest with user statistics
+    Get detailed leaderboard for a contest with user statistics
+
+    Supports filtering, sorting, and pagination of results
 
     Query Parameters:
         filter: 'reviewed', 'pending', or 'all' (default: 'all')
@@ -390,12 +208,12 @@ def get_contest_leaderboard_detailed(contest_id):
     """
     from sqlalchemy import func, case
 
-    # Get contest
+    # Verify contest exists
     contest = Contest.query.get(contest_id)
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
-    # Parse query parameters
+    # Parse and validate query parameters
     filter_type = request.args.get("filter", "all")
     min_marks = request.args.get("min_marks", type=int)
     sort_by = request.args.get("sort_by", "marks")
@@ -422,7 +240,7 @@ def get_contest_leaderboard_detailed(contest_id):
         .group_by(User.id, User.username)
     )
 
-    # Apply filters
+    # Apply status filter
     if filter_type == "reviewed":
         # Only users with at least one reviewed submission
         base_query = base_query.having(
@@ -441,7 +259,7 @@ def get_contest_leaderboard_detailed(contest_id):
     if min_marks is not None:
         base_query = base_query.having(func.sum(Submission.score) >= min_marks)
 
-    # Apply sorting
+    # Apply sorting (marks descending by default)
     if sort_by == "submissions":
         base_query = base_query.order_by(
             func.count(Submission.id).desc(), func.sum(Submission.score).desc()
@@ -454,7 +272,7 @@ def get_contest_leaderboard_detailed(contest_id):
     # Execute query with pagination
     paginated = base_query.paginate(page=page, per_page=per_page, error_out=False)
 
-    # Build leaderboard with ranks
+    # Build leaderboard with sequential ranks
     leaderboard = []
     for index, row in enumerate(paginated.items, start=(page - 1) * per_page + 1):
         leaderboard.append(
@@ -519,6 +337,286 @@ def get_contest_leaderboard_detailed(contest_id):
     )
 
 
+# ------------------------------------------------------------------------
+# CONTEST CREATION ROUTE
+# ------------------------------------------------------------------------
+
+@contest_bp.route("/", methods=["POST"])
+@require_auth
+@handle_errors
+@validate_json_data(["name", "project_name", "jury_members"])
+def create_contest():
+    """
+    Create a new contest with validation and initialization
+
+    Validates all required fields, jury members, dates, categories,
+    and scoring parameters before creating the contest
+
+    Expected JSON data:
+        name: Name of the contest (required)
+        project_name: Name of the associated project (required)
+        jury_members: List of jury member usernames (required)
+        description: Optional description
+        start_date: Optional start date (YYYY-MM-DD)
+        end_date: Optional end date (YYYY-MM-DD)
+        rules: Optional rules object
+        marks_setting_accepted: Points for accepted submissions (default: 0)
+        marks_setting_rejected: Points for rejected submissions (default: 0)
+        min_byte_count: Minimum article byte count (required)
+        min_reference_count: Minimum reference count (default: 0)
+        categories: List of MediaWiki category URLs (required)
+        scoring_parameters: Multi-parameter scoring config (optional)
+        organizers: Additional organizer usernames (optional)
+
+    Returns:
+        JSON response with success message and contest ID
+    """
+    user = request.current_user
+    data = request.validated_data
+
+    # -----------------------------------------------------------------------
+    # Validate Required Fields
+    # -----------------------------------------------------------------------
+
+    name = data["name"].strip()
+    project_name = data["project_name"].strip()
+    jury_members = data["jury_members"]
+
+    if not name:
+        return jsonify({"error": "Contest name is required"}), 400
+
+    if not project_name:
+        return jsonify({"error": "Project name is required"}), 400
+
+    if not isinstance(jury_members, list) or len(jury_members) == 0:
+        return (
+            jsonify({"error": "Jury members must be a non-empty array of usernames"}),
+            400,
+        )
+
+    # -----------------------------------------------------------------------
+    # Validate Jury Members Exist in Database
+    # -----------------------------------------------------------------------
+
+    existing_users = User.query.filter(User.username.in_(jury_members)).all()
+    existing_usernames = [user.username for user in existing_users]
+    missing_users = [
+        username for username in jury_members if username not in existing_usernames
+    ]
+
+    if missing_users:
+        return (
+            jsonify(
+                {
+                    "error": f'These jury members do not exist: {", ".join(missing_users)}'
+                }
+            ),
+            400,
+        )
+
+    # -----------------------------------------------------------------------
+    # Parse Optional Fields
+    # -----------------------------------------------------------------------
+
+    # Handle description (can be None, empty string, or text)
+    description_value = data.get("description")
+    if description_value is None or description_value == "":
+        description = None
+    else:
+        description = str(description_value).strip() or None
+
+    # Parse and validate dates
+    start_date = validate_date_string(data.get("start_date"))
+    end_date = validate_date_string(data.get("end_date"))
+
+    # Validate date logic (end must be after start)
+    if start_date and end_date and start_date >= end_date:
+        return jsonify({"error": "End date must be after start date"}), 400
+
+    # Parse rules (store as dict, converted to JSON in model)
+    rules = data.get("rules", {})
+    if not isinstance(rules, dict):
+        rules = {}
+
+    # -----------------------------------------------------------------------
+    # Parse Scoring Settings
+    # -----------------------------------------------------------------------
+
+    marks_accepted = data.get("marks_setting_accepted", 0)
+    marks_rejected = data.get("marks_setting_rejected", 0)
+    allowed_submission_type = data.get("allowed_submission_type", "both")
+
+    try:
+        marks_accepted = int(marks_accepted)
+        marks_rejected = int(marks_rejected)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Marks settings must be valid integers"}), 400
+
+    # -----------------------------------------------------------------------
+    # Parse Article Requirements
+    # -----------------------------------------------------------------------
+
+    # Minimum byte count (required field)
+    min_byte_count = data.get("min_byte_count")
+
+    if min_byte_count is None:
+        return jsonify({"error": "Minimum byte count is required"}), 400
+
+    try:
+        min_byte_count = int(min_byte_count)
+        if min_byte_count < 0:
+            return jsonify({"error": "Minimum byte count must be non-negative"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Minimum byte count must be a valid integer"}), 400
+
+    # Minimum reference count (optional, default 0 = no requirement)
+    min_reference_count = data.get("min_reference_count", 0)
+
+    try:
+        min_reference_count = int(min_reference_count)
+        if min_reference_count < 0:
+            return jsonify({"error": "Minimum reference count must be non-negative"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Minimum reference count must be a valid integer"}), 400
+
+    # -----------------------------------------------------------------------
+    # Validate Categories (Required)
+    # -----------------------------------------------------------------------
+
+    categories = data.get("categories")
+    if not categories or not isinstance(categories, list) or len(categories) == 0:
+        return jsonify({"error": "At least one category URL is required"}), 400
+
+    # Validate each category URL format
+    for category_url in categories:
+        if not isinstance(category_url, str) or not category_url.strip():
+            return (
+                jsonify({"error": "All category URLs must be non-empty strings"}),
+                400,
+            )
+        if not (
+            category_url.startswith("http://") or category_url.startswith("https://")
+        ):
+            return (
+                jsonify({"error": "All category URLs must be valid HTTP/HTTPS URLs"}),
+                400,
+            )
+
+    # -----------------------------------------------------------------------
+    # Validate Scoring Parameters (Multi-Parameter Scoring)
+    # -----------------------------------------------------------------------
+
+    scoring_parameters = data.get("scoring_parameters")
+    if scoring_parameters:
+        if not isinstance(scoring_parameters, dict):
+            return jsonify({"error": "Scoring parameters must be an object"}), 400
+
+        # Validate multi-parameter scoring structure
+        if scoring_parameters.get("enabled"):
+            if "parameters" not in scoring_parameters:
+                return (
+                    jsonify(
+                        {"error": 'Scoring parameters must include "parameters" array'}
+                    ),
+                    400,
+                )
+
+            parameters = scoring_parameters["parameters"]
+            if not isinstance(parameters, list) or len(parameters) == 0:
+                return (
+                    jsonify({"error": "At least one scoring parameter is required"}),
+                    400,
+                )
+
+            # Validate parameter weights sum to 100
+            total_weight = 0
+            for param in parameters:
+                if not isinstance(param, dict):
+                    return jsonify({"error": "Each parameter must be an object"}), 400
+                if "name" not in param or "weight" not in param:
+                    return (
+                        jsonify(
+                            {"error": 'Each parameter must have "name" and "weight"'}
+                        ),
+                        400,
+                    )
+                try:
+                    weight = int(param["weight"])
+                    if weight < 0 or weight > 100:
+                        return jsonify({"error": f"Weight must be 0-100"}), 400
+                    total_weight += weight
+                except (ValueError, TypeError):
+                    return jsonify({"error": "Weight must be a valid integer"}), 400
+
+            if total_weight != 100:
+                return (
+                    jsonify({"error": f"Weights must sum to 100, got {total_weight}"}),
+                    400,
+                )
+
+    # -----------------------------------------------------------------------
+    # Create Contest
+    # -----------------------------------------------------------------------
+
+    try:
+        # Parse additional organizers (creator is automatically added)
+        additional_organizers = data.get('organizers', [])
+        if not isinstance(additional_organizers, list):
+            additional_organizers = []
+
+        # Create contest instance
+        contest = Contest(
+            name=name,
+            project_name=project_name,
+            created_by=user.username,
+            description=description,
+            start_date=start_date,
+            end_date=end_date,
+            rules=rules,
+            marks_setting_accepted=marks_accepted,
+            marks_setting_rejected=marks_rejected,
+            jury_members=jury_members,
+            allowed_submission_type=allowed_submission_type,
+            min_byte_count=min_byte_count,
+            categories=categories,
+            scoring_parameters=scoring_parameters,
+            organizers=additional_organizers,
+            min_reference_count=min_reference_count,
+        )
+
+        # Save to database
+        contest.save()
+
+        return (
+            jsonify(
+                {"message": "Contest created successfully", "contestId": contest.id}
+            ),
+            201,
+        )
+
+    except Exception:  # pylint: disable=broad-exception-caught
+        # Log error internally but don't expose details to client
+        return jsonify({"error": "Failed to create contest"}), 500
+
+        db.session.add(contest)
+        db.session.commit()
+
+        current_app.logger.info("Contest %s updated by %s", contest_id, user.username)
+        return (
+            jsonify({"message": "Contest updated", "contest": contest.to_dict()}),
+            200,
+        )
+
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # Log error with traceback for debugging
+        current_app.logger.error("Error updating contest %s: %s", contest_id, exc)
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# ------------------------------------------------------------------------
+# CONTEST DELETION ROUTE
+# ------------------------------------------------------------------------
 @contest_bp.route("/<int:contest_id>", methods=["DELETE"])
 @require_auth
 @handle_errors
@@ -538,15 +636,15 @@ def delete_contest(contest_id):
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
-    # Check permissions
+    # Check permissions - only admins or contest organizers can delete
     if not (user.is_admin() or user.is_contest_organizer(contest)):
         return jsonify({"error": "You are not allowed to delete this contest"}), 403
 
     try:
-        # Delete associated submissions first
+        # Delete associated submissions first to maintain referential integrity
         Submission.query.filter_by(contest_id=contest_id).delete()
 
-        # Delete contest
+        # Delete the contest itself
         contest.delete()
 
         return jsonify({"message": "Contest deleted successfully"}), 200
@@ -556,24 +654,35 @@ def delete_contest(contest_id):
         return jsonify({"error": "Failed to delete contest"}), 500
 
 
+# ------------------------------------------------------------------------
+# UTILITY FUNCTIONS
+# ------------------------------------------------------------------------
+
 def parse_date_or_none(date_str):
     """Parse a date string and return date or None when invalid."""
     if not date_str:
         return None
     try:
+        # Try standard format first (YYYY-MM-DD)
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         try:
+            # Fallback to ISO format
             return datetime.fromisoformat(date_str).date()
         except ValueError:
             return None
 
 
+# ------------------------------------------------------------------------
+# CONTEST UPDATE ENDPOINT
+# ------------------------------------------------------------------------
+
 @contest_bp.route("/<int:contest_id>", methods=["PUT"])
 @require_auth
-def update_contest(contest_id): 
+def update_contest(contest_id):
     user = request.current_user
     try:
+        # Handle both JSON and non-JSON content types
         if not request.is_json:
             data = request.get_json(force=True, silent=True) or {}
         else:
@@ -585,14 +694,14 @@ def update_contest(contest_id):
         if not contest:
             return jsonify({"error": "Contest not found"}), 404
 
-        # permission: creator or admin (adjust to your auth model)
+        # Permission check: creator or admin only
         if (
             not (hasattr(user, "is_admin") and user.is_admin())
             and user.username != contest.created_by
         ):
             return jsonify({"error": "Permission denied"}), 403
 
-        # --- Basic fields ---
+        # --- Basic Metadata Fields ---
         if "name" in data:
             contest.name = data.get("name") or contest.name
         if "project_name" in data:
@@ -601,6 +710,7 @@ def update_contest(contest_id):
         if "description" in data:
             contest.description = data.get("description")
 
+        # Rules can be submitted as string or dict
         rules_payload = data.get("rules", None)
         if rules_payload is not None:
             if isinstance(rules_payload, str):
@@ -610,6 +720,7 @@ def update_contest(contest_id):
             else:
                 contest.set_rules({"text": ""})
 
+        # Submission type validation
         if "allowed_submission_type" in data:
             new_type = data.get("allowed_submission_type", "both")
 
@@ -619,7 +730,7 @@ def update_contest(contest_id):
 
             contest.allowed_submission_type = new_type
 
-        # --- Dates ---
+        # --- Date Fields ---
         if "start_date" in data:
             parsed = parse_date_or_none(data.get("start_date"))
             if parsed is None and data.get("start_date") not in (None, ""):
@@ -632,10 +743,12 @@ def update_contest(contest_id):
                 return jsonify({"error": "Invalid end_date format"}), 400
             contest.end_date = parsed
 
+        # Ensure start_date is before end_date
         if contest.start_date and contest.end_date:
             if contest.start_date >= contest.end_date:
                 return jsonify({"error": "start_date must be < end_date"}), 400
 
+        # --- Scoring Settings ---
         if "marks_setting_accepted" in data:
             try:
                 contest.marks_setting_accepted = int(
@@ -652,7 +765,8 @@ def update_contest(contest_id):
             except (TypeError, ValueError):
                 return jsonify({"error": "marks_setting_rejected must be integer"}), 400
 
-        # --- Byte count requirement ---
+        # --- Article Requirements ---
+        # Minimum byte count requirement
         if "min_byte_count" in data:
             min_byte_count_value = data.get("min_byte_count")
             if min_byte_count_value is None or min_byte_count_value == "":
@@ -668,7 +782,7 @@ def update_contest(contest_id):
             except (TypeError, ValueError):
                 return jsonify({"error": "min_byte_count must be a valid integer"}), 400
 
-        # --- Reference count requirement ---
+        # Minimum reference count requirement
         if "min_reference_count" in data:
             min_reference_count_value = data.get("min_reference_count")
             try:
@@ -692,7 +806,7 @@ def update_contest(contest_id):
             ):
                 return jsonify({"error": "At least one category URL is required"}), 400
 
-            # Validate category URLs
+            # Validate each category URL
             for category_url in categories_value:
                 if not isinstance(category_url, str) or not category_url.strip():
                     return (
@@ -714,7 +828,8 @@ def update_contest(contest_id):
 
             contest.set_categories(categories_value)
 
-        # --- Jury members: accept list or comma string ---
+        # --- Jury Members ---
+        # Accept both list and comma-separated string formats
         if "jury_members" in data:
             jury_members_value = data.get("jury_members")
             if isinstance(jury_members_value, list):
@@ -725,16 +840,16 @@ def update_contest(contest_id):
             else:
                 contest.set_jury_members([])
 
-        # --- Scoring parameters (support multi-parameter edits) ---
+        # --- Scoring Parameters (Multi-Parameter Support) ---
         if "scoring_parameters" in data:
             sp = data.get("scoring_parameters")
-            # Accept explicit null to disable
+            # Accept explicit null to disable scoring parameters
             if sp is None:
                 contest.set_scoring_parameters(None)
             elif not isinstance(sp, dict):
                 return jsonify({"error": "scoring_parameters must be an object"}), 400
             else:
-                # If multi-parameter enabled, validate structure and weights
+                # Validate multi-parameter structure if enabled
                 if sp.get("enabled"):
                     params = sp.get("parameters")
                     if "parameters" not in sp or not isinstance(params, list) or len(params) == 0:
@@ -744,6 +859,7 @@ def update_contest(contest_id):
                         )
 
                     total_weight = 0
+                    # Validate each parameter has required fields and valid weights
                     for param in params:
                         if not isinstance(param, dict):
                             return jsonify({"error": "Each parameter must be an object"}), 400
@@ -762,6 +878,7 @@ def update_contest(contest_id):
                         except (ValueError, TypeError):
                             return jsonify({"error": "Weight must be a valid integer"}), 400
 
+                    # Ensure weights sum to exactly 100%
                     if total_weight != 100:
                         return (
                             jsonify({"error": f"Weights must sum to 100, got {total_weight}"}),
@@ -776,7 +893,7 @@ def update_contest(contest_id):
         # --- Organizers ---
         if "organizers" in data:
             organizers_payload = data.get("organizers")
-            
+
             if organizers_payload is not None:
                 if isinstance(organizers_payload, list):
                     # List of usernames provided
@@ -788,7 +905,7 @@ def update_contest(contest_id):
                     ]
                     contest.set_organizers(organizers_list, contest.created_by)
 
-        # Persist
+        # Persist all changes to database
         db.session.add(contest)
         db.session.commit()
 
@@ -802,7 +919,12 @@ def update_contest(contest_id):
         current_app.logger.error("Error updating contest %s: %s", contest_id, exc)
         current_app.logger.error(traceback.format_exc())
         return jsonify({"error": "Internal server error"}), 500
-    
+
+
+# ------------------------------------------------------------------------
+# CONTEST SUBMISSION ENDPOINT
+# ------------------------------------------------------------------------
+
 @contest_bp.route("/<int:contest_id>/submit", methods=["POST"])
 @require_auth
 @handle_errors
@@ -834,7 +956,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     if not contest:
         return jsonify({"error": "Contest not found"}), 404
 
-    # Validate submission data
+    # --- Input Validation ---
     article_link = data["article_link"].strip()
 
     if not article_link:
@@ -844,7 +966,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     if not (article_link.startswith("http://") or article_link.startswith("https://")):
         return jsonify({"error": "Article link must be a valid URL"}), 400
 
-    # Check if contest is active
+    # --- Contest Status Checks ---
     if not contest.is_active():
         if contest.is_upcoming():
             return jsonify({"error": "Contest has not started yet"}), 400
@@ -852,7 +974,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             return jsonify({"error": "Contest has ended"}), 400
         return jsonify({"error": "Contest is not active"}), 400
 
-    # Check if user already submitted this specific article to this contest
+    # Check for duplicate submission
     existing_submission = Submission.query.filter_by(
         user_id=user.id, contest_id=contest_id, article_link=article_link
     ).first()
@@ -865,7 +987,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             400,
         )
 
-    # Fetch article information from MediaWiki API
+    # --- Initialize Article Metadata Variables ---
     article_title = None
     article_author = None
     article_created_at = None
@@ -875,6 +997,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     article_expansion_bytes = None
     article_reference_count = None
 
+    # --- Fetch Article Information from MediaWiki API ---
     # MediaWiki API fetching has deep nesting due to complex error handling
     # pylint: disable=too-many-nested-blocks
     try:
@@ -930,10 +1053,10 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                         has_valid_pageid = page_id and page_id != "-1" and page_id != ""
 
                         if page_data and has_valid_pageid and not is_missing:
-                            # Extract article information
+                            # Extract article title
                             article_title = page_data.get("title", page_title)
 
-                            # Get revision information
+                            # --- Get Revision Information ---
                             # With formatversion=2, revisions is an array
                             # With rvdir='older', revisions[0] is the newest (latest) revision
                             revisions = page_data.get("revisions", [])
@@ -994,7 +1117,8 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                     # Logging failure shouldn't break the flow
                                     pass
                             else:
-                                # No revisions found - try alternative API call to get revisions
+                                # --- Fallback: No Revisions Found ---
+                                # Try alternative API call to get revisions
                                 # Sometimes revisions aren't returned in the first query
                                 try:
                                     # Make a second API call specifically for revisions
@@ -1132,6 +1256,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                 # Logging failure shouldn't break the flow
                                 pass
 
+        # --- Fallback: Use URL-based Title ---
         # If we couldn't fetch title from API, use a fallback
         if not article_title:
             # Try to extract from URL as fallback
@@ -1156,6 +1281,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
         if not article_title:
             article_title = "Article"
 
+    # --- Calculate Article Expansion ---
     # Calculate expansion (bytes added between contest start and submission time)
     # Expansion = size at submission time - size at contest start
     if contest.start_date and article_link and article_page_id:
@@ -1208,6 +1334,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                 pass
             article_expansion_bytes = None
 
+    # --- Validate Article Requirements ---
     # Validate article byte count against contest requirements
     # This check happens after fetching article information from MediaWiki API
     # article_word_count is actually the byte count (size) from MediaWiki API
@@ -1221,7 +1348,8 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
         is_valid_refs, error_message_refs = contest.validate_reference_count(article_reference_count)
         if not is_valid_refs:
             return jsonify({"error": error_message_refs}), 400
-        
+
+    # --- Create Submission Record ---
     # Create submission with fetched information
     try:
         submission = Submission(
@@ -1268,6 +1396,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
         )
 
     except IntegrityError as e:
+        # Handle database integrity errors (e.g., duplicate submissions)
         # Rollback the session on integrity error
         db.session.rollback()
         # Log the actual error for debugging
@@ -1299,6 +1428,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             400,
         )
     except Exception as e:  # pylint: disable=broad-exception-caught
+        # Handle any other unexpected errors
         # Rollback the session on any error
         db.session.rollback()
         # Log error for debugging
@@ -1320,6 +1450,10 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             500,
         )
 
+
+# ------------------------------------------------------------------------
+# GET CONTEST SUBMISSIONS
+# ------------------------------------------------------------------------
 
 @contest_bp.route("/<int:contest_id>/submissions", methods=["GET"])
 @require_auth
@@ -1344,7 +1478,7 @@ def get_contest_submissions(contest_id):
     if error_response:
         return error_response
 
-    # Get submissions with user information
+    # Get submissions with user information via JOIN
     submissions = (
         db.session.query(Submission, User.username, User.email)
         .join(User, Submission.user_id == User.id)
@@ -1353,6 +1487,7 @@ def get_contest_submissions(contest_id):
         .all()
     )
 
+    # Build response data with user and contest information
     submissions_data = []
     for submission, username, email in submissions:
         submission_data = submission.to_dict(include_user_info=True)
@@ -1364,35 +1499,39 @@ def get_contest_submissions(contest_id):
     return jsonify(submissions_data), 200
 
 
+# ------------------------------------------------------------------------
+# ORGANIZER MANAGEMENT ENDPOINTS
+# ------------------------------------------------------------------------
+
 @contest_bp.route('/<int:contest_id>/organizers', methods=['GET'])
 @require_auth
 @handle_errors
 def get_contest_organizers(contest_id):
     """
     Get all organizers for a specific contest
-    
+
     Returns list of organizer usernames.
-    
+
     Args:
         contest_id: Contest ID
-    
+
     Returns:
         JSON response with list of organizer usernames
     """
     user = request.current_user
-    
+
     # Get contest
     contest = Contest.query.get(contest_id)
     if not contest:
         return jsonify({'error': 'Contest not found'}), 404
-    
+
     # Check permissions - must be organizer or admin
     if not (user.is_admin() or user.is_contest_organizer(contest)):
         return jsonify({'error': 'Access denied'}), 403
-    
-    # Get organizers
+
+    # Get organizers list
     organizers = contest.get_organizers()
-    
+
     return jsonify({
         'contest_id': contest_id,
         'organizers': organizers,
@@ -1407,56 +1546,56 @@ def get_contest_organizers(contest_id):
 def add_contest_organizer(contest_id):
     """
     Add a new organizer to a contest
-    
+
     Only creator and admins can add organizers.
-    
+
     Expected JSON data:
         username: Username of the user to add as organizer
-    
+
     Args:
         contest_id: Contest ID
-    
+
     Returns:
         JSON response with success message
     """
     user = request.current_user
     data = request.validated_data
-    
+
     # Get contest
     contest = Contest.query.get(contest_id)
     if not contest:
         return jsonify({'error': 'Contest not found'}), 404
-    
+
     # Check permissions - must be creator or admin
     if not (user.is_admin() or user.is_contest_organizer(contest)):
         return jsonify({
             'error': 'Only the contest creator or admins can add organizers'
         }), 403
-    
+
     # Get username to add
     username_to_add = data['username'].strip()
-    
+
     if not username_to_add:
         return jsonify({'error': 'Username is required'}), 400
-    
-    # Validate user exists
+
+    # Validate user exists in the system
     from app.models.user import User
     organizer_user = User.query.filter_by(username=username_to_add).first()
     if not organizer_user:
         return jsonify({'error': f'User "{username_to_add}" not found'}), 404
-    
-    # Add organizer
+
+    # Add organizer using model method
     success, error_message = contest.add_organizer(username_to_add)
-    
+
     if not success:
         return jsonify({'error': error_message}), 400
-    
-    # Save changes
+
+    # Save changes to database
     contest.save()
-    
+
     # Get updated organizers list
     organizers = contest.get_organizers()
-    
+
     return jsonify({
         'message': 'Organizer added successfully',
         'organizers': organizers
@@ -1469,42 +1608,42 @@ def add_contest_organizer(contest_id):
 def remove_contest_organizer(contest_id, username):
     """
     Remove an organizer from a contest
-    
+
     Only creator and admins can remove organizers.
     Cannot remove creator.
-    
+
     Args:
         contest_id: Contest ID
         username: Username to remove
-    
+
     Returns:
         JSON response with success message
     """
     user = request.current_user
-    
+
     # Get contest
     contest = Contest.query.get(contest_id)
     if not contest:
         return jsonify({'error': 'Contest not found'}), 404
-    
+
     # Check permissions - must be creator or admin
     if not (user.is_admin() or user.is_contest_organizer(contest)):
         return jsonify({
             'error': 'Only the contest creator or admins can remove organizers'
         }), 403
-    
-    # Remove organizer
+
+    # Remove organizer using model method
     success, error_message = contest.remove_organizer(username)
-    
+
     if not success:
         return jsonify({'error': error_message}), 400
-    
-    # Save changes
+
+    # Save changes to database
     contest.save()
-    
+
     # Get updated organizers list
     organizers = contest.get_organizers()
-    
+
     return jsonify({
         'message': 'Organizer removed successfully',
         'organizers': organizers

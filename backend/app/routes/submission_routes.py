@@ -31,6 +31,10 @@ from app.utils import (
 submission_bp = Blueprint("submission", __name__)
 
 
+# ------------------------------------------------------------------------
+# SUBMISSION RETRIEVAL ENDPOINTS
+# ------------------------------------------------------------------------
+
 @submission_bp.route("/", methods=["GET"])
 @require_auth
 @handle_errors
@@ -43,9 +47,11 @@ def get_all_submissions():
     """
     user = request.current_user
 
+    # Restrict to admins only
     if not user.is_admin():
         return jsonify({"error": "Admin access required"}), 403
 
+    # Fetch all submissions ordered by submission date (newest first)
     submissions = Submission.query.order_by(Submission.submitted_at.desc()).all()
 
     submissions_data = []
@@ -69,69 +75,13 @@ def get_submission_by_id(submission_id):  # pylint: disable=unused-argument
     Returns:
         JSON response with submission data
     """
+    # Submission is pre-loaded by middleware and attached to request
     submission = request.current_submission
 
     # Get additional information
     submission_data = submission.to_dict(include_user_info=True)
 
     return jsonify(submission_data), 200
-
-
-# Temporarily disabling manual status update endpoint to enforce single source of truth
-# @submission_bp.route('/<int:submission_id>', methods=['PUT'])
-# @require_submission_permission('jury')
-# @handle_errors
-# @validate_json_data(['status'])
-# def update_submission_status(submission_id):  # pylint: disable=unused-argument
-#     """
-#     Update submission status and score (jury or admin only)
-
-#     Args:
-#         submission_id: Submission ID
-
-#     Expected JSON data:
-#         status: New status ('accepted' or 'rejected')
-
-#     Returns:
-#         JSON response with success message and updated status/score
-#     """
-#     submission = request.current_submission
-#     data = request.validated_data
-
-#     new_status = data['status'].strip().lower()
-
-#     # Validate status
-#     if new_status not in ['accepted', 'rejected']:
-#         return jsonify({'error': 'Status must be either "accepted" or "rejected"'}), 400
-
-#     # Check if status is already set
-#     if submission.status == new_status:
-#         return jsonify({
-#             'message': f'Submission is already {new_status}. No changes made.',
-#             'status': submission.status,
-#             'score': submission.score
-#         }), 200
-
-#     # Update submission status and score
-#     try:
-#         updated = submission.update_status(new_status)
-
-#         if updated:
-#             return jsonify({
-#                 'message': 'Submission updated successfully',
-#                 'status': submission.status,
-#                 'score': submission.score
-#             }), 200
-#         return jsonify({
-#             'message': 'No changes made to submission',
-#             'status': submission.status,
-#             'score': submission.score
-#         }), 200
-
-#     except Exception:  # pylint: disable=broad-exception-caught
-#         # Log error for debugging but don't expose details to client
-#         return jsonify({'error': 'Failed to update submission'}), 500
-
 
 @submission_bp.route("/user/<int:user_id>", methods=["GET"])
 @require_auth
@@ -152,6 +102,7 @@ def get_user_submissions(user_id):
     if not current_user.is_admin() and current_user.id != user_id:
         return jsonify({"error": "You can only view your own submissions"}), 403
 
+    # Fetch user's submissions ordered by submission date (newest first)
     submissions = (
         Submission.query.filter_by(user_id=user_id)
         .order_by(Submission.submitted_at.desc())
@@ -193,6 +144,7 @@ def get_contest_submissions(contest_id):
     if error_response:
         return error_response
 
+    # Fetch all submissions for this contest ordered by submission date (newest first)
     submissions = (
         Submission.query.filter_by(contest_id=contest_id)
         .order_by(Submission.submitted_at.desc())
@@ -222,7 +174,7 @@ def get_pending_submissions():
     # Get all pending submissions
     pending_submissions = Submission.query.filter_by(status="pending").all()
 
-    # Filter submissions that user can judge
+    # Filter submissions that user can judge based on permissions
     judgeable_submissions = []
     for submission in pending_submissions:
         if submission.can_be_judged_by(user):
@@ -231,6 +183,10 @@ def get_pending_submissions():
 
     return jsonify(judgeable_submissions), 200
 
+
+# ------------------------------------------------------------------------
+# SUBMISSION STATISTICS
+# ------------------------------------------------------------------------
 
 @submission_bp.route("/stats", methods=["GET"])
 @require_auth
@@ -244,7 +200,7 @@ def get_submission_stats():
     """
     user = request.current_user
 
-    # Get user's submission statistics
+    # Get user's submission statistics by status
     total_submissions = Submission.query.filter_by(user_id=user.id).count()
     accepted_submissions = Submission.query.filter_by(
         user_id=user.id, status="accepted"
@@ -256,7 +212,7 @@ def get_submission_stats():
         user_id=user.id, status="pending"
     ).count()
 
-    # Get total score from submissions
+    # Get total score from all submissions
     total_score = (
         db.session.query(db.func.sum(Submission.score))
         .filter_by(user_id=user.id)
@@ -282,6 +238,10 @@ def get_submission_stats():
         200,
     )
 
+
+# ------------------------------------------------------------------------
+# METADATA REFRESH ENDPOINT
+# ------------------------------------------------------------------------
 
 @submission_bp.route("/contest/<int:contest_id>/refresh-metadata", methods=["POST"])
 @require_auth
@@ -328,7 +288,8 @@ def refresh_metadata(contest_id):
     updated = 0
     failed = 0
 
-    # Function to fetch article info (same logic as backfill script)
+    # --- Helper Functions for Metadata Refresh ---
+
     def fetch_article_info(article_link):
         """Fetch article information from MediaWiki API"""
         try:
@@ -360,6 +321,7 @@ def refresh_metadata(contest_id):
             if "error" in data:
                 return None
 
+            # Handle API response format
             pages = data.get("query", {}).get("pages", [])
             if not pages:
                 return None
@@ -368,10 +330,11 @@ def refresh_metadata(contest_id):
             is_missing = page_data.get("missing", False)
             page_id = str(page_data.get("pageid", ""))
 
+            # Check if page exists
             if is_missing or not page_id or page_id == "-1":
                 return None
 
-            # Get revision info
+            # --- Get Revision Information ---
             # With rvdir='older', revisions[0] is the newest (latest) revision
             revisions = page_data.get("revisions", [])
             if not revisions or len(revisions) == 0:
@@ -410,7 +373,6 @@ def refresh_metadata(contest_id):
         except Exception:  # pylint: disable=broad-exception-caught
             return None
 
-    # Helper function to calculate expansion bytes for a submission
     def calculate_expansion_bytes(submission_item, article_info):
         """
         Calculate expansion bytes relative to submission time.
@@ -456,6 +418,7 @@ def refresh_metadata(contest_id):
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
+    # --- Process Each Submission ---
     # Refresh metadata for each submission
     for submission in submissions:
         info = fetch_article_info(submission.article_link)
@@ -502,7 +465,7 @@ def refresh_metadata(contest_id):
         else:
             failed += 1
 
-    # Commit all changes
+    # Commit all changes to database
     try:
         db.session.commit()
     except Exception:  # pylint: disable=broad-exception-caught
@@ -522,6 +485,10 @@ def refresh_metadata(contest_id):
     )
 
 
+# ------------------------------------------------------------------------
+# SUBMISSION REVIEW ENDPOINT
+# ------------------------------------------------------------------------
+
 @submission_bp.route("/<int:submission_id>/review", methods=["PUT"])
 @require_auth
 @handle_errors
@@ -530,28 +497,34 @@ def review_submission(submission_id):
     user = request.current_user
     data = request.validated_data
 
+    # Load submission with related data
     submission = Submission.query.options(
         joinedload(Submission.submitter),
         joinedload(Submission.contest),
     ).get_or_404(submission_id)
     contest = submission.contest
 
-    # Permission checks
+    # --- Permission Checks ---
     if not submission.can_be_judged_by(user):
         return jsonify({"error": "Not allowed to review this submission"}), 403
 
+    # Ensure submission hasn't already been reviewed
     if submission.reviewed_at:
         return jsonify({"error": "Submission already reviewed"}), 400
 
+    # Extract and validate status
     status = data.get("status")
     comment = data.get("comment")
 
     if status not in ["accepted", "rejected"]:
         return jsonify({"error": "Invalid status"}), 400
+
+    # --- Multi-Parameter Scoring Mode ---
     if contest.is_multi_parameter_scoring_enabled():
         scoring_config = contest.get_scoring_parameters()
 
         if status == "accepted":
+            # For accepted submissions, require parameter scores
             parameter_scores = data.get("parameter_scores")
 
             if not parameter_scores:
@@ -563,7 +536,7 @@ def review_submission(submission_id):
             if not isinstance(parameter_scores, dict):
                 return jsonify({"error": "Parameter scores must be an object"}), 400
 
-            # Validate all required parameters
+            # Validate all required parameters are provided
             required_params = [p["name"] for p in scoring_config.get("parameters", [])]
 
             for param_name in required_params:
@@ -575,12 +548,14 @@ def review_submission(submission_id):
 
                 param_score = parameter_scores[param_name]
 
+                # Validate score is numeric
                 if not isinstance(param_score, (int, float)):
                     return (
                         jsonify({"error": f"Invalid score for {param_name}"}),
                         400,
                     )
 
+                # Validate score is within range (0-10)
                 if param_score < 0 or param_score > 10:
                     return (
                         jsonify(
@@ -606,7 +581,7 @@ def review_submission(submission_id):
                 return jsonify({"error": "Internal server error"}), 500
 
         else:
-            # Rejected → use min_score
+            # Rejected submissions get min_score
             min_score = scoring_config.get("min_score", 0)
 
             try:
@@ -621,8 +596,11 @@ def review_submission(submission_id):
                 db.session.rollback()
                 print(f"Review error (rejected, multi): {str(e)}")
                 return jsonify({"error": "Internal server error"}), 500
+
+    # --- Simple Scoring Mode ---
     else:
         if status == "accepted":
+            # For accepted submissions, require score within configured range
             score = data.get("score")
 
             if score is None:
@@ -633,12 +611,14 @@ def review_submission(submission_id):
             if not isinstance(score, int):
                 return jsonify({"error": "Score must be an integer"}), 400
 
+            # Validate score is within configured range
             if score < 0 or score > max_score:
                 return (
                     jsonify({"error": f"Score must be between 0 and {max_score}"}),
                     400,
                 )
         else:
+            # Rejected submissions get configured rejection score
             score = contest.marks_setting_rejected
 
         try:
