@@ -72,7 +72,15 @@ class Contest(BaseModel):
 
     # Timestamp
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # Oranisers
     organizers = db.Column(db.Text, nullable=True)
+    # Minimum byte count (required)
+    # Minimum reference count requirement for article submissions
+    # Articles must have at least min_reference_count references
+    min_reference_count = db.Column(
+    db.Integer, nullable=False, default=0
+    )  # Minimum reference count (default 0 = no requirement)
 
     # Relationships
     submissions = db.relationship(
@@ -113,6 +121,7 @@ class Contest(BaseModel):
         self.set_rules(kwargs.get("rules", {}))
         self.set_jury_members(kwargs.get("jury_members", []))
         self.set_organizers(kwargs.get("organizers", []), created_by)
+        self.min_reference_count = kwargs.get("min_reference_count", 0)
 
     def set_rules(self, rules_dict):
         """
@@ -510,6 +519,33 @@ class Contest(BaseModel):
         
         username = username.strip()
         return username in self.get_organizers()
+    
+    def validate_reference_count(self, reference_count):
+        """
+        Validate if article reference count meets the contest's minimum requirement
+    
+        Args:
+            reference_count: Article reference count to validate (can be None)
+    
+        Returns:
+            tuple: (is_valid: bool, error_message: str or None)
+                  Returns (True, None) if valid, (False, error_message) if invalid
+        """
+        # If reference count is None, we can't validate it
+        if reference_count is None:
+            return (
+                False,
+                "Article reference count could not be determined. Please ensure the article has references and try again.",
+            )
+        # Check minimum reference count (only if requirement is set)
+        if self.min_reference_count > 0 and reference_count < self.min_reference_count:
+            return (
+                False,
+                f"Article reference count ({reference_count}) is below the minimum required ({self.min_reference_count} references)",
+            )
+    
+        # Reference count meets the requirement
+        return True, None
 
     def to_dict(self):
         """
@@ -546,6 +582,7 @@ class Contest(BaseModel):
             ),
             "submission_count": self.get_submission_count(),
             "status": self.get_status(),
+            "min_reference_count": self.min_reference_count,
         }
 
     def __repr__(self):

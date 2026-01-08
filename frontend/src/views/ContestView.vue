@@ -60,7 +60,7 @@
               <p><strong>Status:</strong> <span class="badge bg-primary">{{ contest.status }}</span></p>
               <p v-if="contest.start_date"><strong>Start Date:</strong> {{ formatDate(contest.start_date) }}</p>
               <p v-if="contest.end_date"><strong>End Date:</strong> {{ formatDate(contest.end_date) }}</p>
-              
+
               <strong>Organizers:</strong>
               <div v-if="contest.organizers && contest.organizers.length > 0" class="organizers-flex">
                 <div v-for="organizer in contest.organizers" :key="organizer" class="organizer-chip">
@@ -151,7 +151,7 @@
 
       <div class="card mb-4">
         <div class="card-header">
-          <h3>Submission Type Allowed</h3>
+          <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Submission Type Allowed</h5>
         </div>
         <div class="card-body">
           <p>
@@ -194,6 +194,22 @@
           <small class="text-muted">
             <i class="fas fa-info-circle me-1"></i>
             Submitted articles must be categorized under at least one of these categories.
+          </small>
+        </div>
+      </div>
+
+       <!-- Minimum Reference Count Section -->
+      <div v-if="contest.min_reference_count > 0" class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-link me-2"></i>Minimum Reference Count</h5>
+        </div>
+        <div class="card-body">
+          <p>
+            <strong>{{ contest.min_reference_count }} References required</strong>
+          </p>
+          <small class="text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Submitted articles must have at least {{ contest.min_reference_count }} external references.
           </small>
         </div>
       </div>
@@ -423,8 +439,8 @@
                 <small v-if="editForm.selectedOrganizers.length === 0" class="text-muted">
                   No organizers selected
                 </small>
-                <span v-for="username in editForm.selectedOrganizers" :key="username"
-                  class="badge bg-success me-2 mb-2" style="font-size: 0.9rem; cursor: pointer;">
+                <span v-for="username in editForm.selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
+                  style="font-size: 0.9rem; cursor: pointer;">
                   <i class="fas fa-user-tie me-1"></i>{{ username }}
                   <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
                 </span>
@@ -576,6 +592,17 @@
                 placeholder="e.g., 1000" required />
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
             </div>
+
+            <div class="mb-3">
+              <label class="form-label">Minimum Reference Count</label>
+              <input type="number" v-model.number="editForm.min_reference_count" class="form-control" min="0"
+                placeholder="e.g., 5" />
+              <small class="form-text text-muted">
+                Articles must have at least this many references. Set to 0 for no requirement.
+              </small>
+            </div>
+
+
 
             <!-- Category URLs -->
             <div class="mb-3">
@@ -833,7 +860,7 @@ export default {
       return formatted
     }
 
-        // Extract category name from MediaWiki category URL
+    // Extract category name from MediaWiki category URL
     // Example: "https://en.wikipedia.org/wiki/Category:Testcat" -> "Category:Testcat"
     const getCategoryName = (categoryUrl) => {
       if (!categoryUrl) return ''
@@ -856,11 +883,11 @@ export default {
             pageTitle = decodeURIComponent(parts[parts.length - 1])
           }
         }
-        
- // Return the page title (which should be "Category:Name")
+
+        // Return the page title (which should be "Category:Name")
         return pageTitle || categoryUrl
       } catch (e) {
-                // If URL parsing fails, return the original URL
+        // If URL parsing fails, return the original URL
         return categoryUrl
       }
     }
@@ -879,7 +906,7 @@ export default {
       }
       return `${absBytes} bytes`
     }
-// Get status label
+    // Get status label
     const getStatusLabel = (status) => {
       const labels = {
         current: 'Active',
@@ -928,7 +955,7 @@ export default {
         }
 
 
-         // Check auth and permissions after loading contest
+        // Check auth and permissions after loading contest
 
         await checkAuthAndPermissions()
 
@@ -960,10 +987,10 @@ export default {
           loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
         }
 
-// Wait for reactive state to propagate
+        // Wait for reactive state to propagate
         await new Promise(resolve => setTimeout(resolve, 100))
 
-// Check delete permission
+        // Check delete permission
         checkDeletePermission()
       } catch (error) {
         console.error('Failed to check auth:', error)
@@ -994,7 +1021,7 @@ export default {
       }
     }
 
-// Refresh article metadata for all submissions in the contes
+    // Refresh article metadata for all submissions in the contes
     const refreshMetadata = async () => {
       if (!contest.value || !canViewSubmissions.value || submissions.value.length === 0) {
         return
@@ -1033,7 +1060,7 @@ export default {
       try {
         await api.delete(`/contest/${contest.value.id}`)
         showAlert('Contest deleted successfully', 'success')
-         // Navigate back to contests list
+        // Navigate back to contests list
         router.push({ name: 'Contests' })
       } catch (error) {
         console.error('Failed to delete contest:', error)
@@ -1042,7 +1069,7 @@ export default {
         deletingContest.value = false
       }
     }
- // Handle submit article
+    // Handle submit article
     const handleSubmitArticle = () => {
       if (!store.isAuthenticated) {
         showAlert('Please login to submit an article', 'warning')
@@ -1080,7 +1107,7 @@ export default {
       router.push({ name: 'Contests' })
     }
 
-     // store only submission ID, rely on computed property
+    // store only submission ID, rely on computed property
     const showArticlePreview = (submission) => {
       currentSubmissionId.value = submission.id
 
@@ -1093,7 +1120,7 @@ export default {
       }, 100)
     }
 
-     // Update the actual submission in the array
+    // Update the actual submission in the array
     const handleSubmissionReviewed = (reviewData) => {
       console.log('Review received:', reviewData)
 
@@ -1143,6 +1170,7 @@ export default {
       selectedOrganizers: [],
       min_byte_count: 0,
       categories: [''],
+      min_reference_count: 0,
       scoring_mode: '',
       scoring_parameters: {
         max_score: 10,
@@ -1286,6 +1314,7 @@ export default {
       editForm.start_date = contest.value.start_date || ''
       editForm.end_date = contest.value.end_date || ''
       editForm.min_byte_count = Number(contest.value.min_byte_count ?? 0)
+      editForm.min_reference_count = Number(contest.value.min_reference_count ?? 0)
 
       if (Array.isArray(contest.value.jury_members)) {
         editForm.selectedJuryMembers = [...contest.value.jury_members]
@@ -1364,7 +1393,8 @@ export default {
           organizers: editForm.selectedOrganizers,
           allowed_submission_type: editForm.allowed_submission_type,
           min_byte_count: Number(editForm.min_byte_count),
-          categories: validCategories
+          categories: validCategories,
+          min_reference_count: Number(editForm.min_reference_count),
         }
 
         if (editForm.scoring_mode === 'multi') {

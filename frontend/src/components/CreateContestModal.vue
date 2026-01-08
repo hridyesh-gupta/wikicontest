@@ -51,8 +51,7 @@
 
             <div class="mb-3">
               <label class="form-label">
-                Additional Organizers (Optional)
-                <span class="badge bg-secondary">You will be added automatically as creator</span>
+                Organizers
               </label>
 
               <!-- Selected Organizers Display -->
@@ -284,6 +283,17 @@
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
             </div>
 
+            <div class="mb-3">
+              <label for="minReferenceCount" class="form-label">
+                Minimum Reference Count
+              </label>
+              <input type="number" class="form-control" id="minReferenceCount"
+                v-model.number="formData.min_reference_count" min="0" placeholder="e.g., 5" />
+              <small class="form-text text-muted">
+                Articles must have at least this many references (external links). Leave as 0 for no requirement.
+              </small>
+            </div>
+
             <!-- Category URLs -->
             <div class="mb-3">
               <label class="form-label">
@@ -413,7 +423,8 @@ export default {
       rules_text: '',
       allowed_submission_type: 'both',
       min_byte_count: 0,
-      categories: ['']
+      categories: [''],
+      min_reference_count: 0,
     })
 
     // Set default dates and ensure user is loaded
@@ -741,6 +752,7 @@ export default {
       formData.rules_text = ''
       formData.min_byte_count = 0
       formData.categories = ['']
+      formData.min_reference_count = 0
 
       // Reset dates
       const today = new Date()
