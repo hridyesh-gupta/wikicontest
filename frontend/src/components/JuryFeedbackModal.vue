@@ -1,7 +1,9 @@
 <template>
+  <!-- Modal for displaying jury feedback on submissions -->
   <div class="modal fade" id="juryFeedbackModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
+        <!-- Modal header with Wikipedia blue background -->
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="fas fa-comment-dots me-2"></i>Jury Feedback
@@ -9,16 +11,16 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <!-- Loading State -->
+          <!-- Loading state while fetching reviewer data -->
           <div v-if="loadingReviewer" class="text-center py-3">
             <div class="spinner-border spinner-border-sm text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
           </div>
 
-          <!-- Feedback Content -->
+          <!-- Display feedback if submission has been reviewed -->
           <div v-else-if="submission && submission.reviewed_at">
-            <!-- Review Status -->
+            <!-- Review status section with color-coded badge -->
             <div class="feedback-section mb-4">
               <h6 class="feedback-section-title">
                 <i class="fas fa-check-circle me-2"></i>Review Status
@@ -33,7 +35,7 @@
               </div>
             </div>
 
-            <!-- Reviewer Information -->
+            <!-- Reviewer name and review date -->
             <div class="feedback-section mb-4">
               <h6 class="feedback-section-title">
                 <i class="fas fa-user-tie me-2"></i>Reviewed By
@@ -49,7 +51,7 @@
               </div>
             </div>
 
-            <!-- Marks Awarded -->
+            <!-- Total score awarded to submission -->
             <div class="feedback-section mb-4">
               <h6 class="feedback-section-title">
                 <i class="fas fa-star me-2"></i>Marks Awarded
@@ -62,7 +64,7 @@
               </div>
             </div>
 
-            <!-- Parameter Scores (if multi-parameter scoring) -->
+            <!-- Individual parameter scores with progress bars -->
             <div v-if="submission.parameter_scores" class="feedback-section mb-4">
               <h6 class="feedback-section-title">
                 <i class="fas fa-chart-bar me-2"></i>Parameter Scores
@@ -76,6 +78,7 @@
                   >
                     <div class="parameter-name">{{ paramName }}</div>
                     <div class="parameter-score">
+                      <!-- Visual progress bar for parameter score -->
                       <div class="score-bar-container">
                         <div 
                           class="score-bar" 
@@ -89,7 +92,7 @@
               </div>
             </div>
 
-            <!-- Jury Comments -->
+            <!-- Display jury comments if provided -->
             <div v-if="submission.review_comment" class="feedback-section mb-4">
               <h6 class="feedback-section-title">
                 <i class="fas fa-comment me-2"></i>Jury Comments
@@ -101,7 +104,7 @@
               </div>
             </div>
 
-            <!-- No Comments Message -->
+            <!-- Show message when no comments were provided -->
             <div v-else class="feedback-section mb-4">
               <h6 class="feedback-section-title">
                 <i class="fas fa-comment me-2"></i>Jury Comments
@@ -115,12 +118,13 @@
             </div>
           </div>
 
-          <!-- No Feedback Available -->
+          <!-- Empty state when submission hasn't been reviewed yet -->
           <div v-else class="text-center py-4">
             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
             <p class="text-muted">No feedback available yet.</p>
           </div>
         </div>
+        <!-- Modal footer with close button -->
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times me-2"></i>Close
@@ -150,15 +154,17 @@ export default {
   },
 
   setup() {
-    // Format date for display in IST
+    // Format date to IST timezone with full date and time
     const formatDate = (dateString) => {
       if (!dateString) return 'No date'
       try {
         let utcDateString = dateString
+        // Append 'Z' if timezone is not specified in date string
         if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
           utcDateString = dateString + 'Z'
         }
 
+        // Convert to IST with formatted output
         return new Date(utcDateString).toLocaleString('en-IN', {
           timeZone: 'Asia/Kolkata',
           year: 'numeric',
@@ -173,7 +179,7 @@ export default {
       }
     }
 
-    // Get status label
+    // Get human-readable label for submission status
     const getStatusLabel = (status) => {
       const labels = {
         accepted: 'Accepted',
@@ -183,7 +189,7 @@ export default {
       return labels[status?.toLowerCase()] || status || 'Unknown'
     }
 
-    // Get status class
+    // Get CSS class for status badge color coding
     const getStatusClass = (status) => {
       const classes = {
         accepted: 'status-accepted',
@@ -203,7 +209,7 @@ export default {
 </script>
 
 <style scoped>
-/* Modal header - consistent with app theme */
+/* Modal header with Wikipedia primary color */
 .modal-header {
   background-color: var(--wiki-primary);
   color: white;
@@ -212,12 +218,14 @@ export default {
   transition: background-color 0.2s ease;
 }
 
+/* Modal title styling */
 .modal-title {
   font-weight: 600;
   font-size: 1.5rem;
   color: white;
 }
 
+/* Close button with inverted colors for visibility */
 .modal-header .btn-close {
   filter: invert(1) brightness(1.2);
   opacity: 0.9;
@@ -228,7 +236,7 @@ export default {
   opacity: 1;
 }
 
-/* Modal body - enhanced padding and spacing */
+/* Modal body with theme-aware background */
 .modal-body {
   padding: 2rem 1.5rem;
   background-color: var(--wiki-modal-bg);
@@ -236,45 +244,52 @@ export default {
   min-height: 300px;
 }
 
-/* No feedback state - improved design */
+/* Empty state padding override */
 .text-center.py-4 {
   padding: 3rem 1rem !important;
 }
 
+/* Empty state icon styling */
 .text-center .fa-inbox {
   color: var(--wiki-text-muted);
   opacity: 0.5;
 }
 
+/* Dark mode: dimmer empty state icon */
 [data-theme="dark"] .text-center .fa-inbox {
   opacity: 0.3;
 }
 
+/* Empty state text */
 .text-center .text-muted {
   color: var(--wiki-text-muted);
   font-size: 1rem;
 }
 
+/* Dark mode: lighter muted text */
 [data-theme="dark"] .text-center .text-muted {
   color: #b8b8b8;
 }
 
-/* Feedback sections - cleaner spacing */
+/* Individual feedback section with bottom border */
 .feedback-section {
   border-bottom: 1px solid var(--wiki-border);
   padding-bottom: 1.5rem;
   margin-bottom: 0;
 }
 
+/* Remove border from last section */
 .feedback-section:last-child {
   border-bottom: none;
   padding-bottom: 0;
 }
 
+/* Spacing between consecutive sections */
 .feedback-section + .feedback-section {
   margin-top: 1.5rem;
 }
 
+/* Section title with icon and uppercase styling */
 .feedback-section-title {
   color: var(--wiki-primary);
   font-weight: 600;
@@ -286,15 +301,17 @@ export default {
   letter-spacing: 0.5px;
 }
 
+/* Dark mode: lighter blue for section titles */
 [data-theme="dark"] .feedback-section-title {
   color: #5db8e6;
 }
 
+/* Content area with left padding for hierarchy */
 .feedback-content {
   padding-left: 1.75rem;
 }
 
-/* Status badge - matching app theme */
+/* Status badge with rounded corners and uppercase text */
 .status-badge {
   display: inline-block;
   padding: 0.5rem 1.25rem;
@@ -306,41 +323,46 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Accepted status: green background */
 .status-accepted {
   background-color: var(--wiki-success);
   color: white;
   border: none;
 }
 
+/* Rejected status: red background */
 .status-rejected {
   background-color: var(--wiki-danger);
   color: white;
   border: none;
 }
 
+/* Pending status: orange background with dark text */
 .status-pending {
   background-color: var(--wiki-warning);
   color: #000000;
   border: none;
 }
 
-/* Dark mode status badges - maintain visibility with original colors */
+/* Dark mode: maintain original green for accepted */
 [data-theme="dark"] .status-accepted {
   background-color: #339966 !important;
   color: #ffffff !important;
 }
 
+/* Dark mode: maintain MediaWiki red for rejected */
 [data-theme="dark"] .status-rejected {
   background-color: #990000 !important;
   color: #ffffff !important;
 }
 
+/* Dark mode: maintain orange for pending */
 [data-theme="dark"] .status-pending {
   background-color: #ffc107 !important;
   color: #000000 !important;
 }
 
-/* Reviewer info - enhanced design */
+/* Reviewer information container with hover effect */
 .reviewer-info {
   display: flex;
   align-items: center;
@@ -353,34 +375,40 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Highlight border on hover */
 .reviewer-info:hover {
   border-color: var(--wiki-primary);
 }
 
+/* Dark mode: subtle blue tint background */
 [data-theme="dark"] .reviewer-info {
   background-color: rgba(93, 184, 230, 0.05);
 }
 
+/* Reviewer name with prominent styling */
 .reviewer-name {
   font-weight: 600;
   font-size: 1.1rem;
   color: var(--wiki-dark);
 }
 
+/* Dark mode: white reviewer name */
 [data-theme="dark"] .reviewer-name {
   color: #ffffff;
 }
 
+/* Review date with smaller, muted styling */
 .review-date {
   font-size: 0.9rem;
   color: var(--wiki-text-muted);
 }
 
+/* Dark mode: lighter date text */
 [data-theme="dark"] .review-date {
   color: #b8b8b8;
 }
 
-/* Marks display - prominent and clean */
+/* Large marks display with baseline alignment */
 .marks-display {
   display: flex;
   align-items: baseline;
@@ -389,10 +417,12 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Dark mode: shadow on marks display hover */
 [data-theme="dark"] .marks-display:hover {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* Large numeric score display */
 .total-marks {
   font-size: 3.5rem;
   font-weight: 700;
@@ -400,10 +430,12 @@ export default {
   line-height: 1;
 }
 
+/* Dark mode: lighter blue for marks */
 [data-theme="dark"] .total-marks {
   color: #5db8e6;
 }
 
+/* Points label next to score */
 .marks-label {
   font-size: 1.25rem;
   color: var(--wiki-text-muted);
@@ -412,13 +444,14 @@ export default {
   letter-spacing: 0.5px;
 }
 
-/* Parameter scores grid - improved spacing */
+/* Vertical layout for parameter scores */
 .parameter-scores-grid {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
+/* Individual parameter score item with hover effect */
 .parameter-score-item {
   display: flex;
   justify-content: space-between;
@@ -430,20 +463,24 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Highlight and shadow on hover */
 .parameter-score-item:hover {
   border-color: var(--wiki-primary);
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.1);
 }
 
+/* Dark mode: subtle background for parameter items */
 [data-theme="dark"] .parameter-score-item {
   background-color: rgba(93, 184, 230, 0.05);
 }
 
+/* Dark mode: stronger shadow on hover */
 [data-theme="dark"] .parameter-score-item:hover {
   border-color: var(--wiki-primary);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Parameter name with fixed minimum width */
 .parameter-name {
   font-weight: 600;
   color: var(--wiki-dark);
@@ -451,10 +488,12 @@ export default {
   font-size: 0.95rem;
 }
 
+/* Dark mode: white parameter names */
 [data-theme="dark"] .parameter-name {
   color: #ffffff;
 }
 
+/* Score display with progress bar and value */
 .parameter-score {
   display: flex;
   align-items: center;
@@ -462,6 +501,7 @@ export default {
   flex: 1;
 }
 
+/* Progress bar container with rounded corners */
 .score-bar-container {
   flex: 1;
   height: 10px;
@@ -471,10 +511,12 @@ export default {
   max-width: 200px;
 }
 
+/* Dark mode: darker progress bar background */
 [data-theme="dark"] .score-bar-container {
   background-color: #3a3a3a;
 }
 
+/* Filled portion of progress bar with gradient */
 .score-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--wiki-primary) 0%, #5db8e6 100%);
@@ -482,6 +524,7 @@ export default {
   border-radius: 10px;
 }
 
+/* Numeric score value next to progress bar */
 .score-value {
   font-weight: 600;
   color: var(--wiki-primary);
@@ -490,11 +533,12 @@ export default {
   font-size: 0.9rem;
 }
 
+/* Dark mode: lighter blue for score value */
 [data-theme="dark"] .score-value {
   color: #5db8e6;
 }
 
-/* Comment box - matching app design */
+/* Comment box with left border accent */
 .comment-box {
   background-color: var(--wiki-light-bg);
   border: 1px solid var(--wiki-border);
@@ -509,19 +553,22 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Shadow on comment box hover */
 .comment-box:hover {
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.1);
 }
 
+/* Dark mode: subtle background for comment box */
 [data-theme="dark"] .comment-box {
   background-color: rgba(93, 184, 230, 0.05);
 }
 
+/* Dark mode: stronger shadow on hover */
 [data-theme="dark"] .comment-box:hover {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Modal footer - consistent styling */
+/* Modal footer with theme-aware border */
 .modal-footer {
   border-top: 1px solid var(--wiki-border);
   padding: 1rem 1.5rem;
@@ -529,7 +576,7 @@ export default {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Button styling - matching app theme */
+/* Secondary button with gray styling */
 .btn-secondary {
   background-color: var(--wiki-text-muted);
   border-color: var(--wiki-text-muted);
@@ -537,6 +584,7 @@ export default {
   font-weight: 500;
 }
 
+/* Button hover with lift effect */
 .btn-secondary:hover {
   background-color: var(--wiki-text-muted);
   border-color: var(--wiki-text-muted);
@@ -544,6 +592,7 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Dark mode: darker gray for secondary button */
 [data-theme="dark"] .btn-secondary {
   background-color: #5a6268;
   border-color: #5a6268;
@@ -554,55 +603,65 @@ export default {
   border-color: #6c757d;
 }
 
-/* Spinner */
+/* Small spinner for loading state */
 .spinner-border-sm {
   width: 1.5rem;
   height: 1.5rem;
   border-width: 0.2em;
 }
 
-/* Responsive adjustments */
+/* Mobile responsive adjustments */
 @media (max-width: 768px) {
+  /* Reduce padding on mobile */
   .modal-body {
     padding: 1rem;
   }
 
+  /* Reduce content padding */
   .feedback-content {
     padding-left: 1rem;
   }
 
+  /* Smaller marks on mobile */
   .total-marks {
     font-size: 2.5rem;
   }
 
+  /* Smaller label on mobile */
   .marks-label {
     font-size: 1rem;
   }
 
+  /* Stack reviewer info vertically */
   .reviewer-info {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
 
+  /* Remove left margin on mobile */
   .review-date {
     margin-left: 0 !important;
   }
 
+  /* Stack parameter score items vertically */
   .parameter-score-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
 
+  /* Remove minimum width on mobile */
   .parameter-name {
     min-width: auto;
   }
 
+  /* Full width score display */
   .parameter-score {
     width: 100%;
   }
 
+  /* Full width progress bar on mobile */
   .score-bar-container {
     max-width: 100%;
   }
