@@ -72,6 +72,7 @@ class Contest(BaseModel):
 
     # Timestamp
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    organizers = db.Column(db.Text, nullable=True)
 
     # Relationships
     submissions = db.relationship(
@@ -111,6 +112,7 @@ class Contest(BaseModel):
         # Handle rules and jury_members
         self.set_rules(kwargs.get("rules", {}))
         self.set_jury_members(kwargs.get("jury_members", []))
+        self.set_organizers(kwargs.get("organizers", []), created_by)
 
     def set_rules(self, rules_dict):
         """
@@ -384,6 +386,130 @@ class Contest(BaseModel):
 
         # Clamp score between min and max
         return max(min(final_score, max_score), min_score)
+    def set_organizers(self, organizers_list, creator_username=None):
+        """
+        Set organizers from list. Creator is always included.
+        
+        Args:
+            organizers_list: List of organizer usernames
+            creator_username: Username of creator (auto-added if provided)
+        """
+        if isinstance(organizers_list, list):
+            # Remove duplicates and empty strings
+            unique_organizers = list(set([
+                username.strip() 
+                for username in organizers_list 
+                if username and username.strip()
+            ]))
+            
+            # Ensure creator is always in the list
+            if creator_username:
+                creator_username = creator_username.strip()
+                if creator_username and creator_username not in unique_organizers:
+                    unique_organizers.insert(0, creator_username)
+            elif self.created_by:
+                creator = self.created_by.strip()
+                if creator and creator not in unique_organizers:
+                    unique_organizers.insert(0, creator)
+            
+            self.organizers = ",".join(unique_organizers)
+        else:
+            # If not a list, set to creator only
+            if creator_username:
+                self.organizers = creator_username.strip()
+            elif self.created_by:
+                self.organizers = self.created_by.strip()
+            else:
+                self.organizers = ""
+
+    def get_organizers(self):
+        """
+        Get organizers as list of usernames.
+        
+        Returns:
+            list: List of organizer usernames
+        """
+        if self.organizers:
+            return [
+                username.strip()
+                for username in self.organizers.split(",")
+                if username.strip()
+            ]
+        return []
+    
+    def add_organizer(self, username):
+        """
+        Add a user as organizer for this contest.
+        
+        Args:
+            username: Username to add as organizer
+        
+        Returns:
+            tuple: (success: bool, error_message: str or None)
+        """
+        username = username.strip()
+        if not username:
+            return False, "Invalid username"
+        
+        # Check if already an organizer
+        current_organizers = self.get_organizers()
+        if username in current_organizers:
+            return False, f"{username} is already an organizer"
+        
+        # Add to list
+        current_organizers.append(username)
+        self.set_organizers(current_organizers, self.created_by)
+        
+        return True, None
+    
+    def remove_organizer(self, username):
+        """
+        Remove a user as organizer from this contest.
+        
+        Args:
+            username: Username to remove as organizer
+        
+        Returns:
+            tuple: (success: bool, error_message: str or None)
+        """
+        username = username.strip()
+        if not username:
+            return False, "Invalid username"
+        
+        # Check if user is organizer
+        current_organizers = self.get_organizers()
+        if username not in current_organizers:
+            return False, f"{username} is not an organizer"
+        
+        # Prevent removing creator
+        if username == self.created_by:
+            return False, "Cannot remove the contest creator from organizers"
+        
+        # Prevent removing last organizer
+        if len(current_organizers) <= 1:
+            return False, "Cannot remove the last organizer"
+        
+        # Remove from list
+        current_organizers.remove(username)
+        self.set_organizers(current_organizers, self.created_by)
+        
+        return True, None
+    
+    def is_organizer(self, username):
+        """
+        Check if a user is an organizer for this contest.
+        
+        Args:
+            username: Username to check
+        
+        Returns:
+            bool: True if user is an organizer, False otherwise
+        """
+        if not username:
+            return False
+        
+        username = username.strip()
+        return username in self.get_organizers()
 
     def to_dict(self):
         """
@@ -412,6 +538,7 @@ class Contest(BaseModel):
             "min_byte_count": self.min_byte_count,
             "categories": self.get_categories(),
             "jury_members": self.get_jury_members(),
+            "organizers": self.get_organizers(),
             # Format datetime as ISO string with 'Z' suffix to indicate UTC
             # This ensures JavaScript interprets it as UTC, not local time
             "created_at": (

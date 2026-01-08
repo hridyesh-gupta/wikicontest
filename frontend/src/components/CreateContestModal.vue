@@ -49,6 +49,55 @@
               </div>
             </div>
 
+            <div class="mb-3">
+              <label class="form-label">
+                Additional Organizers (Optional)
+                <span class="badge bg-secondary">You will be added automatically as creator</span>
+              </label>
+
+              <!-- Selected Organizers Display -->
+              <div class="mb-2 p-2 border rounded bg-light organizer-selection-box" style="min-height: 40px;">
+                <small v-if="selectedOrganizers.length === 0" class="organizer-placeholder-text">
+                  No additional organizers added
+                </small>
+                <span v-for="username in selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
+                  style="font-size: 0.9rem; cursor: pointer;">
+                  {{ username }}
+                  <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
+                </span>
+              </div>
+
+              <!-- Organizer Input with Autocomplete -->
+              <div style="position: relative;">
+                <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
+                  placeholder="Type username to add additional organizers..." autocomplete="off" />
+
+                <!-- Autocomplete Dropdown -->
+                <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
+                  class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
+                  style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                  <div v-for="user in organizerSearchResults" :key="user.username"
+                    class="p-2 border-bottom cursor-pointer" :class="{ 'bg-info-subtle': isCurrentUser(user.username) }"
+                    style="cursor: pointer;" @click="addOrganizer(user.username)">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="d-flex align-items-center">
+                        <i class="fas fa-user-tie me-2 text-success"></i>
+                        <strong>{{ user.username }}</strong>
+                      </div>
+                      <div v-if="isCurrentUser(user.username)" class="badge bg-info">
+                        You (already added as creator)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <small class="form-text text-muted mt-1">
+                <i class="fas fa-info-circle me-1"></i>
+                You will be automatically added as an organizer. Add others who should manage this contest.
+              </small>
+            </div>
+
             <!-- Jury Members with Autocomplete -->
             <div class="mb-3">
               <label for="juryInput" class="form-label">
@@ -298,6 +347,11 @@ export default {
     const enableMultiParameterScoring = ref(false)
     const maxScore = ref(10)
     const minScore = ref(0)
+    const selectedOrganizers = ref([])
+    const organizerSearchQuery = ref('')
+    const organizerSearchResults = ref([])
+    let organizerSearchTimeout = null
+
     const scoringParameters = ref([
       { name: 'Quality', weight: 40, description: 'Article structure & content quality' },
       { name: 'Sources', weight: 30, description: 'References & citations' },
@@ -353,6 +407,7 @@ export default {
       start_date: '',
       end_date: '',
       jury_members: [],
+      organizers: [],
       marks_setting_accepted: 10,
       marks_setting_rejected: 0,
       rules_text: '',
@@ -512,6 +567,57 @@ export default {
       }
     }
 
+    const searchOrganizers = async () => {
+      const query = organizerSearchQuery.value.trim()
+
+      if (query.length < 2) {
+        organizerSearchResults.value = []
+        return
+      }
+
+      // Debounce search
+      if (organizerSearchTimeout) {
+        clearTimeout(organizerSearchTimeout)
+      }
+
+      organizerSearchTimeout = setTimeout(async () => {
+        try {
+          const response = await api.get(`/user/search?q=${encodeURIComponent(query)}&limit=10`)
+          // Filter out already selected organizers and current user
+          organizerSearchResults.value = (response.users || []).filter(
+            user => !selectedOrganizers.value.includes(user.username) &&
+              !isCurrentUser(user.username)
+          )
+        } catch (error) {
+          console.error('Organizer search error:', error)
+          organizerSearchResults.value = []
+        }
+      }, 300)
+    }
+
+    // Add organizer
+    const addOrganizer = (username) => {
+      // Don't add current user (they're already creator)
+      if (isCurrentUser(username)) {
+        showAlert('You will be added automatically as contest creator', 'info')
+        return
+      }
+
+      // Add the organizer if not already selected
+      if (!selectedOrganizers.value.includes(username)) {
+        selectedOrganizers.value.push(username)
+        formData.organizers = [...selectedOrganizers.value]
+        organizerSearchQuery.value = ''
+        organizerSearchResults.value = []
+      }
+    }
+
+    // Remove organizer
+    const removeOrganizer = (username) => {
+      selectedOrganizers.value = selectedOrganizers.value.filter(u => u !== username)
+      formData.organizers = [...selectedOrganizers.value]
+    }
+
     // Handle form submission
     const handleSubmit = async () => {
       // Validation
@@ -590,6 +696,7 @@ export default {
         const contestData = {
           ...formData,
           jury_members: selectedJury.value,
+          organizers: selectedOrganizers.value,
           rules: {
             text: formData.rules_text.trim()
           },
@@ -629,6 +736,8 @@ export default {
       formData.description = ''
       selectedJury.value = []
       formData.jury_members = []
+      selectedOrganizers.value = []
+      formData.organizers = []
       formData.rules_text = ''
       formData.min_byte_count = 0
       formData.categories = ['']
@@ -652,12 +761,18 @@ export default {
       selectedJury,
       jurySearchQuery,
       jurySearchResults,
+      selectedOrganizers,
+      organizerSearchQuery,
+      organizerSearchResults,
       loading,
       isCurrentUser,
       currentUser,
       searchJury,
       addJury,
       removeJury,
+      searchOrganizers,
+      addOrganizer,
+      removeOrganizer,
       addCategory,
       removeCategory,
       handleSubmit,
@@ -1026,5 +1141,83 @@ input[type="date"].form-control {
 .modal-fullscreen .modal-body form {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.organizer-selection-box {
+  background-color: var(--wiki-hover-bg) !important;
+  border-color: #28a745 !important;
+  border: 1px solid var(--wiki-border);
+  border-radius: 4px;
+  padding: 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] .organizer-selection-box {
+  background-color: rgba(40, 167, 69, 0.1) !important;
+}
+
+/* Organizer placeholder text */
+.organizer-selection-box .organizer-placeholder-text {
+  color: #333333 !important;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .organizer-selection-box .organizer-placeholder-text {
+  color: #ffffff !important;
+}
+
+/* Organizer badges */
+.badge.bg-success {
+  background-color: #28a745 !important;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.badge.bg-success:hover {
+  background-color: #218838 !important;
+}
+
+/* Organizer autocomplete dropdown */
+.organizer-autocomplete {
+  border: 1px solid var(--wiki-border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--wiki-card-bg);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] .organizer-autocomplete {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.organizer-autocomplete .p-2 {
+  transition: background-color 0.2s ease;
+  color: var(--wiki-text);
+}
+
+.organizer-autocomplete .p-2:hover {
+  background-color: var(--wiki-hover-bg) !important;
+}
+
+/* Current user indicator in organizer dropdown */
+.organizer-autocomplete .bg-info-subtle {
+  background-color: rgba(13, 202, 240, 0.15) !important;
+  border-left: 3px solid #0dcaf0;
+}
+
+[data-theme="dark"] .organizer-autocomplete .bg-info-subtle {
+  background-color: rgba(13, 202, 240, 0.25) !important;
+}
+
+.organizer-autocomplete .text-success {
+  color: #28a745 !important;
+}
+
+/* Secondary badge for info */
+.badge.bg-secondary {
+  background-color: #6c757d !important;
+  color: white;
 }
 </style>
