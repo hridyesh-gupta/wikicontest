@@ -53,19 +53,19 @@ class Submission(BaseModel):
 
     # Author from latest revision at submission time (most recent editor)
     article_author = db.Column(db.String(200), nullable=True)
-    
+
     # When the article was originally created on Wikipedia
     article_created_at = db.Column(db.DateTime, nullable=True)
-    
+
     # Article size in bytes (MediaWiki calls this "size", not word count)
     article_word_count = db.Column(db.Integer, nullable=True)
-    
+
     # MediaWiki internal page identifier
     article_page_id = db.Column(db.String(50), nullable=True)
-    
+
     # Article size in bytes at contest start date
     article_size_at_start = db.Column(db.Integer, nullable=True)
-    
+
     # Bytes added/removed between contest start and submission time
     # Can be negative if article was reduced in size
     article_expansion_bytes = db.Column(db.Integer, nullable=True)
@@ -77,10 +77,10 @@ class Submission(BaseModel):
 
     # Status: 'pending', 'accepted', 'rejected', or 'auto_rejected'
     status = db.Column(db.String(20), nullable=False, default="pending")
-    
+
     # Total score awarded to this submission
     score = db.Column(db.Integer, default=0, nullable=False)
-    
+
     # Individual parameter scores (stored as JSON) for multi-parameter scoring
     # Example: {"Quality": 8, "Sources": 7, "Neutrality": 9, "Formatting": 6}
     parameter_scores = db.Column(db.Text, nullable=True)
@@ -92,10 +92,10 @@ class Submission(BaseModel):
 
     # Who reviewed this submission (jury member or organizer)
     reviewed_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    
+
     # When the review was completed (UTC)
     reviewed_at = db.Column(db.DateTime, nullable=True)
-    
+
     # Jury's comment or feedback on the submission
     review_comment = db.Column(db.Text, nullable=True)
 
@@ -188,7 +188,7 @@ class Submission(BaseModel):
         self.article_link = article_link
         self.status = status
         self.score = 0
-        
+
         # Set article metadata (fetched from MediaWiki API)
         self.article_author = article_author
         self.article_created_at = article_created_at
@@ -196,7 +196,7 @@ class Submission(BaseModel):
         self.article_page_id = article_page_id
         self.article_size_at_start = article_size_at_start
         self.article_expansion_bytes = article_expansion_bytes
-        
+
         # Initialize review fields (set when jury reviews)
         self.reviewed_by = None
         self.reviewed_at = None
@@ -245,7 +245,7 @@ class Submission(BaseModel):
     def set_parameter_scores(self, scores):
         """
         Set individual parameter scores
-        
+
         Args:
             scores: Dict mapping parameter names to scores (0-10)
                    Example: {"Quality": 8, "Sources": 7, ...}
@@ -262,7 +262,7 @@ class Submission(BaseModel):
     def get_parameter_scores(self):
         """
         Get individual parameter scores
-        
+
         Returns:
             dict or None: Parameter scores mapping
         """
@@ -290,10 +290,10 @@ class Submission(BaseModel):
     ):
         """
         Update submission status and calculate score
-        
+
         Supports both simple scoring (fixed points) and multi-parameter scoring
         (weighted average of individual parameter scores)
-        
+
         Args:
             new_status: New status ('accepted', 'rejected', 'pending')
             reviewer: User instance who is reviewing
@@ -301,7 +301,7 @@ class Submission(BaseModel):
             comment: Review comment/feedback
             contest: Contest instance (fetched if not provided)
             parameter_scores: Dict of parameter scores (multi-parameter scoring)
-        
+
         Returns:
             bool: True if status was changed, False if already at new_status
         """
@@ -357,7 +357,7 @@ class Submission(BaseModel):
                 self.submitter = User.query.get(self.user_id)
                 if self.submitter is None:
                     raise ValueError(f"Submitter user with id {self.user_id} not found")
-            
+
             # Propagate score change to user's total
             self.submitter.update_score(score_difference)
 
@@ -438,21 +438,21 @@ class Submission(BaseModel):
             "id": self.id,
             "user_id": self.user_id,
             "contest_id": self.contest_id,
-            
+
             # Article information
             "article_title": self.article_title,
             "article_link": self.article_link,
-            
+
             # Submission status and scoring
             "status": self.status,
             "score": self.score,
-            
+
             # Timestamps - add 'Z' suffix to indicate UTC timezone
             # This ensures JavaScript interprets it as UTC, not local time
             "submitted_at": (
                 (self.submitted_at.isoformat() + "Z") if self.submitted_at else None
             ),
-            
+
             # Article metadata (from MediaWiki API)
             "article_author": self.article_author,
             "article_created_at": (
@@ -464,7 +464,7 @@ class Submission(BaseModel):
             "article_page_id": self.article_page_id,
             "article_size_at_start": self.article_size_at_start,
             "article_expansion_bytes": self.article_expansion_bytes,
-            
+
             # Review information
             "reviewed_by": self.reviewed_by,
             "reviewed_at": (
@@ -472,7 +472,7 @@ class Submission(BaseModel):
             ),
             "review_comment": self.review_comment,
             "already_reviewed": self.reviewed_at is not None,
-            
+
             # Multi-parameter scoring data
             "parameter_scores": self.get_parameter_scores(),
         }

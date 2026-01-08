@@ -64,11 +64,11 @@ class Contest(BaseModel):
 
     # Contest rules (stored as JSON string)
     rules = db.Column(db.Text, nullable=True)
-    
+
     # Simple scoring: fixed points for accepted/rejected submissions
     marks_setting_accepted = db.Column(db.Integer, default=0, nullable=False)
     marks_setting_rejected = db.Column(db.Integer, default=0, nullable=False)
-    
+
     # Multi-parameter scoring configuration (stored as JSON string)
     scoring_parameters = db.Column(db.Text, nullable=True)
 
@@ -149,7 +149,7 @@ class Contest(BaseModel):
         self.marks_setting_accepted = kwargs.get("marks_setting_accepted", 0)
         self.marks_setting_rejected = kwargs.get("marks_setting_rejected", 0)
         self.allowed_submission_type = kwargs.get("allowed_submission_type", "both")
-        
+
         # Set scoring configuration (handles validation internally)
         self.set_scoring_parameters(kwargs.get("scoring_parameters"))
 
@@ -161,7 +161,7 @@ class Contest(BaseModel):
         self.set_categories(kwargs.get("categories", []))
         self.set_rules(kwargs.get("rules", {}))
         self.set_jury_members(kwargs.get("jury_members", []))
-        
+
         # Set organizers (creator is automatically added)
         self.set_organizers(kwargs.get("organizers", []), created_by)
 
@@ -497,7 +497,7 @@ class Contest(BaseModel):
     def get_scoring_parameters(self):
         """
         Get scoring parameters configuration
-        
+
         Returns:
             dict or None: Scoring parameters configuration
         """
@@ -513,7 +513,7 @@ class Contest(BaseModel):
     def is_multi_parameter_scoring_enabled(self):
         """
         Check if multi-parameter scoring is enabled for this contest
-        
+
         Returns:
             bool: True if enabled, False otherwise
         """
@@ -526,11 +526,11 @@ class Contest(BaseModel):
     def calculate_weighted_score(self, parameter_scores):
         """
         Calculate weighted score from individual parameter scores
-        
+
         Args:
             parameter_scores: Dict mapping parameter names to scores (0-10)
                             Example: {"Quality": 8, "Sources": 7, ...}
-        
+
         Returns:
             int: Final calculated score (clamped between min and max)
         """
@@ -567,7 +567,7 @@ class Contest(BaseModel):
     def set_organizers(self, organizers_list, creator_username=None):
         """
         Set organizers from list. Creator is always included.
-        
+
         Args:
             organizers_list: List of organizer usernames
             creator_username: Username of creator (auto-added if provided)
@@ -575,11 +575,11 @@ class Contest(BaseModel):
         if isinstance(organizers_list, list):
             # Remove duplicates and empty strings
             unique_organizers = list(set([
-                username.strip() 
-                for username in organizers_list 
+                username.strip()
+                for username in organizers_list
                 if username and username.strip()
             ]))
-            
+
             # Ensure creator is always in the organizers list
             if creator_username:
                 creator_username = creator_username.strip()
@@ -591,7 +591,7 @@ class Contest(BaseModel):
                 creator = self.created_by.strip()
                 if creator and creator not in unique_organizers:
                     unique_organizers.insert(0, creator)
-            
+
             # Convert list to comma-separated string
             self.organizers = ",".join(unique_organizers)
         else:
@@ -607,7 +607,7 @@ class Contest(BaseModel):
     def get_organizers(self):
         """
         Get organizers as list of usernames.
-        
+
         Returns:
             list: List of organizer usernames
         """
@@ -624,76 +624,76 @@ class Contest(BaseModel):
     def add_organizer(self, username):
         """
         Add a user as organizer for this contest.
-        
+
         Args:
             username: Username to add as organizer
-        
+
         Returns:
             tuple: (success: bool, error_message: str or None)
         """
         username = username.strip()
         if not username:
             return False, "Invalid username"
-        
+
         # Check for duplicate
         current_organizers = self.get_organizers()
         if username in current_organizers:
             return False, f"{username} is already an organizer"
-        
+
         # Add to list and persist
         current_organizers.append(username)
         self.set_organizers(current_organizers, self.created_by)
-        
+
         return True, None
 
 
     def remove_organizer(self, username):
         """
         Remove a user as organizer from this contest.
-        
+
         Args:
             username: Username to remove as organizer
-        
+
         Returns:
             tuple: (success: bool, error_message: str or None)
         """
         username = username.strip()
         if not username:
             return False, "Invalid username"
-        
+
         # Verify user is actually an organizer
         current_organizers = self.get_organizers()
         if username not in current_organizers:
             return False, f"{username} is not an organizer"
-        
+
         # Prevent removing the contest creator
         if username == self.created_by:
             return False, "Cannot remove the contest creator from organizers"
-        
+
         # Prevent removing the last organizer (contest must have at least one)
         if len(current_organizers) <= 1:
             return False, "Cannot remove the last organizer"
-        
+
         # Remove from list and persist
         current_organizers.remove(username)
         self.set_organizers(current_organizers, self.created_by)
-        
+
         return True, None
 
 
     def is_organizer(self, username):
         """
         Check if a user is an organizer for this contest.
-        
+
         Args:
             username: Username to check
-        
+
         Returns:
             bool: True if user is an organizer, False otherwise
         """
         if not username:
             return False
-        
+
         username = username.strip()
         return username in self.get_organizers()
 
@@ -715,11 +715,11 @@ class Contest(BaseModel):
             "project_name": self.project_name,
             "created_by": self.created_by,
             "description": self.description,
-            
+
             # Convert dates to ISO format strings
             "start_date": self.start_date.isoformat() if self.start_date else None,
             "end_date": self.end_date.isoformat() if self.end_date else None,
-            
+
             # Parse JSON/comma-separated fields to native types
             "rules": self.get_rules(),
             "scoring_parameters": (
@@ -727,27 +727,27 @@ class Contest(BaseModel):
                 if self.get_scoring_parameters()
                 else {"enabled": False}  # Default for simple scoring
             ),
-            
+
             # Scoring settings
             "marks_setting_accepted": self.marks_setting_accepted,
             "marks_setting_rejected": self.marks_setting_rejected,
             "allowed_submission_type": self.allowed_submission_type,
-            
+
             # Article requirements
             "min_byte_count": self.min_byte_count,
             "min_reference_count": self.min_reference_count,
             "categories": self.get_categories(),
-            
+
             # People management
             "jury_members": self.get_jury_members(),
             "organizers": self.get_organizers(),
-            
+
             # Metadata - add 'Z' suffix to indicate UTC timezone
             # This ensures JavaScript interprets it as UTC, not local time
             "created_at": (
                 (self.created_at.isoformat() + "Z") if self.created_at else None
             ),
-            
+
             # Computed fields
             "submission_count": self.get_submission_count(),
             "status": self.get_status(),

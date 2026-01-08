@@ -6,8 +6,8 @@ Handles JWT token management and user authentication
 from functools import wraps
 from flask import request, jsonify, current_app
 from flask_jwt_extended import (
-    jwt_required, 
-    get_jwt_identity, 
+    jwt_required,
+    get_jwt_identity,
     verify_jwt_in_request,
     get_jwt
 )
@@ -21,17 +21,17 @@ from app.models.user import User
 def get_current_user():
     """
     Get the current authenticated user from JWT token
-    
+
     Returns:
         User: Current user instance or None if not authenticated
     """
     try:
         # Verify JWT token exists and is valid in current request
         verify_jwt_in_request()
-        
+
         # Extract user ID from JWT claims
         user_id = get_jwt_identity()
-        
+
         # Convert string user_id back to integer for database query
         # JWT stores identity as string, but database expects integer
         return User.query.get(int(user_id))
@@ -47,10 +47,10 @@ def get_current_user():
 def require_auth(f):
     """
     Decorator to require authentication for a route
-    
+
     Args:
         f: Function to decorate
-        
+
     Returns:
         Decorated function that requires authentication
     """
@@ -62,21 +62,21 @@ def require_auth(f):
         if not user:
             # User not found in database (deleted user with valid token)
             return jsonify({'error': 'Invalid user'}), 401
-        
+
         # Attach user to request context for easy access in route handlers
         request.current_user = user
         return f(*args, **kwargs)
-    
+
     return decorated_function
 
 
 def require_role(roles):
     """
     Decorator to require specific roles for a route
-    
+
     Args:
         roles: List of allowed roles or single role string
-        
+
     Returns:
         Decorator function
     """
@@ -88,21 +88,21 @@ def require_role(roles):
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
-            
+
             # Normalize roles to list format for consistent checking
             if isinstance(roles, str):
                 allowed_roles = [roles]
             else:
                 allowed_roles = roles
-            
+
             # Check if user has required role or is admin (admins bypass all role checks)
             if user.role not in allowed_roles and not user.is_admin():
                 return jsonify({'error': 'Insufficient permissions'}), 403
-            
+
             # Attach user to request context
             request.current_user = user
             return f(*args, **kwargs)
-        
+
         return decorated_function
     return decorator
 
@@ -114,10 +114,10 @@ def require_role(roles):
 def require_contest_permission(permission_type):
     """
     Decorator to require specific contest permissions
-    
+
     Args:
         permission_type: Type of permission ('creator', 'jury', 'participant')
-        
+
     Returns:
         Decorator function
     """
@@ -129,21 +129,21 @@ def require_contest_permission(permission_type):
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
-            
+
             # Extract contest_id from URL route parameters
             contest_id = kwargs.get('id')
             if not contest_id:
                 return jsonify({'error': 'Contest ID required'}), 400
-            
+
             # Fetch contest from database
             from app.models.contest import Contest
             contest = Contest.query.get(contest_id)
             if not contest:
                 return jsonify({'error': 'Contest not found'}), 404
-            
+
             # Check permissions based on requested permission type
             has_permission = False
-            
+
             if permission_type == 'creator':
                 # Only contest creator or admin can access
                 has_permission = user.is_contest_creator(contest) or user.is_admin()
@@ -153,15 +153,15 @@ def require_contest_permission(permission_type):
             elif permission_type == 'participant':
                 # Any authenticated user can participate
                 has_permission = True
-            
+
             if not has_permission:
                 return jsonify({'error': 'Insufficient permissions for this contest'}), 403
-            
+
             # Attach both user and contest to request context for route handlers
             request.current_user = user
             request.current_contest = contest
             return f(*args, **kwargs)
-        
+
         return decorated_function
     return decorator
 
@@ -169,10 +169,10 @@ def require_contest_permission(permission_type):
 def require_submission_permission(permission_type):
     """
     Decorator to require specific submission permissions
-    
+
     Args:
         permission_type: Type of permission ('owner', 'jury', 'view')
-        
+
     Returns:
         Decorator function
     """
@@ -184,21 +184,21 @@ def require_submission_permission(permission_type):
             user = get_current_user()
             if not user:
                 return jsonify({'error': 'Invalid user'}), 401
-            
+
             # Extract submission_id from URL route parameters
             submission_id = kwargs.get('id')
             if not submission_id:
                 return jsonify({'error': 'Submission ID required'}), 400
-            
+
             # Fetch submission from database
             from app.models.submission import Submission
             submission = Submission.query.get(submission_id)
             if not submission:
                 return jsonify({'error': 'Submission not found'}), 404
-            
+
             # Check permissions based on requested permission type
             has_permission = False
-            
+
             if permission_type == 'owner':
                 # Only submission owner or admin can access
                 has_permission = (submission.user_id == user.id) or user.is_admin()
@@ -208,15 +208,15 @@ def require_submission_permission(permission_type):
             elif permission_type == 'view':
                 # Anyone with view permission (jury, organizers, owner)
                 has_permission = submission.can_be_viewed_by(user)
-            
+
             if not has_permission:
                 return jsonify({'error': 'Insufficient permissions for this submission'}), 403
-            
+
             # Attach both user and submission to request context
             request.current_user = user
             request.current_submission = submission
             return f(*args, **kwargs)
-        
+
         return decorated_function
     return decorator
 
@@ -228,10 +228,10 @@ def require_submission_permission(permission_type):
 def validate_json_data(required_fields):
     """
     Decorator to validate JSON data in request
-    
+
     Args:
         required_fields: List of required field names
-        
+
     Returns:
         Decorator function
     """
@@ -241,23 +241,23 @@ def validate_json_data(required_fields):
             # Ensure request content-type is JSON
             if not request.is_json:
                 return jsonify({'error': 'Request must be JSON'}), 400
-            
+
             # Parse JSON body
             data = request.get_json()
             if not data:
                 return jsonify({'error': 'No JSON data provided'}), 400
-            
+
             # Validate all required fields are present
             missing_fields = [field for field in required_fields if field not in data]
             if missing_fields:
                 return jsonify({
                     'error': f'Missing required fields: {", ".join(missing_fields)}'
                 }), 400
-            
+
             # Attach validated data to request context for easy access
             request.validated_data = data
             return f(*args, **kwargs)
-        
+
         return decorated_function
     return decorator
 
@@ -269,10 +269,10 @@ def validate_json_data(required_fields):
 def handle_errors(f):
     """
     Decorator to handle common errors in route functions
-    
+
     Args:
         f: Function to decorate
-        
+
     Returns:
         Decorated function with error handling
     """
@@ -289,5 +289,5 @@ def handle_errors(f):
             current_app.logger.error(f"Error in {f.__name__}: {str(e)}")
             # Return generic error to avoid exposing internal details
             return jsonify({'error': 'Internal server error'}), 500
-    
+
     return decorated_function

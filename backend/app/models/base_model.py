@@ -34,7 +34,7 @@ class BaseModel(db.Model):
         """
         # Add instance to current session (marks as pending)
         db.session.add(self)
-        
+
         # Commit transaction to persist changes to database
         db.session.commit()
 
@@ -46,6 +46,6 @@ class BaseModel(db.Model):
         """
         # Mark instance for deletion in current session
         db.session.delete(self)
-        
+
         # Commit transaction to execute deletion
         db.session.commit()

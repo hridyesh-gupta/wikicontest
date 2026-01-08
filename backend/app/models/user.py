@@ -45,7 +45,7 @@ class User(BaseModel):
 
     # Role-based access control: 'user', 'admin', or 'superadmin'
     role = db.Column(db.String(20), nullable=False, default="user")
-    
+
     # Password stored as bcrypt hash (never store plaintext)
     password = db.Column(db.String(255), nullable=False)
 
@@ -62,7 +62,7 @@ class User(BaseModel):
 
     # One-to-many: User has created many contests
     created_contests = db.relationship("Contest", backref="creator", lazy="dynamic")
-    
+
     # One-to-many: User has submitted many submissions
     submissions = db.relationship(
         "Submission",
@@ -144,7 +144,7 @@ class User(BaseModel):
             score_change: Amount to add (positive) or subtract (negative)
         """
         self.score += score_change
-        
+
         # Note: Don't commit here - let the caller handle transaction
         # This allows multiple updates to be batched in a single commit
 
@@ -161,7 +161,7 @@ class User(BaseModel):
         - Treats both 'admin' and 'superadmin' as admin-level users
         - This simplifies permission checks: any code checking is_admin()
           automatically grants access to superadmins as well
-        
+
         Returns:
             bool: True if user is admin or superadmin, False otherwise
         """
@@ -177,7 +177,7 @@ class User(BaseModel):
         - Should be created and managed carefully (use sparingly)
         - Use this when you explicitly need to target only superadmins
         - For most permission checks, use is_admin() instead
-        
+
         Returns:
             bool: True if user is superadmin, False otherwise
         """
@@ -225,28 +225,28 @@ class User(BaseModel):
     def is_contest_organizer(self, contest):
         """
         Check if user is an organizer for a specific contest
-        
+
         Organizers have management permissions (edit, view submissions, etc.)
         Creator is always included in organizers list
-        
+
         Args:
             contest: Contest instance to check
-        
+
         Returns:
             bool: True if user is organizer, False otherwise
         """
         if not contest:
             return False
-        
+
         # Get organizers list from contest
         organizers = contest.get_organizers()
         if not organizers:
             return False
-        
+
         # Normalize usernames for case-insensitive comparison
         username_lower = self.username.strip().lower()
         organizer_usernames = [org.strip().lower() for org in organizers]
-        
+
         return username_lower in organizer_usernames
 
 
@@ -286,7 +286,7 @@ class User(BaseModel):
         # Contest creators can access all submissions in their contests
         if self.is_contest_creator(submission.contest):
             return True
-        
+
         # Contest organizers can access submissions in contests they manage
         if self.is_contest_organizer(submission.contest):
             return True
