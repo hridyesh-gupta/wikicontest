@@ -49,9 +49,9 @@ from app.utils import (
     get_latest_revision_author
 )
 
-# =============================================================================
+# ---------------------------------------------------------------------------
 # CONFIGURATION SETUP
-# =============================================================================
+# ---------------------------------------------------------------------------
 
 # Load environment variables from .env file
 # This allows for easy configuration management across different environments
@@ -72,16 +72,16 @@ def create_app():
     # Initialize Flask application
     flask_app = Flask(__name__)
 
-    # =========================================================================
+    # ------------------------------------------------------------------------
     # SECURITY CONFIGURATION
-    # =========================================================================
+    # ------------------------------------------------------------------------
 
     # Secret keys for session management and JWT signing
     # These should be different in production and stored securely
     flask_app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'rohank10')
     flask_app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'rohank10')
 
-    # Session configuration for OAuth flow
+    # --- Session Configuration for OAuth Flow ---
     # Sessions need to persist across redirects to external OAuth providers
     flask_app.config['SESSION_PERMANENT'] = True  # Make sessions persistent
     flask_app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)  # 30 min timeout
@@ -93,6 +93,7 @@ def create_app():
     flask_app.config['SESSION_COOKIE_DOMAIN'] = None  # Don't restrict domain for localhost
     flask_app.config['SESSION_COOKIE_PATH'] = '/'  # Available for all paths
 
+    # --- JWT Token Configuration ---
     # JWT token expiration time (24 hours)
     flask_app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)
 
@@ -108,9 +109,9 @@ def create_app():
     flask_app.config['JWT_COOKIE_CSRF_PROTECT'] = True  # Enable CSRF protection
     flask_app.config['JWT_CSRF_IN_COOKIES'] = True  # Include CSRF token in cookies
 
-    # =========================================================================
+    # ------------------------------------------------------------------------
     # OAUTH 1.0a CONFIGURATION (Wikimedia OAuth 1.0a)
-    # =========================================================================
+    # ------------------------------------------------------------------------
 
     # OAuth 1.0a configuration from environment variables
     # These values are loaded from .env file for Wikimedia OAuth 1.0a authentication
@@ -124,9 +125,9 @@ def create_app():
     # Most web apps should use False and register with a proper callback URL
     flask_app.config['OAUTH_USE_OOB'] = os.getenv('OAUTH_USE_OOB', 'False').lower() == 'true'
 
-    # =========================================================================
+    # ------------------------------------------------------------------------
     # DATABASE CONFIGURATION
-    # =========================================================================
+    # ------------------------------------------------------------------------
 
     # Database connection string
     # Supports MySQL, PostgreSQL, SQLite, and other SQLAlchemy-compatible databases
@@ -138,13 +139,13 @@ def create_app():
     # Disable SQLAlchemy event system for better performance
     flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # =========================================================================
+    # ------------------------------------------------------------------------
     # EXTENSION INITIALIZATION
-    # =========================================================================
+    # ------------------------------------------------------------------------
 
     # Initialize database with the app
     db.init_app(flask_app)
-    
+
     # Initialize JWT manager for token handling
     JWTManager(flask_app)
 
@@ -161,17 +162,17 @@ def create_app():
 # Create the application instance
 app = create_app()
 
-# =============================================================================
+# ---------------------------------------------------------------------------
 # MODEL REGISTRATION
-# =============================================================================
+# ---------------------------------------------------------------------------
 
 # Import models to ensure they are registered with SQLAlchemy
 # This is required for database migrations and table creation
 # Models are imported at top of file
 
-# =============================================================================
+# ---------------------------------------------------------------------------
 # ROUTE BLUEPRINT REGISTRATION
-# =============================================================================
+# ---------------------------------------------------------------------------
 
 # Import route blueprints for modular organization
 # Each blueprint handles a specific domain of functionality
@@ -182,9 +183,11 @@ app = create_app()
 app.register_blueprint(user_bp, url_prefix='/api/user')  # User management endpoints
 app.register_blueprint(contest_bp, url_prefix='/api/contest')  # Contest endpoints
 app.register_blueprint(submission_bp, url_prefix='/api/submission')  # Submission endpoints
-# =============================================================================
+
+
+# ---------------------------------------------------------------------------
 # AUTHENTICATION ENDPOINTS
-# =============================================================================
+# ---------------------------------------------------------------------------
 
 @app.route('/api/cookie', methods=['GET'])
 def check_cookie():
@@ -223,6 +226,7 @@ def check_cookie():
         except Exception:
             pass
 
+        # --- Query User from Database ---
         # CRITICAL: Query directly from database using raw SQL to bypass ALL ORM caching
         # This ensures we get the absolute latest role from the database
         direct_query = db.session.execute(
@@ -255,7 +259,7 @@ def check_cookie():
             current_app.logger.info(log_msg)
             # Also print to console for immediate visibility
             print(f' [COOKIE CHECK] {log_msg}')
-            
+
             # Special check: If username is Adityakumar0545, verify role is superadmin
             if db_username == 'Adityakumar0545':
                 print(f'⚠️ [SPECIAL CHECK] User Adityakumar0545 - Role from DB: {db_role}')
@@ -267,6 +271,7 @@ def check_cookie():
             current_app.logger.error(f'Logging error: {str(e)}')
             print(f' [ERROR] Logging failed: {str(e)}')
 
+        # --- Double-check by Username ---
         # Also verify by username as a double-check (in case there's any ID mismatch)
         username_verify = db.session.execute(
             sql_text('SELECT id, username, email, role FROM users WHERE username = :username'),
@@ -313,7 +318,7 @@ def check_cookie():
             current_app.logger.info(log_msg)
             # Also print to console for immediate visibility
             print(f' [FINAL RESPONSE] {log_msg}')
-            
+
             # Special check for Adityakumar0545
             if response_data.get("username") == 'Adityakumar0545':
                 print(f'⚠️ [SPECIAL CHECK] Adityakumar0545 - Role in response: {response_data.get("role")}')
@@ -340,6 +345,7 @@ def check_cookie():
             pass
         return jsonify({'error': 'You are not logged in'}), 401
 
+
 @app.route('/api/debug/user-role/<username>', methods=['GET'])
 def debug_user_role(username):
     """
@@ -355,7 +361,7 @@ def debug_user_role(username):
     """
     try:
         print(f'🔍 [DEBUG] Checking role for username: {username}')
-        
+
         # Query directly from database using raw SQL
         result = db.session.execute(
             sql_text('SELECT id, username, email, role FROM users WHERE username = :username'),
@@ -369,6 +375,7 @@ def debug_user_role(username):
                 'username': username
             }), 404
 
+        # Build user data from query result
         user_data = {
             'id': result[0],
             'username': result[1],
@@ -413,9 +420,10 @@ def debug_user_role(username):
             'details': str(error)
         }), 500
 
-# =============================================================================
+
+# ---------------------------------------------------------------------------
 # FRONTEND SERVING ROUTES
-# =============================================================================
+# ---------------------------------------------------------------------------
 
 @app.route('/')
 def index():
@@ -434,6 +442,7 @@ def index():
     # Development - serve Vue.js mount point (Vite dev server will handle it)
     return send_from_directory('../../frontend', 'index.html')
 
+
 @app.route('/<path:filename>')
 def serve_static(filename):
     """
@@ -442,7 +451,7 @@ def serve_static(filename):
     In production, serves from frontend/dist directory (built Vue.js app).
     In development, serves from frontend directory (Vite dev server handles Vue.js).
     """
-    # Skip API routes
+    # Skip API routes to avoid conflict with API endpoints
     if filename.startswith('api/'):
         return jsonify({'error': 'Endpoint not found'}), 404
 
@@ -454,6 +463,7 @@ def serve_static(filename):
             return send_from_directory(dist_path, filename)
         except Exception:
             # If file not found in dist, serve index.html (for Vue Router)
+            # This enables client-side routing in production
             if not filename.startswith('api/'):
                 return send_from_directory(dist_path, 'index.html')
             raise
@@ -461,9 +471,10 @@ def serve_static(filename):
     # Vite dev server will handle Vue.js files, Flask serves other static files
     return send_from_directory('../../frontend', filename)
 
-# =============================================================================
+
+# ---------------------------------------------------------------------------
 # SYSTEM ENDPOINTS
-# =============================================================================
+# ---------------------------------------------------------------------------
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -482,6 +493,7 @@ def health_check():
         'version': '1.0.0'
     }), 200
 
+
 @app.route('/api/oauth/config', methods=['GET'])
 def oauth_config_check():
     """
@@ -499,7 +511,7 @@ def oauth_config_check():
     use_oob = app.config.get('OAUTH_USE_OOB', False)
     custom_callback_path = app.config.get('OAUTH_CALLBACK_PATH', None)
 
-    # Build callback URL
+    # Build callback URL based on environment
     # For local development: http://localhost:5000/api/user/oauth/callback
     # For Toolforge: https://wikicontest.toolforge.org/oauth/callback
     # (if OAUTH_CALLBACK_PATH is set)
@@ -511,7 +523,7 @@ def oauth_config_check():
         # Default callback URL for local development
         callback_url = f"{scheme}://{host}/api/user/oauth/callback"
 
-    # Build instruction message for callback URL
+    # Build instruction message for callback URL registration
     callback_instruction = (
         f'Your OAuth consumer must be registered with this exact '
         f'callback URL: {callback_url}'
@@ -534,6 +546,11 @@ def oauth_config_check():
             )
         }
     }), 200
+
+
+# ---------------------------------------------------------------------------
+# MEDIAWIKI API PROXY ENDPOINTS
+# ---------------------------------------------------------------------------
 
 @app.route('/api/mediawiki/article-info', methods=['GET'])
 def mediawiki_article_info():  # pylint: disable=too-many-return-statements
@@ -718,6 +735,7 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
         return jsonify({
             'error': f'Unexpected error while fetching article information: {str(error)}'
         }), 500
+
 
 @app.route('/api/mediawiki/preview', methods=['GET'])
 def mediawiki_preview():  # pylint: disable=too-many-return-statements
@@ -905,9 +923,9 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
             'error': f'Unexpected error while fetching article preview: {str(error)}'
         }), 500
 
-# =============================================================================
+# ------------------------------------------------------------------------=
 # ERROR HANDLERS
-# =============================================================================
+# ------------------------------------------------------------------------=
 
 @app.errorhandler(404)
 def not_found(_error):
@@ -930,9 +948,9 @@ def internal_error(_error):
     db.session.rollback()
     return jsonify({'error': 'Internal server error'}), 500
 
-# =============================================================================
+# ------------------------------------------------------------------------=
 # APPLICATION STARTUP
-# =============================================================================
+# ------------------------------------------------------------------------=
 
 if __name__ == '__main__':
     # This file can be run directly, but main.py is the recommended entry point.
