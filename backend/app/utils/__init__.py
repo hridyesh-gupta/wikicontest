@@ -31,7 +31,6 @@ __all__ = [
     "build_mediawiki_revisions_api_params",
     "get_mediawiki_headers",
     "MEDIAWIKI_API_TIMEOUT",
-    # Template enforcement utilities
     "validate_template_link",
     "extract_template_name_from_url",
     "check_article_has_template",
