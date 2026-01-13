@@ -46,7 +46,8 @@ from app.utils import (
     extract_page_title_from_url,
     build_mediawiki_revisions_api_params,
     get_mediawiki_headers,
-    get_latest_revision_author
+    get_latest_revision_author,
+    MEDIAWIKI_API_TIMEOUT
 )
 
 # =============================================================================
@@ -216,10 +217,8 @@ def check_cookie():
         # CRITICAL: This shows which user the JWT token is for
         try:
             current_app.logger.info(
-                f'🔐 Cookie check - JWT user_id: {user_id} (type: {type(user_id)})'
+                f'Cookie check - JWT user_id: {user_id} (type: {type(user_id)})'
             )
-            # Also print to console for immediate visibility
-            print(f'🔐 [COOKIE CHECK] JWT user_id: {user_id}')
         except Exception:
             pass
 
@@ -234,7 +233,6 @@ def check_cookie():
             try:
                 error_msg = f'Cookie check - User not found in database for ID: {user_id}'
                 current_app.logger.error(error_msg)
-                print(f'❌ [COOKIE CHECK] {error_msg}')
             except Exception:
                 pass
             return jsonify({'error': 'User not found'}), 401
@@ -248,24 +246,13 @@ def check_cookie():
         # Log what we got from the database - CRITICAL DEBUG INFO
         try:
             log_msg = (
-                f'🔐 Cookie check - Direct DB Query Result - '
+                f'Cookie check - Direct DB Query Result - '
                 f'ID: {db_user_id}, Username: {db_username}, '
                 f'Role: {db_role}, Role type: {type(db_role)}'
             )
             current_app.logger.info(log_msg)
-            # Also print to console for immediate visibility
-            print(f'🔐 [COOKIE CHECK] {log_msg}')
-            
-            # Special check: If username is Adityakumar0545, verify role is superadmin
-            if db_username == 'Adityakumar0545':
-                print(f'⚠️ [SPECIAL CHECK] User Adityakumar0545 - Role from DB: {db_role}')
-                if db_role != 'superadmin':
-                    print(f'❌ [ERROR] Expected superadmin but got: {db_role}')
-                else:
-                    print(f'✅ [SUCCESS] Role is correct: superadmin')
         except Exception as e:
             current_app.logger.error(f'Logging error: {str(e)}')
-            print(f'❌ [ERROR] Logging failed: {str(e)}')
 
         # Also verify by username as a double-check (in case there's any ID mismatch)
         username_verify = db.session.execute(
@@ -305,25 +292,14 @@ def check_cookie():
         # Log the final response being sent - CRITICAL DEBUG INFO
         try:
             log_msg = (
-                f'🔐 Cookie check FINAL RESPONSE - '
+                f'Cookie check FINAL RESPONSE - '
                 f'Username: {response_data.get("username")}, '
                 f'User ID: {response_data.get("userId")}, '
                 f'Role being sent to frontend: {response_data.get("role")}'
             )
             current_app.logger.info(log_msg)
-            # Also print to console for immediate visibility
-            print(f'🔐 [FINAL RESPONSE] {log_msg}')
-            
-            # Special check for Adityakumar0545
-            if response_data.get("username") == 'Adityakumar0545':
-                print(f'⚠️ [SPECIAL CHECK] Adityakumar0545 - Role in response: {response_data.get("role")}')
-                if response_data.get("role") != 'superadmin':
-                    print(f'❌ [ERROR] Role should be superadmin but is: {response_data.get("role")}')
-                else:
-                    print(f'✅ [SUCCESS] Role is correctly set to superadmin in response')
         except Exception as e:
             current_app.logger.error(f'Logging error: {str(e)}')
-            print(f'❌ [ERROR] Final logging failed: {str(e)}')
 
         return jsonify(response_data), 200
 
@@ -354,8 +330,6 @@ def debug_user_role(username):
         JSON with user information including role from database
     """
     try:
-        print(f'🔍 [DEBUG] Checking role for username: {username}')
-        
         # Query directly from database using raw SQL
         result = db.session.execute(
             sql_text('SELECT id, username, email, role FROM users WHERE username = :username'),
@@ -363,7 +337,6 @@ def debug_user_role(username):
         ).fetchone()
 
         if not result:
-            print(f'❌ [DEBUG] User not found: {username}')
             return jsonify({
                 'error': 'User not found',
                 'username': username
@@ -379,8 +352,6 @@ def debug_user_role(username):
             'role_lowercase': str(result[3]).lower() if result[3] else 'user'
         }
 
-        print(f'🔍 [DEBUG] Found user - ID: {user_data["id"]}, Username: {user_data["username"]}, Role: {user_data["role"]}')
-
         # Also check by ID to compare
         id_result = db.session.execute(
             sql_text('SELECT id, username, email, role FROM users WHERE id = :user_id'),
@@ -393,21 +364,12 @@ def debug_user_role(username):
                 'username': id_result[1],
                 'role': id_result[3]
             }
-            print(f'🔍 [DEBUG] Verified by ID - Role: {id_result[3]}')
-
-        # Special check for Adityakumar0545
-        if username == 'Adityakumar0545':
-            if user_data['role'] != 'superadmin':
-                print(f'❌ [ERROR] Adityakumar0545 should have superadmin but has: {user_data["role"]}')
-            else:
-                print(f'✅ [SUCCESS] Adityakumar0545 has correct superadmin role')
 
         return jsonify(user_data), 200
 
     except Exception as error:
         error_msg = f'Debug user role error: {str(error)}'
         current_app.logger.error(error_msg)
-        print(f'❌ [ERROR] {error_msg}')
         return jsonify({
             'error': 'Failed to query user',
             'details': str(error)
@@ -589,8 +551,9 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
 
         # Make request to MediaWiki API using shared headers
         # This ensures consistency with the submission route
+        # Use increased timeout to handle slow API responses
         headers = get_mediawiki_headers()
-        response = requests.get(api_url, params=api_params, headers=headers, timeout=10)
+        response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
 
         # Check if request was successful
         if response.status_code != 200:
@@ -794,7 +757,7 @@ def mediawiki_preview():  # pylint: disable=too-many-return-statements
         }
 
         try:
-            response = requests.get(api_url, params=api_params, headers=headers, timeout=10)
+            response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
         except requests.exceptions.RequestException as error:
             return jsonify({
                 'error': f'Failed to connect to MediaWiki API: {str(error)}',
@@ -938,11 +901,6 @@ if __name__ == '__main__':
     # This file can be run directly, but main.py is the recommended entry point.
     # Database migrations are handled by Alembic - run 'alembic upgrade head' before starting.
     # Debug mode is enabled for development (disable in production)
-    print("🚀 Starting WikiContest API server...")
-    print("📡 Server will be available at: http://localhost:5000")
-    print("🔧 Debug mode: ENABLED")
-    print("ℹ Note: Use Alembic for database migrations (alembic upgrade head)")
-
     app.run(
         debug=True,        # Enable debug mode for development
         host='0.0.0.0',    # Allow connections from any IP
