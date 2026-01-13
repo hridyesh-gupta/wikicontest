@@ -6,12 +6,17 @@
         <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
       <div class="d-flex gap-2">
-        <button v-if="contest" class="btn btn-primary text-white" @click="goToLeaderboard"
+        <button v-if="contest"
+class="btn btn-primary text-white"
+@click="goToLeaderboard"
           title="View Contest Leaderboard">
           <i class="fas fa-trophy me-2"></i>Leaderboard
         </button>
         <!-- Only contest creators and admins can delete -->
-        <button v-if="canDeleteContest" class="btn btn-danger" @click="handleDeleteContest" :disabled="deletingContest">
+        <button v-if="canDeleteContest"
+class="btn btn-danger"
+@click="handleDeleteContest"
+:disabled="deletingContest">
           <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
           <i v-else class="fas fa-trash me-2"></i>
           {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
@@ -183,7 +188,10 @@
           </p>
           <ul class="list-unstyled">
             <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
-              <a :href="category" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+              <a :href="category"
+target="_blank"
+rel="noopener noreferrer"
+class="text-decoration-none">
                 <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
               </a>
             </li>
@@ -267,8 +275,10 @@ title="Refresh article metadata"
                 <tr v-for="submission in submissions" :key="submission.id">
                   <!-- Article Title with Metadata -->
                   <td>
-                    <a href="#" @click.prevent="showArticlePreview(submission)"
-                      class="text-decoration-none article-title-link" :title="submission.article_link">
+                    <a href="#"
+@click.prevent="showArticlePreview(submission)"
+                      class="text-decoration-none article-title-link"
+:title="submission.article_link">
                       {{ submission.article_title }}
                       <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                     </a>
@@ -280,14 +290,17 @@ title="Refresh article metadata"
                     </div>
                     <!-- Original article size -->
                     <div v-if="submission.article_word_count !== null &&
-                      submission.article_word_count !== undefined" class="text-muted small mt-1">
+                      submission.article_word_count !== undefined"
+class="text-muted small mt-1">
                       <i class="fas fa-clock me-1"></i>Original bytes:
                       {{ formatByteCountWithExact(submission.article_word_count) }}
                     </div>
                     <!-- Expansion bytes (can be negative for content removal) -->
                     <div v-if="submission.article_expansion_bytes !== null &&
-                      submission.article_expansion_bytes !== undefined" class="text-muted small mt-1">
-                      <i class="me-1" :class="submission.article_expansion_bytes > 0
+                      submission.article_expansion_bytes !== undefined"
+class="text-muted small mt-1">
+                      <i class="me-1"
+:class="submission.article_expansion_bytes > 0
                         ? 'fas fa-arrow-up'
                         : submission.article_expansion_bytes < 0
                           ? 'fas fa-arrow-down'
@@ -315,7 +328,8 @@ title="Refresh article metadata"
                       <i class="fas fa-calendar me-1"></i>{{ formatDateShort(submission.article_created_at) }}
                     </div>
                     <!-- Latest revision author may differ from original -->
-                    <div v-if="submission.latest_revision_author" class="mt-2 pt-2"
+                    <div v-if="submission.latest_revision_author"
+class="mt-2 pt-2"
                       style="border-top: 1px solid #dee2e6;">
                       <div>
                         <i class="fas fa-user me-1"></i>{{ submission.latest_revision_author }}
@@ -350,7 +364,8 @@ class="btn btn-sm btn-outline-primary"
                       class="btn btn-sm btn-outline-danger"
                       title="Delete Submission"
                       :disabled="deletingSubmissionId === submission.id">
-                      <span v-if="deletingSubmissionId === submission.id" class="spinner-border spinner-border-sm"></span>
+                      <span v-if="deletingSubmissionId === submission.id"
+                        class="spinner-border spinner-border-sm"></span>
                       <i v-else class="fas fa-trash"></i>
                     </button>
                   </td>
@@ -364,7 +379,8 @@ class="btn btn-sm btn-outline-primary"
       <!-- Bottom Action Row -->
       <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
         <!-- Debug warning for auth issues -->
-        <div v-if="contest && !currentUser && !checkingAuth" class="alert alert-warning py-1 px-2 mb-0 me-auto">
+        <div v-if="contest && !currentUser && !checkingAuth"
+          class="alert alert-warning py-1 px-2 mb-0 me-auto">
           <i class="fas fa-exclamation-triangle me-1"></i>
           <strong>User not loaded!</strong>
           <button class="btn btn-sm btn-outline-warning ms-2" @click="forceAuthRefresh">
@@ -374,7 +390,8 @@ class="btn btn-sm btn-outline-primary"
 
         <!-- Submit article button for active contests -->
         <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-          class="btn btn-primary ms-auto" @click="handleSubmitArticle">
+          class="btn btn-primary ms-auto"
+@click="handleSubmitArticle">
           <i class="fas fa-paper-plane me-2"></i>Submit Article
         </button>
       </div>
@@ -382,18 +399,18 @@ class="btn btn-sm btn-outline-primary"
   </div>
 
   <!-- Modals -->
-  <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
+  <SubmitArticleModal v-if="submittingToContestId"
+:contest-id="submittingToContestId"
     @submitted="handleArticleSubmitted" />
 
     <!-- Article Preview Modal - Pass computed currentSubmission -->
     <ArticlePreviewModal v-if="!!currentSubmission"
-:can-review="canUserReview"
+      :can-review="canUserReview"
       :article-url="currentSubmission.article_link"
-:article-title="currentSubmission.article_title"
+      :article-title="currentSubmission.article_title"
       :submission-id="currentSubmission.id"
-:submission="currentSubmission"
-@reviewed="handleSubmissionReviewed" />
-  </div>
+      :submission="currentSubmission"
+      @reviewed="handleSubmissionReviewed" />
   <!-- Edit Contest Modal -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
@@ -557,7 +574,8 @@ min="0" />
               <h6>Scoring Parameters</h6>
 
               <!-- Dynamic parameter list -->
-              <div v-for="(param, index) in editForm.scoring_parameters.parameters" :key="index"
+              <div v-for="(param, index) in editForm.scoring_parameters.parameters"
+:key="index"
                 class="border rounded p-3 mb-2">
                 <div class="row">
                   <div class="col-md-4">
@@ -565,7 +583,10 @@ min="0" />
                   </div>
 
                   <div class="col-md-3">
-                    <input type="number" v-model.number="param.weight" placeholder="Weight %" class="form-control" />
+                    <input type="number"
+v-model.number="param.weight"
+placeholder="Weight %"
+class="form-control" />
                   </div>
 
                   <div class="col-md-4">
@@ -601,7 +622,10 @@ min="0" />
 
             <div class="mb-3">
               <label class="form-label">Minimum Reference Count</label>
-              <input type="number" v-model.number="editForm.min_reference_count" class="form-control" min="0"
+              <input type="number"
+v-model.number="editForm.min_reference_count"
+class="form-control"
+min="0"
                 placeholder="e.g., 5" />
               <small class="form-text text-muted">
                 Articles must have at least this many references. Set to 0 for no requirement.
@@ -619,12 +643,17 @@ min="0" />
               <!-- Dynamic category URL inputs -->
               <div v-for="(category, index) in editForm.categories" :key="index" class="mb-2">
                 <div class="input-group">
-                  <input type="url" class="form-control" v-model="editForm.categories[index]"
+                  <input type="url"
+class="form-control"
+v-model="editForm.categories[index]"
                     :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'"
                     required />
                   <!-- Allow removing categories except the first one -->
-                  <button v-if="editForm.categories.length > 1" type="button" class="btn btn-outline-danger"
-                    @click="removeCategory(index)" title="Remove category">
+                  <button v-if="editForm.categories.length > 1"
+type="button"
+class="btn btn-outline-danger"
+                    @click="removeCategory(index)"
+title="Remove category">
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
@@ -638,9 +667,6 @@ min="0" />
                 At least one MediaWiki category URL is required. Articles must belong to these categories.
               </small>
             </div>
-
-          </form>
-        </div>
 
           </form>
         </div>
@@ -695,9 +721,13 @@ export default {
     const previewArticleTitle = ref('')
     const jurySearchQuery = ref('')
     const jurySearchResults = ref([])
+    const organizerSearchQuery = ref('')
+    const organizerSearchResults = ref([])
+    const deletingSubmissionId = ref(null)
+    const savingContest = ref(false)
     let jurySearchTimeout = null
     let organizerSearchTimeout = null
-    const scoringMode = ref('simple')
+    let editModal = null
 
     // Track current submission for preview modal
     const currentSubmissionId = ref(null)
@@ -1556,6 +1586,7 @@ export default {
       removeCategory,
       isCurrentUser,
       goBack,
+      goToLeaderboard,
       showArticlePreview,
       handleSubmissionReviewed,
       handleSubmissionDeleted,
@@ -1585,7 +1616,7 @@ export default {
   padding-bottom: 1rem;
 }
 
-/* Main contest title styling with theme support */ 
+/* Main contest title styling with theme support */
 .contest-title {
   color: var(--wiki-dark);
   font-weight: 700;

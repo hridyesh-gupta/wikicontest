@@ -271,7 +271,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../services/api'
-import { showAlert } from '../utils/alerts'
 
 export default {
     name: 'ContestLeaderboard',
