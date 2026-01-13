@@ -2,12 +2,15 @@
   <div class="modal fade" id="submitArticleModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
+        <!-- Modal Header -->
         <div class="modal-header">
           <h5 class="modal-title">
             <i class="fas fa-paper-plane me-2"></i>Submit Article
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+        
+        <!-- Modal Body -->
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
             <!-- Info message about URL submission -->
@@ -33,6 +36,7 @@
               </small>
             </div>
 
+            <!-- Article URL Input Field -->
             <div class="mb-3">
               <label for="articleUrl" class="form-label">
                 <i class="fas fa-link me-2 text-primary"></i>Article URL <span class="text-danger">*</span>
@@ -51,13 +55,14 @@
               </small>
             </div>
 
-            <!-- Validation Checklist -->
+            <!-- Real-time Validation Checklist -->
             <div class="mb-3" v-if="contest">
               <label class="form-label">
                 <i class="fas fa-check-circle me-2 text-primary"></i>Validation Checklist
               </label>
               <div class="card border-primary">
                 <div class="card-body">
+                  <!-- Display each validation item with status indicator -->
                   <div class="validation-item mb-2" v-for="(item, index) in validationChecklist" :key="index">
                     <div
                       class="d-flex align-items-center"
@@ -67,6 +72,7 @@
                         'text-muted': !item.checked && !item.detail
                       }"
                     >
+                      <!-- Icon indicating validation status -->
                       <i
                         :class="
                           item.checked
@@ -78,6 +84,7 @@
                       ></i>
                       <span class="flex-grow-1">
                         {{ item.label }}
+                        <!-- Additional detail about validation result -->
                         <span
                           v-if="item.detail"
                           :class="{
@@ -92,7 +99,7 @@
               </div>
             </div>
 
-            <!-- Progress Indicator -->
+            <!-- Submission Progress Indicator -->
             <div v-if="submissionProgress.stage !== 'idle'" class="mb-3">
               <div class="card border-primary">
                 <div class="card-body">
@@ -100,7 +107,7 @@
                     <i class="fas fa-tasks me-2"></i>Submission Progress
                   </h6>
 
-                  <!-- Progress Bar -->
+                  <!-- Visual Progress Bar -->
                   <div class="progress mb-3" style="height: 25px;">
                     <div
                       class="progress-bar progress-bar-striped progress-bar-animated"
@@ -112,7 +119,7 @@
                     </div>
                   </div>
 
-                  <!-- Progress Steps -->
+                  <!-- Detailed Progress Steps -->
                   <div class="progress-steps">
                     <div
                       v-for="(step, index) in progressSteps"
@@ -133,6 +140,7 @@
               </div>
             </div>
 
+            <!-- Error Display Section -->
             <div v-if="error"
 class="alert alert-danger"
 role="alert"
@@ -141,6 +149,8 @@ style="white-space: pre-wrap; word-wrap: break-word;">
             </div>
           </form>
         </div>
+        
+        <!-- Modal Footer with Action Buttons -->
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times me-2"></i>Cancel
@@ -175,15 +185,17 @@ export default {
   },
   emits: ['submitted'],
   setup(props, { emit }) {
+    // Component state management
     const loading = ref(false)
     const error = ref('')
     const contest = ref(null)
 
+    // Form data model
     const formData = reactive({
       article_link: ''
     })
 
-    // Validation checklist state
+    // Real-time validation checklist tracking
     const validationChecklist = reactive([
       {
         label: 'Article URL is valid',
@@ -197,14 +209,14 @@ export default {
       }
     ])
 
-    // Submission progress tracking
+    // Submission progress tracking state
     const submissionProgress = reactive({
       stage: 'idle', // 'idle', 'fetching', 'validating', 'submitting', 'success', 'error'
       articleByteCount: null,
       contestByteRequirements: null
     })
 
-    // Load contest details to get byte count requirements
+    // Fetch contest details including byte count requirements
     const loadContest = async () => {
       try {
         const data = await api.get(`/contest/${props.contestId}`)
@@ -217,15 +229,15 @@ export default {
       }
     }
 
+    // Initialize contest data on component mount
     onMounted(() => {
       loadContest()
     })
 
-    // Debounce timer for URL validation
+    // Debounce timer reference for URL validation
     let validationTimer = null
 
-    // Watch for URL changes and validate automatically
-    // This provides real-time feedback as user enters the URL
+    // Watch for URL changes and trigger automatic validation
     watch(
       () => formData.article_link,
       (newUrl) => {
@@ -243,20 +255,18 @@ export default {
           return
         }
 
-        // Debounce validation - wait 800ms after user stops typing
-        // This prevents too many API calls while user is typing
+        // Debounce validation to prevent too many API calls while typing
         validationTimer = setTimeout(async () => {
-          // Only validate if URL looks like a valid URL (starts with http)
+          // Only validate if URL looks like a valid URL
           if (newUrl.trim().startsWith('http://') || newUrl.trim().startsWith('https://')) {
-            // Wait for contest to be loaded before validating
-            // This ensures we have byte count requirements available
+            // Ensure contest is loaded before validating
             if (!contest.value) {
               await loadContest()
             }
-            // Validate silently (without showing progress indicators)
+            // Validate silently without showing progress indicators
             await validateArticle(false)
           } else {
-            // URL format is invalid, just mark URL check as failed
+            // URL format is invalid
             validationChecklist[0].checked = false
             validationChecklist[0].detail = 'URL must start with http:// or https://'
             validationChecklist[1].checked = false
@@ -266,7 +276,7 @@ export default {
       }
     )
 
-    // Progress steps based on current stage
+    // Computed progress steps based on current submission stage
     const progressSteps = computed(() => {
       const steps = [
         {
@@ -300,7 +310,7 @@ export default {
       return steps
     })
 
-    // Get byte count detail text
+    // Generate human-readable byte count detail text
     const getByteCountDetail = () => {
       if (submissionProgress.stage === 'idle' || submissionProgress.stage === 'fetching') {
         return null
@@ -317,7 +327,7 @@ export default {
       return 'Checking...'
     }
 
-    // Progress percentage
+    // Calculate progress percentage based on current stage
     const progressPercentage = computed(() => {
       switch (submissionProgress.stage) {
         case 'fetching':
@@ -335,7 +345,7 @@ export default {
       }
     })
 
-    // Progress bar class
+    // Determine progress bar color class based on stage
     const progressBarClass = computed(() => {
       if (submissionProgress.stage === 'error') {
         return 'bg-danger'
@@ -346,22 +356,21 @@ export default {
       return 'bg-primary'
     })
 
-    // Check if all validations have passed - used to enable/disable submit button
+    // Check if all validations have passed to enable submit button
     const canSubmit = computed(() => {
-      // min_byte_count is always required, so both checks must pass
+      // Both URL and byte count validations must pass
       return validationChecklist[0].checked && validationChecklist[1].checked
     })
 
-    // Validate article before submission
-    // showProgress: if true, shows progress indicators; if false, just updates checklist silently
+    // Validate article URL and byte count requirements
     const validateArticle = async (showProgress = true) => {
-      // Reset checklist
+      // Reset checklist before validation
       validationChecklist[0].checked = false
       validationChecklist[0].detail = null
       validationChecklist[1].checked = false
       validationChecklist[1].detail = null
 
-      // Check 1: Validate URL format
+      // Validate URL format
       if (!formData.article_link.trim()) {
         validationChecklist[0].checked = false
         validationChecklist[0].detail = 'URL is required'
@@ -373,16 +382,15 @@ export default {
         return false
       }
 
-      // URL is valid
+      // URL format is valid
       validationChecklist[0].checked = true
       validationChecklist[0].detail = 'Valid URL format'
 
-      // Check 2: Fetch article info and validate byte count
+      // Fetch article info and validate byte count
       try {
         if (showProgress) {
           submissionProgress.stage = 'fetching'
         }
-        // Note: baseURL is already '/api', so we use '/mediawiki/article-info' not '/api/mediawiki/article-info'
         // Make API call to fetch article information
         const articleInfo = await api.get('/mediawiki/article-info', {
           params: { url: formData.article_link.trim() }
@@ -393,19 +401,18 @@ export default {
           throw new Error(articleInfo.error)
         }
 
-        // Get byte count from article info (word_count is actually byte count)
+        // Extract byte count from article info
         const articleByteCount = articleInfo.word_count || articleInfo.size || null
         submissionProgress.articleByteCount = articleByteCount
 
-        // Check if contest has byte count requirements
-        // If contest is not loaded yet, try to load it
+        // Ensure contest is loaded before validating requirements
         if (!contest.value || !submissionProgress.contestByteRequirements) {
           await loadContest()
         }
 
         const req = submissionProgress.contestByteRequirements
 
-        // If article byte count is null, we can't validate
+        // Cannot validate if article byte count is unavailable
         if (articleByteCount === null) {
           validationChecklist[1].checked = false
           validationChecklist[1].detail = 'Could not determine article size'
@@ -413,9 +420,8 @@ export default {
         }
 
         // Validate byte count against contest requirements
-        // min_byte_count is always required
         if (req && req.min !== null && req.min !== undefined) {
-          // Check minimum byte count - show exact error message matching backend format
+          // Check minimum byte count requirement
           if (articleByteCount < req.min) {
             validationChecklist[1].checked = false
             validationChecklist[1].detail = `Article byte count (${articleByteCount.toLocaleString()}) is below the minimum required (${req.min.toLocaleString()} bytes)`
@@ -427,7 +433,7 @@ export default {
           validationChecklist[1].detail = `${articleByteCount.toLocaleString()} bytes (Required: min: ${req.min.toLocaleString()})`
           return true
         } else {
-          // Contest should always have min_byte_count, but handle gracefully
+          // Contest should always have min_byte_count
           validationChecklist[1].checked = false
           validationChecklist[1].detail = 'Contest byte count requirement not found'
           return false
@@ -438,10 +444,10 @@ export default {
           submissionProgress.stage = 'error'
         }
 
-        // Provide better error messages based on error type
+        // Build user-friendly error message
         let errorMsg = 'Failed to fetch article information'
 
-        // Check for different error types
+        // Extract error details from response
         const status = err.status || err.response?.status
         const errorData = err.response?.data || {}
         const errorMessage = errorData.error || err.message || ''
@@ -453,8 +459,8 @@ export default {
           error: err
         })
 
+        // Provide specific error messages based on error type
         if (status === 404) {
-          // Check if it's an article not found or endpoint issue
           if (errorMessage.toLowerCase().includes('article not found') ||
               errorMessage.toLowerCase().includes('page not found')) {
             errorMsg = 'Article not found - please check the URL'
@@ -468,7 +474,6 @@ export default {
         } else if (status === 502 || status === 503 || status === 504) {
           errorMsg = 'Server error - please try again later'
         } else if (errorMessage) {
-          // Use the actual error message from the API
           errorMsg = errorMessage
         } else if (err.message) {
           errorMsg = err.message
@@ -479,16 +484,16 @@ export default {
       }
     }
 
+    // Handle article submission
     const handleSubmit = async () => {
       // Clear any previous errors
       error.value = ''
 
-      // Check if validation has already passed - if so, skip re-validation
-      // This prevents UI freezing by avoiding duplicate API calls
+      // Check if validation has already passed to avoid duplicate API calls
       const alreadyValidated = canSubmit.value
 
       if (!alreadyValidated) {
-        // Validation hasn't passed yet, show error
+        // Validation hasn't passed yet
         const failedChecks = validationChecklist.filter(item => !item.checked)
         if (failedChecks.length > 0) {
           error.value = `Validation failed: ${failedChecks.map(item => item.label).join(', ')}`
@@ -503,16 +508,15 @@ export default {
       submissionProgress.stage = 'submitting'
 
       try {
-        // Submit the article directly since validation already passed
-        // No need to re-validate - we already checked when URL was entered
+        // Submit the article since validation already passed
         await api.post(`/contest/${props.contestId}/submit`, {
           article_link: formData.article_link.trim()
         })
 
-        // Success - update stage
+        // Update stage to success
         submissionProgress.stage = 'success'
 
-        // Reset loading state immediately
+        // Reset loading state
         loading.value = false
 
         showAlert('Article submitted successfully!', 'success')
@@ -520,14 +524,14 @@ export default {
         // Emit event to parent to refresh data
         emit('submitted')
 
-        // Close modal immediately and reset
+        // Close modal and reset form
         const modalElement = document.getElementById('submitArticleModal')
         const modal = bootstrap.Modal.getInstance(modalElement)
         if (modal) {
           modal.hide()
         }
 
-        // Reset form and progress immediately
+        // Reset form state
         formData.article_link = ''
         submissionProgress.stage = 'idle'
         submissionProgress.articleByteCount = null
@@ -539,7 +543,7 @@ export default {
       } catch (err) {
         submissionProgress.stage = 'error'
 
-        // Extract error message from response
+        // Extract error details from response
         const errorData = err.response?.data || {}
         const errorMessage = errorData.error || err.message || 'Failed to submit article'
 
@@ -564,12 +568,11 @@ export default {
 
         error.value = detailedError
 
-        // If error is about byte count, update validation checklist
+        // Update validation checklist if error is about byte count
         if (errorMessage.toLowerCase().includes('byte count')) {
-          // Mark byte count validation as failed
           validationChecklist[1].checked = false
           validationChecklist[1].detail = errorMessage
-          // Try to extract byte count from error if available
+          // Try to extract byte count from error message
           const byteMatch = errorMessage.match(/(\d+)\s*bytes?/i)
           if (byteMatch) {
             submissionProgress.articleByteCount = parseInt(byteMatch[1])
@@ -602,7 +605,7 @@ export default {
 <style scoped>
 /* Submit Article Modal Styling with Wikipedia Colors */
 
-/* Modal header - solid color, no gradient - matches theme */
+/* Modal header styling */
 .modal-header {
   background-color: var(--wiki-primary);
   color: white;
@@ -627,7 +630,7 @@ export default {
   opacity: 1;
 }
 
-/* Form styling */
+/* Form label styling */
 .form-label {
   color: var(--wiki-dark);
   font-weight: 500;
@@ -639,16 +642,17 @@ export default {
   color: var(--wiki-primary) !important;
 }
 
-/* Text danger - MediaWiki red */
+/* Required field indicator styling */
 .form-label .text-danger {
   color: var(--wiki-danger) !important;
 }
 
-/* Ensure proper MediaWiki red in dark mode */
+/* Dark mode required field styling */
 [data-theme="dark"] .form-label .text-danger {
   color: #990000 !important;
 }
 
+/* Form control input styling */
 .form-control {
   border-color: var(--wiki-input-border);
   background-color: var(--wiki-input-bg);
@@ -656,6 +660,7 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Input focus state styling */
 .form-control:focus {
   border-color: var(--wiki-primary);
   box-shadow: 0 0 0 0.2rem rgba(0, 102, 153, 0.25);
@@ -663,11 +668,12 @@ export default {
   color: var(--wiki-text);
 }
 
+/* Dark mode input focus styling */
 [data-theme="dark"] .form-control:focus {
   box-shadow: 0 0 0 0.2rem rgba(93, 184, 230, 0.3);
 }
 
-/* Alert styling */
+/* Error alert styling */
 .alert-danger {
   background-color: rgba(153, 0, 0, 0.1);
   border: 1px solid var(--wiki-danger);
@@ -677,11 +683,12 @@ export default {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+/* Dark mode error alert styling */
 [data-theme="dark"] .alert-danger {
   background-color: rgba(230, 128, 128, 0.2);
 }
 
-/* Button styling */
+/* Primary button styling */
 .btn-primary {
   background-color: var(--wiki-primary);
   border-color: var(--wiki-primary);
@@ -689,6 +696,7 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Primary button hover state */
 .btn-primary:hover {
   background-color: var(--wiki-primary-hover);
   border-color: var(--wiki-primary-hover);
@@ -696,33 +704,38 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.3);
 }
 
+/* Disabled button styling */
 .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
+/* Secondary button styling */
 .btn-secondary {
   background-color: var(--wiki-text-muted);
   border-color: var(--wiki-text-muted);
   transition: all 0.2s ease;
 }
 
+/* Secondary button hover state */
 .btn-secondary:hover {
   background-color: var(--wiki-text-muted);
   border-color: var(--wiki-text-muted);
 }
 
+/* Dark mode secondary button styling */
 [data-theme="dark"] .btn-secondary {
   background-color: #5a6268;
   border-color: #5a6268;
 }
 
+/* Dark mode secondary button hover state */
 [data-theme="dark"] .btn-secondary:hover {
   background-color: #6c757d;
   border-color: #6c757d;
 }
 
-/* Modal body - matches theme */
+/* Modal body styling */
 .modal-body {
   padding: 1.5rem;
   background-color: var(--wiki-modal-bg);
@@ -730,7 +743,7 @@ export default {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Modal footer - matches theme */
+/* Modal footer styling */
 .modal-footer {
   border-top: 1px solid var(--wiki-border);
   padding: 1rem 1.5rem;
@@ -738,14 +751,14 @@ export default {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Modal content - ensures proper background */
+/* Modal content container styling */
 .modal-content {
   background-color: var(--wiki-modal-bg);
   border-color: var(--wiki-border);
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Icon styling */
+/* Icon animation on interaction */
 .fas {
   transition: transform 0.2s ease;
 }
@@ -754,7 +767,7 @@ export default {
   transform: scale(1.1);
 }
 
-/* Spinner */
+/* Loading spinner styling */
 .spinner-border-sm {
   width: 1rem;
   height: 1rem;
@@ -763,22 +776,25 @@ export default {
   border-right-color: transparent;
 }
 
-/* Progress Indicator Styling */
+/* Progress steps container styling */
 .progress-steps {
   font-size: 0.9rem;
 }
 
+/* Individual progress step styling */
 .progress-step {
   padding: 0.5rem;
   border-radius: 0.25rem;
   transition: all 0.3s ease;
 }
 
+/* Active progress step highlighting */
 .progress-step.active {
   background-color: rgba(0, 102, 153, 0.1);
   font-weight: 500;
 }
 
+/* Completed step styling */
 .progress-step.completed {
   color: #28a745;
 }
@@ -787,6 +803,7 @@ export default {
   color: #28a745 !important;
 }
 
+/* Failed step styling */
 .progress-step.failed {
   color: #dc3545;
 }
@@ -795,17 +812,19 @@ export default {
   color: #dc3545 !important;
 }
 
+/* Progress step icon styling */
 .progress-step .fas {
   transition: color 0.3s ease;
 }
 
-/* Progress bar styling */
+/* Progress bar container styling */
 .progress {
   background-color: rgba(0, 102, 153, 0.1);
   border-radius: 0.5rem;
   overflow: hidden;
 }
 
+/* Progress bar fill styling */
 .progress-bar {
   transition: width 0.6s ease;
   font-weight: 500;
@@ -814,46 +833,53 @@ export default {
   justify-content: center;
 }
 
-/* Card styling for progress */
+/* Progress card border styling */
 .card.border-primary {
   border-color: var(--wiki-primary) !important;
   background-color: var(--wiki-card-bg);
   transition: background-color 0.3s ease;
 }
 
+/* Card title styling */
 .card-title {
   color: var(--wiki-text);
   font-weight: 600;
 }
 
+/* Dark mode active progress step styling */
 [data-theme="dark"] .progress-step.active {
   background-color: rgba(93, 184, 230, 0.15);
 }
 
+/* Dark mode progress bar styling */
 [data-theme="dark"] .progress {
   background-color: rgba(93, 184, 230, 0.1);
 }
 
-/* Validation Checklist Styling */
+/* Validation checklist item styling */
 .form-check {
   padding: 0.75rem;
   border-radius: 0.25rem;
   transition: background-color 0.2s ease;
 }
 
+/* Checklist item hover effect */
 .form-check:hover {
   background-color: rgba(0, 102, 153, 0.05);
 }
 
+/* Dark mode checklist hover effect */
 [data-theme="dark"] .form-check:hover {
   background-color: rgba(93, 184, 230, 0.1);
 }
 
+/* Checklist input styling */
 .form-check-input {
   margin-top: 0.35rem;
   cursor: not-allowed;
 }
 
+/* Checklist label styling */
 .form-check-label {
   cursor: default;
   display: flex;
@@ -862,27 +888,31 @@ export default {
   transition: color 0.2s ease;
 }
 
+/* Success state label styling */
 .form-check-label.text-success {
   color: #28a745 !important;
 }
 
+/* Muted state label styling */
 .form-check-label.text-muted {
   color: var(--wiki-text-muted) !important;
 }
 
+/* Checklist icon styling */
 .form-check-label .fas {
   font-size: 1rem;
   transition: transform 0.2s ease;
 }
 
+/* Success icon color styling */
 .form-check-label.text-success .fas {
   color: #28a745 !important;
 }
 
+/* Card body content styling */
 .card.border-primary .card-body {
   padding: 1rem;
   background-color: var(--wiki-card-bg);
   transition: background-color 0.3s ease;
 }
 </style>
-

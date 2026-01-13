@@ -1,13 +1,16 @@
 <template>
+  <!-- Contest details modal with submissions list for jury/creators -->
   <div class="modal fade" id="contestModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
+        <!-- Modal header with contest name -->
         <div class="modal-header">
           <h5 class="modal-title">{{ contest?.name }}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body" v-if="contest">
           <div class="row">
+            <!-- Contest basic details section -->
             <div :class="canViewSubmissions ? 'col-md-6' : 'col-md-12'">
               <h6>Contest Details</h6>
               <p><strong>Project:</strong> {{ contest.project_name }}</p>
@@ -16,6 +19,7 @@
               <p v-if="contest.start_date"><strong>Start Date:</strong> {{ formatDate(contest.start_date) }}</p>
               <p v-if="contest.end_date"><strong>End Date:</strong> {{ formatDate(contest.end_date) }}</p>
             </div>
+            <!-- Scoring details - only visible to jury/creators -->
             <div v-if="canViewSubmissions" class="col-md-6">
               <h6>Scoring</h6>
               <p><strong>Accepted:</strong> {{ contest.marks_setting_accepted }} points</p>
@@ -23,10 +27,12 @@
               <p><strong>Submissions:</strong> {{ contest.submission_count }}</p>
             </div>
           </div>
+          <!-- Contest description with preserved line breaks -->
           <div v-if="contest.description" class="mt-3 description-section">
             <h6>Description</h6>
             <p class="description-text">{{ contest.description }}</p>
           </div>
+          <!-- Jury members list -->
           <div v-if="contest.jury_members && contest.jury_members.length > 0" class="mt-3 jury-section">
             <h6>Jury Members</h6>
             <p>{{ contest.jury_members.join(', ') }}</p>
@@ -54,6 +60,7 @@
           <div v-if="canViewSubmissions" class="mt-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <h6>Submissions</h6>
+              <!-- Refresh metadata button - updates article data from MediaWiki -->
               <button
                 v-if="loadingSubmissions || refreshingMetadata"
                 class="btn btn-sm btn-outline-secondary"
@@ -76,10 +83,12 @@
               </button>
             </div>
 
+            <!-- Empty state when no submissions exist -->
             <div v-if="submissions.length === 0 && !loadingSubmissions" class="alert alert-info">
               <i class="fas fa-info-circle me-2"></i>No submissions yet for this contest.
             </div>
 
+            <!-- Submissions table with article metadata -->
             <div v-else-if="submissions.length > 0" class="table-responsive">
               <table class="table table-sm table-hover">
                 <thead>
@@ -95,8 +104,10 @@
                 </thead>
                 <tbody>
                   <tr v-for="submission in submissions" :key="submission.id">
+                    <!-- Article title with preview link and byte count details -->
                     <td>
-                      <a
+                      <!-- Clickable article title to open preview modal -->
+
                         href="#"
                         @click.prevent="showArticlePreview(submission.article_link, submission.article_title)"
                         class="text-decoration-none article-title-link"
@@ -104,7 +115,6 @@
                       >
                         {{ submission.article_title }}
                         <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
-                      </a>
                       <!-- Total bytes = Original bytes (at submission) + Expansion bytes (change since submission) -->
                       <div
                         v-if="submission.article_word_count !== null &&
@@ -119,6 +129,7 @@
                           )
                         }}
                       </div>
+                      <!-- Original byte count at time of submission -->
                       <div
                         v-if="submission.article_word_count !== null &&
                           submission.article_word_count !== undefined"
@@ -127,7 +138,7 @@
                         <i class="fas fa-clock me-1"></i>Original bytes:
                         {{ formatByteCountWithExact(submission.article_word_count) }}
                       </div>
-                      <!-- Show expansion bytes (0 if no change, +X if increased, -X if decreased) -->
+                      <!-- Expansion bytes showing growth/shrinkage since submission -->
                       <div
                         v-if="submission.article_expansion_bytes !== null &&
                           submission.article_expansion_bytes !== undefined"
@@ -152,6 +163,7 @@
                         </span>
                       </div>
                     </td>
+                    <!-- Article author info - shows both original and latest revision authors -->
                     <td>
                       <!-- Original author (from oldest revision) -->
                       <div v-if="submission.article_author">
@@ -181,6 +193,7 @@
                       </div>
                     </td>
                     <td>{{ submission.username || 'Unknown' }}</td>
+                    <!-- Status badge with color coding -->
                     <td>
                       <span :class="`badge bg-${getStatusColor(submission.status)}`">
                         {{ submission.status }}
@@ -188,6 +201,7 @@
                     </td>
                     <td>{{ submission.score || 0 }}</td>
                     <td>{{ formatDate(submission.submitted_at) }}</td>
+                    <!-- Preview button to open article in modal -->
                     <td>
                       <button
                         @click="showArticlePreview(submission.article_link, submission.article_title)"
@@ -214,11 +228,13 @@
             >
               <i class="fas fa-exclamation-triangle me-1"></i>
               <strong>User not loaded!</strong>
+              <!-- Manual auth refresh button for troubleshooting -->
               <button class="btn btn-sm btn-outline-warning ms-2" @click="forceAuthRefresh" style="font-size: 0.7rem;">
                 <i class="fas fa-sync-alt me-1"></i>Refresh Auth
               </button>
             </div>
           </div>
+          <!-- Delete button - only visible to contest creator -->
           <button
             v-if="canDeleteContest"
             class="btn btn-danger"
@@ -229,6 +245,7 @@
             <i v-else class="fas fa-trash me-2"></i>
             {{ deletingContest ? 'Deleting...' : 'Delete Contest' }}
           </button>
+          <!-- Submit article button - for authenticated non-jury participants -->
           <button
             v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
             class="btn btn-primary"
@@ -335,16 +352,9 @@ export default {
       return false
     })
 
-    /**
-     * Check if user can delete contest
-     *
-     * This works for both regular users and OAuth (Wikimedia) users:
-     * - Regular users: username from registration
-     * - OAuth users: Wikimedia username stored in username field
-     *
-     * When a contest is created, the backend stores user.username in created_by field,
-     * so the comparison works the same way for both user types.
-     */
+    // Check if user can delete contest (must be creator)
+    // Works for both regular users and OAuth (Wikimedia) users
+    // Backend stores user.username in created_by field for both types
     const checkDeletePermission = () => {
       // Reset to false initially
       canDeleteContest.value = false
@@ -368,19 +378,19 @@ export default {
 
       // Check basic requirements
       if (!isAuthenticated.value) {
-        console.log('❌ Delete check: Not authenticated')
+        console.log(' Delete check: Not authenticated')
         canDeleteContest.value = false
         return
       }
 
       if (!props.contest) {
-        console.log('❌ Delete check: No contest')
+        console.log(' Delete check: No contest')
         canDeleteContest.value = false
         return
       }
 
       if (!userToCheck) {
-        console.log('❌ Delete check: No current user object')
+        console.log(' Delete check: No current user object')
         console.log('Store state:', store.state)
         canDeleteContest.value = false
         return
@@ -392,7 +402,7 @@ export default {
 
       // If either is empty, can't match
       if (!username) {
-        console.log('❌ Delete check: Username is empty', {
+        console.log(' Delete check: Username is empty', {
           userToCheck,
           currentUser: userFromComputed,
           storeUser: userFromStore,
@@ -403,7 +413,7 @@ export default {
       }
 
       if (!contestCreator) {
-        console.log('❌ Delete check: Contest creator is empty', { contest: props.contest })
+        console.log(' Delete check: Contest creator is empty', { contest: props.contest })
         canDeleteContest.value = false
         return
       }
@@ -415,7 +425,7 @@ export default {
       const canDelete = usernameLower === creatorLower
 
       // Debug logging to help troubleshoot
-      console.log('✅ Delete permission check result:', {
+      console.log(' Delete permission check result:', {
         username,
         contestCreator,
         usernameLower,
@@ -465,17 +475,13 @@ export default {
       if (!dateString) return ''
       try {
         // Ensure the date string is treated as UTC
-        // If it doesn't end with 'Z', append it to indicate UTC timezone
-        // This fixes the issue where naive UTC datetimes were being interpreted as local time
+        // Append 'Z' if no timezone indicator present
         let utcDateString = dateString
         if (!dateString.endsWith('Z') && !dateString.includes('+') && !dateString.includes('-', 10)) {
-          // If no timezone indicator, assume it's UTC and append 'Z'
           utcDateString = dateString + 'Z'
         }
 
-        // Convert to IST (Indian Standard Time) timezone
-        // IST is UTC+5:30, timezone identifier is 'Asia/Kolkata'
-        // Show full date and time with month name, day, year, hour, and minute
+        // Convert to IST timezone with full date and time
         return new Date(utcDateString).toLocaleString('en-IN', {
           timeZone: 'Asia/Kolkata',
           year: 'numeric',
@@ -495,18 +501,16 @@ export default {
     const formatByteCount = (bytes) => {
       if (!bytes) return ''
       if (bytes >= 1048576) {
-        // 1 MB = 1024 * 1024 bytes
         return `${(bytes / 1048576).toFixed(1)} MB`
       }
       if (bytes >= 1024) {
-        // 1 KB = 1024 bytes
         return `${(bytes / 1024).toFixed(1)} KB`
       }
       return `${bytes} bytes`
     }
 
     // Format byte count with exact bytes in parentheses
-    // Shows formatted size (KB/MB) with exact byte count in parentheses
+    // Shows formatted size (KB/MB) with exact byte count
     // Example: "1.2 KB (1224 bytes)" or "-500 bytes" for negative values
     const formatByteCountWithExact = (bytes) => {
       if (!bytes && bytes !== 0) return ''
@@ -516,25 +520,23 @@ export default {
 
       let formatted = ''
       if (absBytes >= 1048576) {
-        // 1 MB = 1024 * 1024 bytes
         formatted = `${(absBytes / 1048576).toFixed(1)} MB (${bytes} bytes)`
       } else if (absBytes >= 1024) {
-        // 1 KB = 1024 bytes
         formatted = `${(absBytes / 1024).toFixed(1)} KB (${bytes} bytes)`
       } else {
-        // For values less than 1 KB, just show bytes (no parentheses needed)
+        // For values less than 1 KB, just show bytes
         formatted = `${bytes} bytes`
       }
 
       return formatted
     }
 
-    // Show article preview modal
+    // Show article preview modal with given URL and title
     const showArticlePreview = (url, title) => {
       previewArticleUrl.value = url
       previewArticleTitle.value = title || 'Article'
 
-      // Show modal using Bootstrap
+      // Show modal using Bootstrap after slight delay
       setTimeout(() => {
         const modalElement = document.getElementById('articlePreviewModal')
         if (modalElement) {
@@ -544,7 +546,7 @@ export default {
       }, 100)
     }
 
-    // Get status badge color
+    // Get Bootstrap badge color based on submission status
     const getStatusColor = (status) => {
       switch (status?.toLowerCase()) {
         case 'accepted':
@@ -558,7 +560,7 @@ export default {
       }
     }
 
-    // Load submissions for the contest
+    // Load submissions for the contest from API
     const loadSubmissions = async () => {
       if (!props.contest || !canViewSubmissions.value) {
         return
@@ -578,6 +580,7 @@ export default {
     }
 
     // Refresh article metadata for all submissions in the contest
+    // Fetches latest data from MediaWiki (byte count, author, etc.)
     const refreshMetadata = async () => {
       if (!props.contest || !canViewSubmissions.value || submissions.value.length === 0) {
         return
@@ -601,11 +604,11 @@ export default {
       }
     }
 
-    // Handle delete contest
+    // Handle delete contest with confirmation
     const handleDeleteContest = async () => {
       if (!props.contest) return
 
-      // Confirm deletion
+      // Confirm deletion with user
       const confirmed = confirm(
         `Are you sure you want to delete the contest "${props.contest.name}"?\n\n` +
         'This action cannot be undone and will delete all associated submissions.'
@@ -618,14 +621,14 @@ export default {
         await api.delete(`/contest/${props.contest.id}`)
         showAlert('Contest deleted successfully', 'success')
 
-        // Close modal
+        // Close modal after successful deletion
         const modalElement = document.getElementById('contestModal')
         const modal = bootstrap.Modal.getInstance(modalElement)
         if (modal) {
           modal.hide()
         }
 
-        // Emit event to parent to reload contests
+        // Emit event to parent to reload contests list
         emit('contest-deleted')
       } catch (error) {
         console.error('Failed to delete contest:', error)
@@ -635,9 +638,10 @@ export default {
       }
     }
 
+    // Handle submit article button click
     const handleSubmitArticle = () => {
       emit('submit-article', props.contest.id)
-      // Close this modal
+      // Close this modal before opening submit modal
       const modalElement = document.getElementById('contestModal')
       const modal = bootstrap.Modal.getInstance(modalElement)
       if (modal) {
@@ -645,7 +649,7 @@ export default {
       }
     }
 
-    // Force auth refresh manually
+    // Force auth refresh manually for troubleshooting
     const forceAuthRefresh = async () => {
       checkingAuth.value = true
       try {
@@ -662,11 +666,10 @@ export default {
     }
 
     // Watch for changes in currentUser to update delete permission
-    // This ensures permission updates when user data changes
     watch(() => currentUser.value, (newUser, oldUser) => {
       if (newUser && props.contest && !checkingAuth.value) {
         console.log('Current user changed, checking delete permission:', newUser)
-        // Small delay to ensure reactivity
+        // Small delay to ensure reactivity settles
         setTimeout(() => {
           checkDeletePermission()
         }, 50)
@@ -686,7 +689,6 @@ export default {
             checkDeletePermission()
           }, 50)
         } else if (!newUser && oldUser && props.contest) {
-          // User was cleared, reset permission
           console.log('Store state user cleared, resetting delete permission')
           canDeleteContest.value = false
         }
@@ -701,16 +703,15 @@ export default {
           checkDeletePermission()
         }, 50)
       } else if (!newUser && oldUser && props.contest) {
-        // User was cleared, reset permission
         console.log('Store computed user cleared, resetting delete permission')
         canDeleteContest.value = false
       }
     }, { deep: true, immediate: false })
 
-    // Watch for contest changes
+    // Watch for contest changes and load data
     watch(() => props.contest, async (newContest) => {
       if (newContest) {
-        // Reset state
+        // Reset state when new contest is opened
         checkingAuth.value = true
         canDeleteContest.value = false
 
@@ -719,7 +720,6 @@ export default {
           console.log('🔍 Contest created by:', newContest.created_by)
 
           // First, check if user is already in the store (from login)
-          // This is faster and more reliable than calling checkAuth()
           let loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
 
           console.log('📊 Initial user check:', {
@@ -736,11 +736,12 @@ export default {
             let retries = 0
             const maxRetries = 3
 
+            // Retry auth check up to 3 times if it fails
             while (!userLoaded && retries < maxRetries) {
               try {
                 const authResult = await store.checkAuth()
 
-                // Wait for reactive state to update after checkAuth
+                // Wait for reactive state to update
                 await new Promise(resolve => setTimeout(resolve, 150))
 
                 // Check if user is actually loaded now
@@ -748,32 +749,32 @@ export default {
                 if (authResult && userNow) {
                   userLoaded = true
                   loadedUser = userNow
-                  console.log('✅ User loaded after auth check:', loadedUser)
+                  console.log(' User loaded after auth check:', loadedUser)
                   break
                 } else {
-                  console.log(`Auth check returned ${authResult} but user not loaded, retrying...`)
+                  console.log(` Auth check returned ${authResult} but user not loaded, retrying...`)
                 }
               } catch (error) {
-                console.error(`Auth check attempt ${retries + 1} failed:`, error)
+                console.error(` Auth check attempt ${retries + 1} failed:`, error)
               }
 
               if (!userLoaded && retries < maxRetries - 1) {
-                console.log(`Retrying auth check... (${retries + 1}/${maxRetries})`)
+                console.log(`🔄 Retrying auth check... (${retries + 1}/${maxRetries})`)
                 await new Promise(resolve => setTimeout(resolve, 300))
               }
               retries++
             }
           } else {
-            console.log('✅ User already in store, using existing user:', loadedUser)
+            console.log(' User already in store, using existing user:', loadedUser)
           }
 
-          // Wait a bit for reactive state to fully propagate
+          // Wait for reactive state to fully propagate
           await new Promise(resolve => setTimeout(resolve, 100))
 
           // Final user check - try all sources again
           loadedUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
 
-          // Log for debugging
+          // Log final state for debugging
           console.log('📊 Final user state:', {
             isAuthenticated: store.isAuthenticated,
             currentUser: store.currentUser,
@@ -785,7 +786,7 @@ export default {
 
           // Check if user is loaded - if not, we can't check permissions
           if (!loadedUser) {
-            console.error('❌ CRITICAL: User not loaded!')
+            console.error(' CRITICAL: User not loaded!')
             console.error('Store currentUser:', store.currentUser)
             console.error('Store state currentUser:', store.state && store.state.currentUser)
             console.error('Computed currentUser:', currentUser.value)
@@ -794,17 +795,18 @@ export default {
             checkingAuth.value = false
             return
           } else {
-            console.log('✅ User loaded successfully:', loadedUser)
+            console.log(' User loaded successfully:', loadedUser)
           }
 
           // Now check delete permission with the loaded user
-          // Give it a moment for reactivity to settle
           await new Promise(resolve => setTimeout(resolve, 100))
           checkDeletePermission()
 
           // If permission check didn't work, try a few more times
           if (!canDeleteContest.value) {
             console.log('⚠️ Delete permission false, retrying permission check...')
+            
+            // Retry up to 3 times with 150ms delay between attempts
             for (let i = 0; i < 3; i++) {
               await new Promise(resolve => setTimeout(resolve, 150))
 
@@ -825,10 +827,13 @@ export default {
 
           // Final check and logging
           if (!canDeleteContest.value) {
+            // Gather final user state for debugging
             const finalUser = store.currentUser || (store.state && store.state.currentUser) || currentUser.value
             console.error('❌ Delete permission still false after all attempts')
             console.error('Final user check:', finalUser)
             console.error('Contest creator:', newContest.created_by)
+            
+            // Compare usernames case-insensitively for debugging
             if (finalUser) {
               console.error('User username:', finalUser.username)
               console.error('Contest creator (lowercase):', (newContest.created_by || '').toLowerCase())
@@ -852,6 +857,7 @@ export default {
           submissions.value = []
         }
       } else {
+        // Reset state when contest is not available
         submissions.value = []
         canDeleteContest.value = false
       }
@@ -887,7 +893,6 @@ export default {
 </script>
 
 <style scoped>
-/* Contest Modal Styling with Wikipedia Colors */
 
 /* Modal header - solid color, no gradient */
 .modal-header {
@@ -903,6 +908,7 @@ export default {
   font-size: 1.5rem;
 }
 
+/* Close button styling with inverted colors */
 .modal-header .btn-close {
   filter: invert(1) brightness(1.2);
   opacity: 0.9;
@@ -913,11 +919,11 @@ export default {
   opacity: 1;
 }
 
-/* Modal body styling */
 .modal-body {
   padding: 1.5rem;
 }
 
+/* Section headers with bottom border */
 .modal-body h6 {
   color: var(--wiki-primary);
   font-weight: 600;
@@ -927,8 +933,9 @@ export default {
   transition: color 0.3s ease;
 }
 
+/* Dark mode: white text for better visibility */
 [data-theme="dark"] .modal-body h6 {
-  color: #ffffff !important; /* White text for better visibility in dark mode */
+  color: #ffffff !important;
   border-bottom-color: rgba(93, 184, 230, 0.3);
 }
 
@@ -944,7 +951,7 @@ export default {
   transition: color 0.3s ease;
 }
 
-/* Jury section - white text for visibility */
+/* Ensure white text for jury section in both modes */
 .jury-section p {
   color: #ffffff !important;
 }
@@ -961,17 +968,17 @@ export default {
   color: #ffffff !important;
 }
 
-/* Description section - preserve formatting and line breaks */
 .description-section {
   margin-top: 1.5rem;
 }
 
+/* Preserve line breaks and wrap text naturally */
 .description-text {
-  white-space: pre-line; /* Preserves line breaks and wraps text */
+  white-space: pre-line;
   line-height: 1.6;
   margin-bottom: 0;
   color: var(--wiki-text);
-  word-wrap: break-word; /* Break long words if needed */
+  word-wrap: break-word;
   transition: color 0.3s ease;
 }
 
@@ -979,7 +986,6 @@ export default {
   color: var(--wiki-text);
 }
 
-/* Badge styling */
 .badge {
   font-weight: 500;
   padding: 0.4em 0.8em;
@@ -994,25 +1000,27 @@ export default {
   background-color: var(--wiki-success) !important;
 }
 
+/* Warning badge with dark text for readability */
 .badge.bg-warning {
   background-color: var(--wiki-warning) !important;
-  color: #000000 !important; /* Dark text on bright warning background for better readability */
+  color: #000000 !important;
 }
 
+/* Dark mode: maintain dark text on bright orange */
 [data-theme="dark"] .badge.bg-warning {
   background-color: var(--wiki-warning) !important;
-  color: #000000 !important; /* Dark text on bright orange background for maximum contrast */
+  color: #000000 !important;
 }
 
 .badge.bg-danger {
   background-color: var(--wiki-danger) !important;
 }
 
-/* Table styling */
 .table {
   margin-top: 1rem;
 }
 
+/* Table header with Wikipedia colors */
 .table thead th {
   background-color: rgba(0, 102, 153, 0.1);
   color: var(--wiki-primary);
@@ -1022,6 +1030,7 @@ export default {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+/* Dark mode table header */
 [data-theme="dark"] .table thead th {
   background-color: rgba(93, 184, 230, 0.15);
   border-bottom-color: var(--wiki-primary);
@@ -1034,6 +1043,7 @@ export default {
   transition: color 0.3s ease;
 }
 
+/* Hover effect for table rows */
 .table tbody tr {
   transition: background-color 0.2s ease;
 }
@@ -1042,7 +1052,7 @@ export default {
   background-color: var(--wiki-hover-bg);
 }
 
-/* Link styling in table */
+/* Links in table cells */
 .table a {
   color: var(--wiki-primary);
   font-weight: 500;
@@ -1067,7 +1077,7 @@ export default {
   text-decoration: underline;
 }
 
-/* Button styling */
+/* Outline primary button */
 .btn-outline-primary {
   border-color: var(--wiki-primary);
   color: var(--wiki-primary);
@@ -1082,6 +1092,7 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.3);
 }
 
+/* Primary button with hover effect */
 .btn-primary {
   background-color: var(--wiki-primary);
   border-color: var(--wiki-primary);
@@ -1095,6 +1106,7 @@ export default {
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.3);
 }
 
+/* Danger button with MediaWiki red */
 .btn-danger {
   background-color: var(--wiki-danger);
   border-color: var(--wiki-danger);
@@ -1109,7 +1121,7 @@ export default {
   box-shadow: 0 2px 4px rgba(153, 0, 0, 0.2);
 }
 
-/* Ensure proper MediaWiki red in dark mode */
+/* Dark mode danger button - ensure proper MediaWiki red */
 [data-theme="dark"] .btn-danger {
   background-color: #990000;
   border-color: #990000;
@@ -1122,6 +1134,7 @@ export default {
   color: white;
 }
 
+/* Secondary button styling */
 .btn-secondary {
   background-color: var(--wiki-text-muted);
   border-color: var(--wiki-text-muted);
@@ -1133,6 +1146,7 @@ export default {
   border-color: var(--wiki-text-muted);
 }
 
+/* Dark mode secondary button */
 [data-theme="dark"] .btn-secondary {
   background-color: #5a6268;
   border-color: #5a6268;
@@ -1143,13 +1157,13 @@ export default {
   border-color: #6c757d;
 }
 
-/* Alert styling */
 .alert {
   border-radius: 0.5rem;
   border-left: 4px solid;
   padding: 0.75rem 1rem;
 }
 
+/* Info alert with Wikipedia blue */
 .alert-info {
   background-color: rgba(0, 102, 153, 0.1);
   border-color: var(--wiki-primary);
@@ -1157,12 +1171,14 @@ export default {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+/* Dark mode info alert */
 [data-theme="dark"] .alert-info {
   background-color: rgba(93, 184, 230, 0.2);
   border-color: var(--wiki-primary);
   color: var(--wiki-primary);
 }
 
+/* Warning alert with red tones */
 .alert-warning {
   background-color: rgba(153, 0, 0, 0.1);
   border-color: var(--wiki-danger);
@@ -1170,13 +1186,13 @@ export default {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
+/* Dark mode warning alert */
 [data-theme="dark"] .alert-warning {
   background-color: rgba(230, 128, 128, 0.2);
   border-color: var(--wiki-danger);
   color: var(--wiki-danger);
 }
 
-/* Modal footer */
 .modal-footer {
   border-top: 1px solid var(--wiki-border);
   padding: 1rem 1.5rem;
@@ -1184,37 +1200,39 @@ export default {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
+/* Muted text in footer */
 .modal-footer .text-muted {
   font-size: 0.75rem;
   color: var(--wiki-text-muted);
   transition: color 0.3s ease;
 }
 
-/* Debug info styling */
+/* Debug info in footer */
 .modal-footer .alert {
   margin-bottom: 0.5rem;
   font-size: 0.75rem;
   padding: 0.5rem 0.75rem;
 }
 
-/* Spinner styling */
+/* Small spinner for loading states */
 .spinner-border-sm {
   width: 1rem;
   height: 1rem;
   border-width: 0.15em;
 }
 
-/* Icon styling */
+/* Icon transitions */
 .fas, .fab {
   transition: transform 0.2s ease;
 }
 
+/* Scale icons on button hover */
 .btn:hover .fas,
 .btn:hover .fab {
   transform: scale(1.1);
 }
 
-/* Responsive adjustments */
+/* Mobile and tablet adjustments */
 @media (max-width: 768px) {
   .modal-body {
     padding: 1rem;
@@ -1230,4 +1248,3 @@ export default {
   }
 }
 </style>
-

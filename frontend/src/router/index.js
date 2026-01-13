@@ -7,17 +7,19 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
 
-// Import page components
+// View components
 import Home from '../views/Home.vue'
 import Contests from '../views/Contests.vue'
 import ContestView from '../views/ContestView.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Profile from '../views/Profile.vue'
 import JuryDashboard from '../components/JuryDashboard.vue'
-// Import store function - will be used in navigation guard
+import ContestLeaderboard from '../components/ContestLeaderboard.vue'
+
+// Store module reference for lazy loading to prevent circular dependencies
 let storeModule = null
 
-// Define routes
+// Application route definitions
 const routes = [
   {
     path: '/',
@@ -28,109 +30,98 @@ const routes = [
     path: '/contests',
     name: 'Contests',
     component: Contests,
-    // Require authentication to view contests
     meta: { requiresAuth: true }
   },
   {
     path: '/contest/:name',
     name: 'ContestView',
     component: ContestView,
-    // Require authentication to view contest details
-    // name parameter is the slugified contest name (e.g., "price-sanford")
     meta: { requiresAuth: true }
   },
   {
     path: '/jurydashboard',
     name: 'JuryDashboard',
     component: JuryDashboard,
-    // Require authentication
     meta: { requiresAuth: true }
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
     component: Dashboard,
-    // Require authentication
     meta: { requiresAuth: true }
   },
   {
     path: '/profile',
     name: 'Profile',
     component: Profile,
-    // Require authentication
     meta: { requiresAuth: true }
   },
   {
-    // Catch all 404 routes
+    path: '/contest/:name/leaderboard',
+    name: 'ContestLeaderboard',
+    component: ContestLeaderboard,
+    meta: { requiresAuth: true }
+  },
+  {
+    // Redirect unknown routes to home page
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }
 ]
 
-// Create router instance
+// Initialize router with HTML5 history mode
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
-// Navigation guard to check authentication
+// Global navigation guard for authentication
 router.beforeEach(async (to, from, next) => {
-  // Dynamically import store to avoid circular dependencies
+  // Lazy load store to prevent circular dependency issues
   if (!storeModule) {
     storeModule = await import('../store')
   }
   const { useStore } = storeModule
   const store = useStore()
 
-  // Check if user is already authenticated in store (from login response)
-  // This prevents unnecessary API calls right after login
+  // Check if user data exists in store from recent login
   const hasUserInStore = store.isAuthenticated && store.currentUser
 
-  // Always check authentication status from server (async)
-  // This ensures we have the latest auth state from the server
-  // But if we already have a user in store, we can use that as a fallback
+  // Verify authentication status with server
   let isAuthenticated = false
   try {
     isAuthenticated = await store.checkAuth()
   } catch (error) {
-    // If checkAuth fails but we have a user in store (e.g., just logged in),
-    // use the store state as fallback
-    // This handles cases where cookie might not be set yet after login
+    // Fallback to store state if server check fails but user recently logged in
     if (hasUserInStore) {
       console.log('Auth check failed but user exists in store, using store state')
       isAuthenticated = true
     } else {
-      // No user in store and checkAuth failed - user is not authenticated
       isAuthenticated = false
     }
   }
 
-  // Check if route requires authentication
+  // Handle protected routes
   if (to.meta.requiresAuth && !isAuthenticated) {
-    // Redirect directly to MediaWiki OAuth authentication
-    // Get API base URL for OAuth redirect
+    // Build API base URL based on environment
     const getApiBaseUrl = () => {
-      // In development, use full URL to Flask backend
       if (import.meta.env.DEV) {
         return 'http://localhost:5000/api'
       }
-      // In production, use relative URL
       return '/api'
     }
 
-    // Store the intended destination for after OAuth
+    // Preserve intended destination for post-login redirect
     if (to.fullPath !== '/') {
       sessionStorage.setItem('oauth_redirect', to.fullPath)
     }
 
-    // Redirect to OAuth login endpoint
+    // Redirect to MediaWiki OAuth login
     window.location.href = `${getApiBaseUrl()}/user/oauth/login`
-    // Stop navigation
   } else {
-    // Allow access to public pages
+    // Allow navigation for authenticated users or public routes
     next()
   }
 })
 
 export default router
-

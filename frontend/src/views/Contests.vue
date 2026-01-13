@@ -1,5 +1,6 @@
 <template>
   <div class="container py-5">
+    <!-- Page Header with Create Button -->
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4">
       <h2 class="mb-3 mb-sm-0">Contests</h2>
       <button
@@ -11,7 +12,7 @@
       </button>
     </div>
 
-    <!-- Contest Categories Tabs -->
+    <!-- Contest Category Tabs -->
     <ul class="nav nav-tabs mb-4" id="contestTabs">
       <li class="nav-item">
         <button
@@ -42,7 +43,7 @@
       </li>
     </ul>
 
-    <!-- Loading State -->
+    <!-- Loading Spinner -->
     <div v-if="loading" class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
@@ -51,10 +52,12 @@
 
     <!-- Contest List -->
     <div v-else id="contestList">
+      <!-- Empty State Message -->
       <div v-if="currentContests.length === 0" class="alert alert-info text-center">
         <i class="fas fa-info-circle me-2"></i>
         No {{ activeCategory }} contests available.
       </div>
+      <!-- Contest Cards -->
       <div v-else class="contest-list">
         <div
           v-for="contest in currentContests"
@@ -62,9 +65,8 @@
           class="contest-item"
           @click="viewContest(contest)"
         >
-          <!-- Contest Card Layout -->
           <div class="contest-card">
-            <!-- Header Row: Title and Timestamp -->
+            <!-- Contest Header: Title and Creation Timestamp -->
             <div class="contest-header">
               <div class="contest-title-section">
                 <span
@@ -79,7 +81,7 @@
               </div>
             </div>
 
-            <!-- Tags Row: Status, Project, Submissions, Creator -->
+            <!-- Contest Metadata Tags -->
             <div class="contest-tags">
               <!-- Status Badge -->
               <span
@@ -90,25 +92,44 @@
                 {{ getStatusLabel(contest.status) }}
               </span>
 
-              <!-- Project Tag -->
+              <!-- Project/Wiki Badge -->
               <span class="contest-tag project-tag">
                 <i class="fas fa-briefcase"></i>
                 {{ contest.project_name }}
               </span>
 
-              <!-- Submissions Count Badge -->
+              <!-- Submission Count Badge -->
               <span class="contest-tag submissions-tag">
                 <i class="fas fa-file-alt"></i>
                 {{ contest.submission_count || 0 }} {{ contest.submission_count === 1 ? 'submission' : 'submissions' }}
               </span>
 
-              <!-- Creator Tag -->
-              <span class="contest-tag creator-tag">
-                <i class="fas fa-user"></i>
-                {{ contest.created_by }}
-              </span>
+              <!-- Organizers with Avatar Bubbles -->
+              <div class="organizers-section">
+                <span class="organizers-label"><i class="fas fa-user-cog"></i>
+                </span>
+                <div class="organizers-avatars">
+                  <!-- Show first 3 organizers -->
+                  <div
+                    v-for="(organizer, index) in getOrganizers(contest)"
+                    :key="index"
+                    class="organizer-avatar"
+                    :title="organizer"
+                  >
+                    {{ getInitials(organizer) }}
+                  </div>
+                  <!-- Show count of remaining organizers if more than 3 -->
+                  <div
+                    v-if="getOrganizers(contest).length > 3"
+                    class="organizer-avatar organizer-more"
+                    :title="`${getOrganizers(contest).length - 3} more organizers`"
+                  >
+                    +{{ getOrganizers(contest).length - 3 }}
+                  </div>
+                </div>
+              </div>
 
-              <!-- Date Range Tag (if dates available) -->
+              <!-- Date Range Badge -->
               <span v-if="contest.start_date || contest.end_date" class="contest-tag date-tag">
                 <i class="fas fa-calendar-alt"></i>
                 {{ formatDateRange(contest.start_date, contest.end_date) }}
@@ -119,14 +140,13 @@
       </div>
     </div>
 
-    <!-- Submit Article Modal -->
+    <!-- Modals -->
     <SubmitArticleModal
       v-if="submittingToContestId"
       :contest-id="submittingToContestId"
       @submitted="handleArticleSubmitted"
     />
 
-    <!-- Create Contest Modal -->
     <CreateContestModal
       ref="createContestModal"
       @created="handleContestCreated"
@@ -157,26 +177,77 @@ export default {
     const submittingToContestId = ref(null)
     const createContestModal = ref(null)
 
-    // Computed property for current contests
+    // Get contests for currently selected category
     const currentContests = computed(() => {
       return store.getContestsByCategory(activeCategory.value)
     })
 
     const isAuthenticated = computed(() => store.isAuthenticated)
 
-    // Set active category
+    // Combine creator and organizers array into single list
+    const getOrganizers = (contest) => {
+      const organizers = []
+      
+      // Add creator first
+      if (contest.created_by) {
+        organizers.push(contest.created_by)
+      }
+      
+      // Add additional organizers, excluding duplicates
+      if (contest.organizers && Array.isArray(contest.organizers)) {
+        contest.organizers.forEach(org => {
+          if (org && org !== contest.created_by) {
+            organizers.push(org)
+          }
+        })
+      }
+      
+      return organizers
+    }
+
+    // Extract initials from username for avatar display
+    const getInitials = (username) => {
+      if (!username) return '?'
+      
+      const parts = username.trim().split(/\s+/)
+      
+      if (parts.length >= 2) {
+        // Multiple words: use first letter of first two words
+        return (parts[0][0] + parts[1][0]).toUpperCase()
+      } else {
+        // Single word: use first two characters
+        return username.substring(0, 2).toUpperCase()
+      }
+    }
+
+    // Generate consistent color for avatar based on username hash
+    const getAvatarColor = (username) => {
+      if (!username) return '#6c757d'
+      
+      // Simple hash function for consistent color generation
+      let hash = 0
+      for (let i = 0; i < username.length; i++) {
+        hash = username.charCodeAt(i) + ((hash << 5) - hash)
+      }
+      
+      // Convert to HSL for better color variety
+      const hue = hash % 360
+      return `hsl(${hue}, 65%, 50%)`
+    }
+
+    // Switch between current, upcoming, and past contests
     const setActiveCategory = (category) => {
       activeCategory.value = category
     }
 
-    // Truncate text helper
+    // Truncate long text with ellipsis
     const truncateText = (text, maxLength) => {
       if (!text) return ''
       if (text.length <= maxLength) return text
       return text.substring(0, maxLength) + '...'
     }
 
-    // Format date for display
+    // Format timestamp for display in contest header
     const formatDate = (dateString) => {
       if (!dateString) return ''
       try {
@@ -193,7 +264,7 @@ export default {
       }
     }
 
-    // Format date range
+    // Format start and end dates into readable range
     const formatDateRange = (startDate, endDate) => {
       if (!startDate && !endDate) return ''
 
@@ -217,7 +288,7 @@ export default {
       return ''
     }
 
-    // Get status label
+    // Convert status key to human-readable label
     const getStatusLabel = (status) => {
       const labels = {
         current: 'Active',
@@ -228,7 +299,7 @@ export default {
       return labels[status] || 'Unknown'
     }
 
-    // Get status CSS class
+    // Get CSS class for status badge styling
     const getStatusClass = (status) => {
       const classes = {
         current: 'status-active',
@@ -239,7 +310,7 @@ export default {
       return classes[status] || 'status-unknown'
     }
 
-    // Get status icon
+    // Get icon class for status badge
     const getStatusIcon = (status) => {
       const icons = {
         current: 'fas fa-circle',
@@ -250,12 +321,10 @@ export default {
       return icons[status] || 'fas fa-question-circle'
     }
 
-    // View contest details - navigate to full page using contest name
+    // Navigate to contest detail page using slugified name
     const viewContest = (contest) => {
-      // If contest is an object, use it directly; otherwise find it by ID
       let contestData = contest
       if (typeof contest === 'number' || typeof contest === 'string') {
-        // If passed ID, find the contest object
         contestData = currentContests.value.find(c => c.id === parseInt(contest))
       }
 
@@ -264,19 +333,17 @@ export default {
         return
       }
 
-      // Create URL-friendly slug from contest name
       const contestSlug = slugify(contestData.name)
       router.push({ name: 'ContestView', params: { name: contestSlug } })
     }
 
-    // Show create contest modal
+    // Open modal to create new contest
     const showCreateContestModal = () => {
       if (!store.isAuthenticated) {
         showAlert('Please login to create a contest', 'warning')
         return
       }
 
-      // Show modal using Bootstrap
       const modalElement = document.getElementById('createContestModal')
       if (modalElement) {
         const modal = new bootstrap.Modal(modalElement)
@@ -284,12 +351,12 @@ export default {
       }
     }
 
-    // Handle contest created
+    // Refresh contest list after new contest is created
     const handleContestCreated = () => {
-      // Contests will be reloaded automatically by store
+      // Store automatically reloads contests
     }
 
-    // Handle submit article
+    // Open article submission modal for specific contest
     const handleSubmitArticle = (contestId) => {
       if (!store.isAuthenticated) {
         showAlert('Please login to submit an article', 'warning')
@@ -297,7 +364,6 @@ export default {
       }
       submittingToContestId.value = contestId
 
-      // Show submit modal using Bootstrap
       setTimeout(() => {
         const modalElement = document.getElementById('submitArticleModal')
         if (modalElement) {
@@ -307,15 +373,13 @@ export default {
       }, 100)
     }
 
-    // Handle article submitted
+    // Refresh after article submission
     const handleArticleSubmitted = () => {
       submittingToContestId.value = null
-      // Reload contests to update submission counts
       store.loadContests()
     }
 
-
-    // Load contests on mount
+    // Load contests on component mount
     onMounted(async () => {
       loading.value = true
       try {
@@ -341,6 +405,9 @@ export default {
       getStatusLabel,
       getStatusClass,
       getStatusIcon,
+      getOrganizers,
+      getInitials,
+      getAvatarColor,
       viewContest,
       showCreateContestModal,
       handleContestCreated,
@@ -354,7 +421,7 @@ export default {
 <style scoped>
 /* Contests Page Styling with Wikipedia Colors */
 
-/* Page header */
+/* Page Header */
 h2 {
   color: var(--wiki-dark);
   font-weight: 700;
@@ -362,12 +429,11 @@ h2 {
   transition: color 0.3s ease;
 }
 
-/* Ensure page header is visible in dark mode */
 [data-theme="dark"] h2 {
-  color: #ffffff !important; /* White text for page header in dark mode */
+  color: #ffffff !important;
 }
 
-/* Create contest button - professional */
+/* Primary Action Button */
 .btn-primary {
   background-color: var(--wiki-primary);
   border-color: var(--wiki-primary);
@@ -384,7 +450,7 @@ h2 {
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.2);
 }
 
-/* Nav tabs - Wikipedia style - reduced line thickness */
+/* Category Navigation Tabs */
 .nav-tabs {
   border-bottom: 1px solid var(--wiki-border);
   margin-bottom: 2rem;
@@ -401,17 +467,16 @@ h2 {
   margin-right: 0.5rem;
 }
 
-/* Ensure nav links are visible in dark mode */
 [data-theme="dark"] .nav-tabs .nav-link {
-  color: #ffffff !important; /* White text for nav links in dark mode */
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .nav-tabs .nav-link:hover {
-  color: var(--wiki-primary) !important; /* Keep blue on hover */
+  color: var(--wiki-primary) !important;
 }
 
 [data-theme="dark"] .nav-tabs .nav-link.active {
-  color: var(--wiki-primary) !important; /* Keep blue for active tab */
+  color: var(--wiki-primary) !important;
 }
 
 .nav-tabs .nav-link:hover {
@@ -429,13 +494,14 @@ h2 {
   font-weight: 600;
 }
 
-/* Contest list - enhanced card-based design */
+/* Contest List Container */
 .contest-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
+/* Individual Contest Item */
 .contest-item {
   margin-bottom: 1rem;
   cursor: pointer;
@@ -446,7 +512,7 @@ h2 {
   transform: translateY(-2px);
 }
 
-/* Contest card container */
+/* Contest Card Styling */
 .contest-card {
   background-color: #ffffff;
   border: 1px solid var(--wiki-border);
@@ -461,7 +527,6 @@ h2 {
   border-color: var(--wiki-primary);
 }
 
-/* Dark mode card styling */
 [data-theme="dark"] .contest-card {
   background-color: #2a2a2a;
   border-color: #444;
@@ -472,7 +537,7 @@ h2 {
   box-shadow: 0 4px 12px rgba(77, 166, 204, 0.2);
 }
 
-/* Contest header: ID, title, and timestamp */
+/* Contest Header Layout */
 .contest-header {
   display: flex;
   justify-content: space-between;
@@ -488,18 +553,7 @@ h2 {
   flex: 1;
 }
 
-.contest-id {
-  font-weight: 700;
-  color: var(--wiki-dark);
-  font-size: 0.95rem;
-  min-width: fit-content;
-}
-
-[data-theme="dark"] .contest-id {
-  color: #ffffff;
-}
-
-/* Contest title - clickable link - larger size */
+/* Contest Title Link */
 .contest-title-link {
   color: var(--wiki-primary);
   font-size: 1.4rem;
@@ -515,17 +569,16 @@ h2 {
   text-decoration: underline;
 }
 
-/* Dark mode title - white color for better visibility */
 [data-theme="dark"] .contest-title-link {
-  color: #ffffff !important; /* White text for better visibility in dark mode */
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .contest-title-link:hover {
-  color: #ffffff !important; /* Keep white on hover for consistency */
+  color: #ffffff !important;
   text-decoration: underline;
 }
 
-/* Timestamp */
+/* Creation Timestamp */
 .contest-timestamp {
   color: #666;
   font-size: 0.875rem;
@@ -537,7 +590,7 @@ h2 {
   color: #aaa;
 }
 
-/* Tags container */
+/* Tags Container */
 .contest-tags {
   display: flex;
   flex-wrap: wrap;
@@ -545,7 +598,7 @@ h2 {
   align-items: center;
 }
 
-/* Base tag styling - smaller size */
+/* Base Tag Styling */
 .contest-tag {
   display: inline-flex;
   align-items: center;
@@ -562,7 +615,7 @@ h2 {
   font-size: 0.65rem;
 }
 
-/* Status tags with different colors - professional light backgrounds */
+/* Status Badge Variants */
 .status-tag {
   background-color: #f5f5f5;
   color: #424242;
@@ -593,32 +646,32 @@ h2 {
   border: 1px solid #e0e0e0;
 }
 
-/* Dark mode status tags - maintain original colors with better visibility */
+/* Dark mode status badge overrides */
 [data-theme="dark"] .status-tag {
-  background-color: #f5f5f5 !important; /* Original light gray background */
-  color: #424242 !important; /* Original dark gray text */
-  border-color: #e0e0e0 !important; /* Original border color */
+  background-color: #f5f5f5 !important;
+  color: #424242 !important;
+  border-color: #e0e0e0 !important;
 }
 
 [data-theme="dark"] .status-active {
-  background-color: #e8f5e9 !important; /* Original light green background */
-  color: #2e7d32 !important; /* Original dark green text */
-  border-color: #c8e6c9 !important; /* Original border color */
+  background-color: #e8f5e9 !important;
+  color: #2e7d32 !important;
+  border-color: #c8e6c9 !important;
 }
 
 [data-theme="dark"] .status-upcoming {
-  background-color: #fff9e6 !important; /* Original light yellow background */
-  color: #f57c00 !important; /* Original orange text */
-  border-color: #ffe0b2 !important; /* Original border color */
+  background-color: #fff9e6 !important;
+  color: #f57c00 !important;
+  border-color: #ffe0b2 !important;
 }
 
 [data-theme="dark"] .status-past {
-  background-color: #f3e5f5 !important; /* Original light purple background */
-  color: #7b1fa2 !important; /* Original purple text */
-  border-color: #ce93d8 !important; /* Original border color */
+  background-color: #f3e5f5 !important;
+  color: #7b1fa2 !important;
+  border-color: #ce93d8 !important;
 }
 
-/* Project tag - professional light background */
+/* Project Badge */
 .project-tag {
   background-color: #e3f2fd;
   color: #1565c0;
@@ -626,12 +679,12 @@ h2 {
 }
 
 [data-theme="dark"] .project-tag {
-  background-color: #e3f2fd !important; /* Original light blue background */
-  color: #1565c0 !important; /* Original dark blue text */
-  border-color: #90caf9 !important; /* Original border color */
+  background-color: #e3f2fd !important;
+  color: #1565c0 !important;
+  border-color: #90caf9 !important;
 }
 
-/* Submissions tag - professional light background */
+/* Submissions Badge */
 .submissions-tag {
   background-color: #e8f5e9;
   color: #2e7d32;
@@ -639,25 +692,12 @@ h2 {
 }
 
 [data-theme="dark"] .submissions-tag {
-  background-color: #e8f5e9 !important; /* Original light green background */
-  color: #2e7d32 !important; /* Original dark green text */
-  border-color: #a5d6a7 !important; /* Original border color */
+  background-color: #e8f5e9 !important;
+  color: #2e7d32 !important;
+  border-color: #a5d6a7 !important;
 }
 
-/* Creator tag - professional light background */
-.creator-tag {
-  background-color: #f3e5f5;
-  color: #7b1fa2;
-  border: 1px solid #ce93d8;
-}
-
-[data-theme="dark"] .creator-tag {
-  background-color: #f3e5f5 !important; /* Original light purple background */
-  color: #7b1fa2 !important; /* Original purple text */
-  border-color: #ce93d8 !important; /* Original border color */
-}
-
-/* Date tag - professional light background */
+/* Date Range Badge */
 .date-tag {
   background-color: #fff3e0;
   color: #e65100;
@@ -666,39 +706,74 @@ h2 {
 }
 
 [data-theme="dark"] .date-tag {
-  background-color: #fff3e0 !important; /* Original light orange background */
-  color: #e65100 !important; /* Original dark orange text */
-  border-color: #ffcc80 !important; /* Original border color */
+  background-color: #fff3e0 !important;
+  color: #e65100 !important;
+  border-color: #ffcc80 !important;
 }
 
-
-/* Status badge - professional */
-.status-badge {
-  background-color: var(--wiki-primary) !important;
-  color: white;
-  font-weight: 500;
-  padding: 0.35em 0.7em;
+/* Organizers Section */
+.organizers-section {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.10rem 0.5rem;
+  background-color: #f0f7ff;
+  border: 1px solid #b3d9ff;
   border-radius: 4px;
-  font-size: 0.85rem;
 }
 
-/* View details button */
-.btn-outline-primary {
-  border-color: var(--wiki-primary);
-  color: var(--wiki-primary);
-  font-weight: 500;
-  transition: all 0.2s ease;
+[data-theme="dark"] .organizers-section {
+  background-color: #f0f7ff !important;
+  border-color: #b3d9ff !important;
 }
 
-.btn-outline-primary:hover {
-  background-color: var(--wiki-primary);
-  border-color: var(--wiki-primary);
+.organizers-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #0066cc;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .organizers-label {
+  color: #0066cc !important;
+}
+
+/* Organizer Avatar Bubbles */
+.organizers-avatars {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.organizer-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--wiki-primary);
   color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 102, 153, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: help;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* Alert styling */
+.organizer-avatar:hover {
+  transform: scale(1.15);
+  z-index: 10;
+}
+
+/* +N overflow indicator */
+.organizer-more {
+  background: var(--wiki-primary);
+  font-size: 0.6rem;
+}
+
+/* Empty State Alert */
 .alert-info {
   background-color: rgba(0, 102, 153, 0.1);
   border: 1px solid var(--wiki-primary);
@@ -708,22 +783,20 @@ h2 {
   padding: 1rem;
 }
 
-/* Dark mode - use white text for better visibility */
 [data-theme="dark"] .alert-info {
   background-color: rgba(77, 166, 204, 0.15);
-  color: #ffffff; /* White text for better visibility in dark mode */
+  color: #ffffff;
 }
 
 .alert-info i {
   color: var(--wiki-primary);
 }
 
-/* Dark mode - white icon for better visibility */
 [data-theme="dark"] .alert-info i {
-  color: #ffffff; /* White icon for better visibility in dark mode */
+  color: #ffffff;
 }
 
-/* Loading spinner */
+/* Loading Spinner */
 .spinner-border.text-primary {
   color: var(--wiki-primary) !important;
   width: 3rem;
@@ -731,12 +804,7 @@ h2 {
   border-width: 0.3em;
 }
 
-/* Empty state */
-.text-center {
-  padding: 3rem 1rem;
-}
-
-/* Responsive adjustments */
+/* Tablet Responsive */
 @media (max-width: 768px) {
   .container {
     padding-left: 1rem;
@@ -778,7 +846,17 @@ h2 {
     padding: 0.2rem 0.45rem;
   }
 
-  .contest-tag i {
+  .organizers-section {
+    padding: 0.2rem 0.45rem;
+  }
+
+  .organizers-label {
+    font-size: 0.7rem;
+  }
+
+  .organizer-avatar {
+    width: 22px;
+    height: 22px;
     font-size: 0.6rem;
   }
 
@@ -789,6 +867,7 @@ h2 {
   }
 }
 
+/* Mobile Responsive */
 @media (max-width: 576px) {
   h2 {
     font-size: 1.5rem;
@@ -800,10 +879,6 @@ h2 {
 
   .contest-title-link {
     font-size: 1.1rem;
-  }
-
-  .contest-id {
-    font-size: 0.85rem;
   }
 
   .contest-timestamp {
@@ -819,8 +894,19 @@ h2 {
     padding: 0.2rem 0.4rem;
   }
 
-  .contest-tag i {
-    font-size: 0.6rem;
+  .organizers-section {
+    padding: 0.2rem 0.4rem;
+  }
+
+  .organizers-label {
+    font-size: 0.65rem;
+  }
+
+  .organizer-avatar {
+    width: 20px;
+    height: 20px;
+    font-size: 0.55rem;
+    border-width: 1.5px;
   }
 
   .nav-tabs {
@@ -834,16 +920,9 @@ h2 {
     font-size: 0.85rem;
   }
 
-  .btn-sm {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-  }
-
-  /* Make create button more compact on mobile */
   .btn-primary {
     font-size: 0.9rem;
     padding: 0.5rem 0.75rem;
   }
 }
 </style>
-

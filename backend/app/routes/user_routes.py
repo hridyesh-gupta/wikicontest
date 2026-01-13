@@ -13,12 +13,23 @@ import mwoauth
 from app.database import db
 from app.middleware.auth import require_auth, require_role, handle_errors, validate_json_data
 from app.models.user import User
+
+# ------------------------------------------------------------------------
+# OAUTH TOKEN CACHE
+# ------------------------------------------------------------------------
 # Temporary storage for OAuth tokens (in-memory cache)
 # This is used as a fallback when session cookies don't persist across redirects
+# When users are redirected to Wikimedia for OAuth, session cookies may not
+# persist properly, so we cache tokens here as a backup mechanism
 _oauth_token_cache = {}
 
 # Create blueprint
 user_bp = Blueprint('user', __name__)
+
+
+# ------------------------------------------------------------------------
+# VALIDATION UTILITIES
+# ------------------------------------------------------------------------
 
 def validate_email(email):
     """
@@ -47,6 +58,11 @@ def validate_username(username):
     pattern = r'^[a-zA-Z0-9_]{3,20}$'
     return re.match(pattern, username) is not None
 
+
+# ------------------------------------------------------------------------
+# USER REGISTRATION & AUTHENTICATION
+# ------------------------------------------------------------------------
+
 @user_bp.route('/register', methods=['POST'])
 @handle_errors
 @validate_json_data(['username', 'email', 'password'])
@@ -69,7 +85,7 @@ def register():
     password = data['password']
     role = data.get('role', 'user')
 
-    # Validate input data
+    # --- Input Validation ---
     if not validate_username(username):
         return jsonify({'error': 'Username must be 3-20 characters, alphanumeric and underscores only'}), 400
 
@@ -79,6 +95,7 @@ def register():
     if len(password) < 6:
         return jsonify({'error': 'Password must be at least 6 characters long'}), 400
 
+    # --- Role Validation ---
     # Allow only two roles via the public API for security:
     # - user: regular user (default)
     # - admin: admin-level access
@@ -90,6 +107,7 @@ def register():
     if role not in ['user', 'admin']:
         return jsonify({'error': 'Invalid role'}), 400
 
+    # --- Uniqueness Checks ---
     # Check if username already exists
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists'}), 400
@@ -98,7 +116,7 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already exists'}), 400
 
-    # Create new user
+    # --- Create User ---
     try:
         user = User(username=username, email=email, password=password, role=role)
         user.save()
@@ -113,6 +131,7 @@ def register():
         # Log error for debugging but don't expose details to client
         return jsonify({'error': 'Failed to create user'}), 500
 
+
 @user_bp.route('/login', methods=['POST'])
 @handle_errors
 def login():
@@ -126,7 +145,7 @@ def login():
     Returns:
         JSON response with success message and JWT token in cookie
     """
-    # Get JSON data directly
+    # Get JSON data directly (not using validator for login to allow flexible error handling)
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No JSON data provided'}), 400
@@ -137,6 +156,7 @@ def login():
     if not email or not password:
         return jsonify({'error': 'Email and password required'}), 400
 
+    # --- Authenticate User ---
     # Find user by email
     user = User.query.filter_by(email=email).first()
 
@@ -144,10 +164,10 @@ def login():
         return jsonify({'error': 'Invalid email or password'}), 401
 
     try:
-        # Create JWT token
+        # Create JWT token for authenticated session
         access_token = create_access_token(identity=str(user.id))
 
-        # Create response
+        # Create response with user info
         # NOTE: we also include the user's role so frontend can know if they are
         # admin / superadmin and adjust UI (like delete buttons) accordingly.
         response = make_response(jsonify({
@@ -157,7 +177,7 @@ def login():
             'role': user.role
         }))
 
-        # Set JWT token in HTTP-only cookie
+        # Set JWT token in HTTP-only cookie for security
         set_access_cookies(response, access_token)
 
         return response, 200
@@ -166,6 +186,7 @@ def login():
         # Log error for debugging
         current_app.logger.error(f"Error in login process: {str(error)}")
         return jsonify({'error': 'Login failed'}), 500
+
 
 @user_bp.route('/logout', methods=['POST'])
 @handle_errors
@@ -188,11 +209,12 @@ def logout():
     # Clear JWT token cookie (works for both regular and OAuth users)
     response = make_response(jsonify({'message': 'Logout successful'}))
 
-    # Unset JWT cookies
+    # Unset JWT cookies using Flask-JWT-Extended helper
     unset_jwt_cookies(response)
 
     # Manually clear cookies to ensure they're removed across ports
     # This is important for localhost:5000 -> localhost:5173 scenarios
+    # where cookies need to work across different development server ports
     response.set_cookie(
         'access_token_cookie',
         value='',
@@ -216,6 +238,11 @@ def logout():
 
     return response, 200
 
+
+# ------------------------------------------------------------------------
+# USER DASHBOARD & PROFILE
+# ------------------------------------------------------------------------
+
 @user_bp.route('/dashboard', methods=['GET'])
 @require_auth
 @handle_errors
@@ -231,10 +258,11 @@ def get_dashboard():
     # Get user's total score
     total_score = user.score
 
-    # Get contest-wise scores
+    # --- Get Contest-wise Scores ---
     from app.models.submission import Submission
     from app.models.contest import Contest
 
+    # Query submissions grouped by contest to calculate scores
     contest_scores = db.session.query(
         Contest.id.label('contest_id'),
         Contest.name.label('contest_name'),
@@ -244,7 +272,7 @@ def get_dashboard():
         Submission.user_id == user.id
     ).group_by(Contest.id, Contest.name).order_by(Contest.name).all()
 
-    # Get all user's submissions grouped by contest
+    # --- Get All User's Submissions Grouped by Contest ---
     submissions_query = db.session.query(
         Submission,
         Contest.name.label('contest_name')
@@ -252,7 +280,7 @@ def get_dashboard():
         Submission.user_id == user.id
     ).order_by(Submission.submitted_at.desc()).all()
 
-    # Group submissions by contest
+    # Group submissions by contest for organized display
     submissions_by_contest = {}
     for submission, contest_name in submissions_query:
         contest_id = submission.contest_id
@@ -264,7 +292,7 @@ def get_dashboard():
             }
         submissions_by_contest[contest_id]['submissions'].append(submission.to_dict())
 
-    # Get contests created by user
+    # --- Get Contests Created by User ---
     created_contests = Contest.query.filter_by(created_by=user.username).all()
     created_contests_data = []
     for contest in created_contests:
@@ -272,7 +300,7 @@ def get_dashboard():
         contest_data['submission_count'] = contest.get_submission_count()
         created_contests_data.append(contest_data)
 
-    # Get contests where user is a jury member
+    # --- Get Contests Where User is a Jury Member ---
     jury_contests = Contest.query.filter(
         Contest.jury_members.like(f'%{user.username}%')
     ).all()
@@ -299,6 +327,7 @@ def get_dashboard():
         'jury_contests': jury_contests_data
     }), 200
 
+
 @user_bp.route('/all', methods=['GET'])
 @require_role('admin')
 @handle_errors
@@ -312,6 +341,7 @@ def get_all_users():
     users = User.query.all()
     return jsonify([user.to_dict() for user in users]), 200
 
+
 @user_bp.route('/profile', methods=['GET'])
 @require_auth
 @handle_errors
@@ -324,6 +354,7 @@ def get_profile():
     """
     user = request.current_user
     return jsonify(user.to_dict()), 200
+
 
 @user_bp.route('/profile', methods=['PUT'])
 @require_auth
@@ -346,13 +377,14 @@ def update_profile():
     new_username = data['username'].strip()
     new_email = data['email'].strip().lower()
 
-    # Validate input data
+    # --- Input Validation ---
     if not validate_username(new_username):
         return jsonify({'error': 'Username must be 3-20 characters, alphanumeric and underscores only'}), 400
 
     if not validate_email(new_email):
         return jsonify({'error': 'Invalid email format'}), 400
 
+    # --- Uniqueness Checks ---
     # Check if username is already taken by another user
     existing_user = User.query.filter(
         User.username == new_username,
@@ -369,16 +401,17 @@ def update_profile():
     if existing_email:
         return jsonify({'error': 'Email already exists'}), 400
 
-    # Update user data
+    # --- Update User Data ---
     user.username = new_username
     user.email = new_email
     user.save()
 
     return jsonify({'message': 'Profile updated successfully'}), 200
 
-# =============================================================================
+
+# ------------------------------------------------------------------------
 # OAUTH ROUTES (Wikimedia OAuth 1.0a)
-# =============================================================================
+# ------------------------------------------------------------------------
 
 @user_bp.route('/oauth/login', methods=['GET'])
 @handle_errors
@@ -392,6 +425,7 @@ def oauth_login():
     Returns:
         Redirect to Wikimedia OAuth authorization page
     """
+    # --- Get OAuth Configuration ---
     # Get OAuth 1.0a configuration from app config (loaded from .env file)
     # These values come from the .env file: CONSUMER_KEY, CONSUMER_SECRET, OAUTH_MWURI
     consumer_key = current_app.config.get('CONSUMER_KEY')
@@ -409,7 +443,7 @@ def oauth_login():
     current_app.logger.info(f'OAuth MW URI: {mw_uri}')
 
     try:
-        # Generate OAuth request token
+        # --- Build Callback URL ---
         # The callback URL must match exactly what's registered in OAuth consumer
         # Build absolute callback URL from request
         # Use request.scheme and request.host to build proper absolute URL
@@ -445,6 +479,7 @@ def oauth_login():
             f'Request host: {request.host}, Scheme: {scheme}, Final host: {host}'
         )
 
+        # --- Determine Callback Parameter ---
         # Check if OAuth consumer is registered with "oob" (out-of-band)
         # If your OAuth consumer was registered with "oob", you must use "oob" here
         # Otherwise, use the callback URL that matches your registration
@@ -470,6 +505,7 @@ def oauth_login():
                 f'this exact callback URL: {callback_url}'
             )
 
+        # --- Initiate OAuth Flow ---
         # Create OAuth consumer
         consumer_token = mwoauth.ConsumerToken(consumer_key, consumer_secret)
 
@@ -482,6 +518,7 @@ def oauth_login():
             callback=callback_param
         )
 
+        # --- Store Request Token ---
         # Store request token in session for later verification
         session['request_token'] = request_token.key
         session['request_secret'] = request_token.secret
@@ -523,6 +560,7 @@ def oauth_login():
             'details': str(error)
         }), 500
 
+
 @user_bp.route('/oauth/callback', methods=['GET'])
 @handle_errors
 def oauth_callback():
@@ -539,13 +577,14 @@ def oauth_callback():
     Returns:
         Redirect to frontend with success message or error
     """
+    # --- Get OAuth Configuration ---
     # Get OAuth 1.0a configuration from app config (loaded from .env file)
     # These values come from the .env file: CONSUMER_KEY, CONSUMER_SECRET, OAUTH_MWURI
     consumer_key = current_app.config.get('CONSUMER_KEY')
     consumer_secret = current_app.config.get('CONSUMER_SECRET')
     mw_uri = current_app.config.get('OAUTH_MWURI', 'https://meta.wikimedia.org/w/index.php')
 
-    # Get OAuth parameters from callback
+    # --- Get OAuth Parameters from Callback ---
     oauth_verifier = request.args.get('oauth_verifier')
     oauth_token = request.args.get('oauth_token')
 
@@ -553,6 +592,7 @@ def oauth_callback():
     request_token_key = session.get('request_token')
     request_secret = session.get('request_secret')
 
+    # --- Fallback to Cache if Session Failed ---
     # If session doesn't have the token, try to get it from cache (fallback)
     # This handles cases where session cookies don't persist across external redirects
     if not request_token_key or not request_secret:
@@ -576,12 +616,12 @@ def oauth_callback():
     )
     current_app.logger.info(f'Session keys: {list(session.keys())}')
 
-    # Validate callback parameters
+    # --- Validate Callback Parameters ---
     if not oauth_verifier or not oauth_token:
         return jsonify({'error': 'Missing OAuth parameters'}), 400
 
     if not request_token_key or not request_secret:
-        # Provide more detailed error message
+        # Provide more detailed error message for debugging
         current_app.logger.error('OAuth session expired - session data missing')
         current_app.logger.error(f'Available session keys: {list(session.keys())}')
         current_app.logger.error(f'Cache keys: {list(_oauth_token_cache.keys())}')
@@ -597,6 +637,7 @@ def oauth_callback():
         return jsonify({'error': 'Invalid OAuth token'}), 400
 
     try:
+        # --- Exchange Request Token for Access Token ---
         # Create consumer and request tokens
         consumer_token = mwoauth.ConsumerToken(consumer_key, consumer_secret)
         request_token = mwoauth.RequestToken(request_token_key, request_secret)
@@ -617,7 +658,7 @@ def oauth_callback():
             response_qs  # Pass the full query string as bytes (not decoded)
         )
 
-        # Get user identity from Wikimedia
+        # --- Get User Identity from Wikimedia ---
         identity = mwoauth.identify(mw_uri, consumer_token, access_token)
 
         # Extract user information
@@ -626,7 +667,7 @@ def oauth_callback():
         if not username:
             return jsonify({'error': 'Failed to get user information from Wikimedia'}), 500
 
-        # Find or create user in database
+        # --- Find or Create User in Database ---
         # Use username as the unique identifier
         user = User.query.filter_by(username=username).first()
 
@@ -655,6 +696,7 @@ def oauth_callback():
             user.oauth_token_secret = access_token.secret
             user.save()
 
+        # --- Create JWT Token ---
         # Create JWT token for the user
         access_token_jwt = create_access_token(identity=str(user.id))
 
@@ -662,7 +704,7 @@ def oauth_callback():
         session.pop('request_token', None)
         session.pop('request_secret', None)
 
-        # Determine redirect URL based on environment
+        # --- Determine Redirect URL ---
         # IMPORTANT: OAuth callback URL is fixed at http://localhost:5000/api/user/oauth/callback
         # But we should always redirect to Vue.js dev server (localhost:5173) after OAuth
         # This ensures the Vue.js app can process the oauth_success parameter
@@ -678,6 +720,7 @@ def oauth_callback():
             # This ensures the Vue.js app loads properly and can process OAuth callback
             redirect_url = 'http://localhost:5173/?oauth_success=true'
 
+        # --- Create Response with JWT Cookie ---
         # Create response with redirect to frontend
         # Always use external redirect (full URL) to ensure proper cookie handling
         response = make_response(redirect(redirect_url, code=302))
@@ -698,6 +741,12 @@ def oauth_callback():
             'error': 'OAuth authentication failed',
             'details': str(error)
         }), 500
+
+
+# ------------------------------------------------------------------------
+# USER SEARCH & LOOKUP
+# ------------------------------------------------------------------------
+
 @user_bp.route('/search', methods=['GET'])
 @handle_errors
 def search_users():
@@ -714,6 +763,7 @@ def search_users():
     query = request.args.get('q', '').strip()
     limit = request.args.get('limit', 10, type=int)
 
+    # Require at least 2 characters for search
     if not query or len(query) < 2:
         return jsonify({'users': []}), 200
 
@@ -724,4 +774,31 @@ def search_users():
 
     return jsonify({
         'users': [{'username': user.username, 'id': user.id} for user in users]
+    }), 200
+
+
+@user_bp.route('/<int:user_id>/username', methods=['GET'])
+@handle_errors
+def get_user_username(user_id):
+    """
+    Get username for a specific user ID
+
+    This is a minimal endpoint that only returns the username,
+    not any sensitive information like email or password.
+
+    Args:
+        user_id: User ID
+
+    Returns:
+        JSON response with username
+    """
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Return only non-sensitive user information
+    return jsonify({
+        'id': user.id,
+        'username': user.username
     }), 200

@@ -1,48 +1,42 @@
 <template>
+  <!-- Full-screen modal for creating new contests -->
   <div class="modal fade" id="createContestModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
+        <!-- Modal header with Wikipedia primary color -->
         <div class="modal-header">
           <h5 class="modal-title">Create New Contest</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
+            <!-- Basic contest information: name and project -->
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="contestName" class="form-label">Contest Name *</label>
-                <input type="text"
-class="form-control"
-id="contestName"
-v-model="formData.name"
-required />
+                <input type="text" class="form-control" id="contestName" v-model="formData.name" required />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="projectName" class="form-label">Project Name *</label>
-                <input type="text"
-class="form-control"
-id="projectName"
-v-model="formData.project_name"
-required />
+                <input type="text" class="form-control" id="projectName" v-model="formData.project_name" required />
               </div>
             </div>
 
+            <!-- Contest description field -->
             <div class="mb-3">
               <label for="contestDescription" class="form-label">Description</label>
-              <textarea class="form-control"
-id="contestDescription"
-rows="3"
-v-model="formData.description"></textarea>
+              <textarea class="form-control" id="contestDescription" rows="3" v-model="formData.description"></textarea>
             </div>
+
+            <!-- Contest rules - required field -->
             <div class="mb-3">
               <label for="contestRules" class="form-label">Contest Rules *</label>
-              <textarea class="form-control"
-id="contestRules"
-rows="4"
-                placeholder="Write rules about how articles must be submitted."
-v-model="formData.rules_text"
+              <textarea class="form-control" id="contestRules" rows="4"
+                placeholder="Write rules about how articles must be submitted." v-model="formData.rules_text"
                 required></textarea>
             </div>
+
+            <!-- Submission type selector: new, expansion, or both -->
             <div class="mb-3">
               <label for="allowedType" class="form-label">Allowed Submission Type</label>
               <select id="allowedType" class="form-control" v-model="formData.allowed_submission_type">
@@ -52,77 +46,104 @@ v-model="formData.rules_text"
               </select>
             </div>
 
+            <!-- Contest duration: start and end dates -->
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="startDate" class="form-label">Start Date *</label>
-                <input type="date"
-class="form-control"
-id="startDate"
-v-model="formData.start_date"
-required />
+                <input type="date" class="form-control" id="startDate" v-model="formData.start_date" required />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="endDate" class="form-label">End Date *</label>
-                <input type="date"
-class="form-control"
-id="endDate"
-v-model="formData.end_date"
-required />
+                <input type="date" class="form-control" id="endDate" v-model="formData.end_date" required />
               </div>
             </div>
 
-            <!-- Jury Members with Autocomplete -->
+            <!-- Organizers section with autocomplete search -->
+            <div class="mb-3">
+              <label class="form-label">
+                Organizers
+              </label>
+
+              <!-- Display selected organizers as removable badges -->
+              <div class="mb-2 p-2 border rounded bg-light organizer-selection-box" style="min-height: 40px;">
+                <small v-if="selectedOrganizers.length === 0" class="organizer-placeholder-text">
+                  No additional organizers added
+                </small>
+                <span v-for="username in selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
+                  style="font-size: 0.9rem; cursor: pointer;">
+                  {{ username }}
+                  <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
+                </span>
+              </div>
+
+              <!-- Organizer search input with autocomplete dropdown -->
+              <div style="position: relative;">
+                <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
+                  placeholder="Type username to add additional organizers..." autocomplete="off" />
+
+                <!-- Autocomplete results dropdown -->
+                <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
+                  class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
+                  style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                  <div v-for="user in organizerSearchResults" :key="user.username"
+                    class="p-2 border-bottom cursor-pointer" :class="{ 'bg-info-subtle': isCurrentUser(user.username) }"
+                    style="cursor: pointer;" @click="addOrganizer(user.username)">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="d-flex align-items-center">
+                        <i class="fas fa-user-tie me-2 text-success"></i>
+                        <strong>{{ user.username }}</strong>
+                      </div>
+                      <!-- Show info badge if user tries to select themselves -->
+                      <div v-if="isCurrentUser(user.username)" class="badge bg-info">
+                        You (already added as creator)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <small class="form-text text-muted mt-1">
+                <i class="fas fa-info-circle me-1"></i>
+                You will be automatically added as an organizer. Add others who should manage this contest.
+              </small>
+            </div>
+
+            <!-- Jury Members section with autocomplete and self-selection warning -->
             <div class="mb-3">
               <label for="juryInput" class="form-label">
                 Jury Members *
                 <span class="badge bg-info">Type to search users</span>
               </label>
 
-              <!-- Selected Jury Members Display -->
+              <!-- Display selected jury members as removable badges -->
               <div class="mb-2 p-2 border rounded bg-light jury-selection-box" style="min-height: 40px;">
                 <small v-if="selectedJury.length === 0" class="jury-placeholder-text">
                   No jury members selected yet
                 </small>
-                <span v-for="username in selectedJury"
-:key="username"
-class="badge bg-primary me-2 mb-2"
+                <span v-for="username in selectedJury" :key="username" class="badge bg-primary me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;">
                   {{ username }}
                   <i class="fas fa-times ms-1" @click="removeJury(username)"></i>
                 </span>
               </div>
 
-              <!-- Jury Input with Autocomplete -->
+              <!-- Jury search input with autocomplete dropdown -->
               <div style="position: relative;">
-                <input type="text"
-class="form-control"
-id="juryInput"
-v-model="jurySearchQuery"
-@input="searchJury"
-                  placeholder="Type username to search..."
-autocomplete="off" />
-                <!-- Autocomplete Dropdown -->
-                <!--
-                  Note: we avoid hard-coded light backgrounds here so that
-                  the dropdown looks correct in both light and dark modes.
-                  Colors now come from CSS variables defined in the styles below.
-                -->
+                <input type="text" class="form-control" id="juryInput" v-model="jurySearchQuery" @input="searchJury"
+                  placeholder="Type username to search..." autocomplete="off" />
+                <!-- Autocomplete results with self-selection warning -->
                 <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
                   class="jury-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div
-                    v-for="user in jurySearchResults"
-                    :key="user.username"
-                    class="p-2 border-bottom cursor-pointer"
+                  <div v-for="user in jurySearchResults" :key="user.username" class="p-2 border-bottom cursor-pointer"
                     :class="{ 'bg-warning-subtle self-selection-warning': isCurrentUser(user.username) }"
-                    style="cursor: pointer;"
-                    @click="addJury(user.username)">
+                    style="cursor: pointer;" @click="addJury(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
                         <i class="fas fa-user me-2 text-primary"></i>
                         <strong>{{ user.username }}</strong>
                       </div>
-                      <!-- Enhanced warning indicator for self-selection -->
+                      <!-- Enhanced warning badge for self-selection -->
                       <div v-if="isCurrentUser(user.username)" class="self-warning-badge">
                         <i class="fas fa-exclamation-triangle me-1"></i>
                         <strong>This is you - Not Recommended</strong>
@@ -133,14 +154,12 @@ autocomplete="off" />
               </div>
             </div>
 
+            <!-- Scoring settings: points for accepted and rejected submissions -->
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="marksAccepted" class="form-label">Points for Accepted Submissions</label>
-                <input type="number"
-class="form-control"
-id="marksAccepted"
-                  v-model.number="formData.marks_setting_accepted"
-min="0" />
+                <input type="number" class="form-control" id="marksAccepted"
+                  v-model.number="formData.marks_setting_accepted" min="0" />
                 <small class="form-text text-muted">
                   Maximum points that can be awarded. Jury can assign points from 0 up to
                   this value for accepted submissions.
@@ -148,58 +167,172 @@ min="0" />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="marksRejected" class="form-label">Points for Rejected Submissions</label>
-                <input type="number"
-class="form-control"
-id="marksRejected"
-                  v-model.number="formData.marks_setting_rejected"
-min="0" />
+                <input type="number" class="form-control" id="marksRejected"
+                  v-model.number="formData.marks_setting_rejected" min="0" />
                 <small class="form-text text-muted">
                   Fixed points awarded automatically for rejected submissions (usually 0 or negative).
                 </small>
               </div>
             </div>
 
+            <!-- Advanced scoring system with multiple weighted parameters -->
+            <div class="card mb-4 scoring-section">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                  <i class="fas fa-chart-line me-2"></i> Scoring System
+                </h6>
+                <!-- Toggle between simple and multi-parameter scoring -->
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="enableMultiParam"
+                    v-model="enableMultiParameterScoring">
+                  <label class="form-check-label" for="enableMultiParam">
+                    Enable Multi-Parameter Scoring
+                  </label>
+                </div>
+              </div>
+
+              <div class="card-body">
+                <!-- Simple scoring mode: single score per submission -->
+                <div v-if="!enableMultiParameterScoring" class="alert alert-info">
+                  <i class="fas fa-info-circle me-2"></i>
+                  <strong>Simple Scoring Mode:</strong> Jury will assign a single score (0-{{
+                    formData.marks_setting_accepted }})
+                  for accepted submissions.
+                  <br>
+                  <i class="fas fa-info-circle me-2"></i>
+                  <strong>Simple Scoring Mode:</strong> Jury will assign a single score (0-{{
+                    formData.marks_setting_rejected }})
+                  for rejected submissions.
+                </div>
+                <!-- Multi-parameter scoring mode: weighted calculation -->
+                <div v-else>
+                  <div class="alert alert-success">
+                    <i class="fas fa-star me-2"></i>
+                    <strong>Multi-Parameter Scoring Enabled:</strong> Jury will score submissions on multiple parameters
+                    with weighted calculation.
+                  </div>
+
+                  <!-- Maximum score for accepted submissions -->
+                  <div class="mb-3">
+                    <label class="form-label">Point of Acceptance</label>
+                    <input type="number" class="form-control" v-model.number="maxScore" min="1" max="100"
+                      placeholder="10">
+                    <small class="text-muted">Final calculated score will be scaled to this value</small>
+                  </div>
+
+                  <!-- Minimum score for rejected submissions -->
+                  <div class="mb-3">
+                    <label class="form-label">Point of Rejection </label>
+                    <input type="number" class="form-control" v-model.number="minScore" min="1" max="100"
+                      placeholder="0">
+
+                  </div>
+
+                  <!-- Define scoring parameters with weights -->
+                  <div class="mb-3">
+                    <label class="form-label">Scoring Parameters</label>
+                    <div class="parameters-list">
+                      <!-- Each parameter has name, weight, and description -->
+                      <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-item card mb-2">
+                        <div class="card-body">
+                          <div class="row align-items-center">
+                            <div class="col-md-3">
+                              <input type="text" class="form-control" v-model="param.name" placeholder="Parameter name"
+                                required>
+                            </div>
+                            <div class="col-md-3">
+                              <div class="input-group">
+                                <input type="number" class="form-control" v-model.number="param.weight" min="0"
+                                  max="100" placeholder="Weight" required>
+                                <span class="input-group-text">%</span>
+                              </div>
+                            </div>
+                            <div class="col-md-5">
+                              <input type="text" class="form-control" v-model="param.description"
+                                placeholder="Description (optional)">
+                            </div>
+                            <div class="col-md-1 text-end">
+                              <!-- Remove parameter button (disabled if only one parameter) -->
+                              <button type="button" class="btn btn-sm btn-outline-danger"
+                                @click="removeParameter(index)" :disabled="scoringParameters.length <= 1">
+                                <i class="fas fa-times"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="addParameter">
+                      <i class="fas fa-plus me-1"></i>Add Parameter
+                    </button>
+
+                    <!-- Weight validation: must sum to 100% -->
+                    <div class="mt-3 p-3 rounded" :class="weightTotalClass">
+                      <strong>Total Weight: {{ totalWeight }}%</strong>
+                      <span v-if="totalWeight !== 100" class="ms-2 text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Must equal 100%
+                      </span>
+                      <span v-else class="ms-2 text-success">
+                        <i class="fas fa-check-circle"></i>
+                        Valid
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Reset to default parameters -->
+                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="loadDefaultParameters">
+                    <i class="fas fa-redo me-1"></i>Load Default Parameters
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Article size requirement in bytes -->
             <div class="mb-3">
               <label for="minByteCount" class="form-label">
                 Minimum Byte Count *
               </label>
-              <input type="number"
-class="form-control"
-id="minByteCount"
-                v-model.number="formData.min_byte_count"
-min="0"
-                placeholder="e.g., 1000"
-                required />
+              <input type="number" class="form-control" id="minByteCount" v-model.number="formData.min_byte_count"
+                min="0" placeholder="e.g., 1000" required />
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
             </div>
 
-            <!-- Category URLs -->
+            <!-- Minimum reference/citation requirement -->
+            <div class="mb-3">
+              <label for="minReferenceCount" class="form-label">
+                Minimum Reference Count
+              </label>
+              <input type="number" class="form-control" id="minReferenceCount"
+                v-model.number="formData.min_reference_count" min="0" placeholder="e.g., 5" />
+              <small class="form-text text-muted">
+                Articles must have at least this many references (external links). Leave as 0 for no requirement.
+              </small>
+            </div>
+
+            <!-- MediaWiki category URLs for article validation -->
             <div class="mb-3">
               <label class="form-label">
                 Category URLs *
                 <span class="text-muted">(MediaWiki category pages)</span>
               </label>
 
+              <!-- Dynamic list of category URL inputs -->
               <div v-for="(category, index) in formData.categories" :key="index" class="mb-2">
                 <div class="input-group">
-                  <input type="url"
-                         class="form-control"
-                         v-model="formData.categories[index]"
-                         :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'"
-                         required />
-                  <button v-if="formData.categories.length > 1"
-                          type="button"
-                          class="btn btn-outline-danger"
-                          @click="removeCategory(index)"
-                          title="Remove category">
+                  <input type="url" class="form-control" v-model="formData.categories[index]"
+                    :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'"
+                    required />
+                  <!-- Remove category button (hidden for first category) -->
+                  <button v-if="formData.categories.length > 1" type="button" class="btn btn-outline-danger"
+                    @click="removeCategory(index)" title="Remove category">
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
               </div>
 
-              <button type="button"
-                      class="btn btn-outline-primary btn-sm"
-                      @click="addCategory">
+              <button type="button" class="btn btn-outline-primary btn-sm" @click="addCategory">
                 <i class="fas fa-plus me-1"></i>Add Category
               </button>
 
@@ -228,13 +361,12 @@ min="0"
 
           </form>
         </div>
+        <!-- Modal footer with action buttons -->
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button"
-class="btn btn-primary"
-@click="handleSubmit"
-:disabled="loading">
-            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" @click="handleSubmit">
             Create Contest
           </button>
         </div>
@@ -259,10 +391,59 @@ export default {
     const jurySearchQuery = ref('')
     const jurySearchResults = ref([])
     let searchTimeout = null
+    const enableMultiParameterScoring = ref(false)
+    const maxScore = ref(10)
+    const minScore = ref(0)
+    const selectedOrganizers = ref([])
+    const organizerSearchQuery = ref('')
+    const organizerSearchResults = ref([])
+    let organizerSearchTimeout = null
 
-    // Create a computed property to track current user reactively
-    // This ensures we always have the latest user data
-    // Try multiple sources to get current user (same approach as ContestModal)
+    // Default scoring parameters with weights
+    const scoringParameters = ref([
+      { name: 'Quality', weight: 40, description: 'Article structure & content quality' },
+      { name: 'Sources', weight: 30, description: 'References & citations' },
+      { name: 'Neutrality', weight: 20, description: 'Unbiased writing' },
+      { name: 'Formatting', weight: 10, description: 'Presentation & formatting' }
+    ])
+
+    // Calculate total weight of all parameters
+    const totalWeight = computed(() => {
+      return scoringParameters.value.reduce((sum, param) => sum + (param.weight || 0), 0)
+    })
+
+    // Determine background class based on weight validity
+    const weightTotalClass = computed(() => {
+      return totalWeight.value === 100 ? 'bg-success-subtle' : 'bg-danger-subtle'
+    })
+
+    // Add new scoring parameter
+    const addParameter = () => {
+      scoringParameters.value.push({
+        name: '',
+        weight: 0,
+        description: ''
+      })
+    }
+
+    // Remove scoring parameter by index
+    const removeParameter = (index) => {
+      if (scoringParameters.value.length > 1) {
+        scoringParameters.value.splice(index, 1)
+      }
+    }
+
+    // Reset to default parameter configuration
+    const loadDefaultParameters = () => {
+      scoringParameters.value = [
+        { name: 'Quality', weight: 40, description: 'Article structure & content quality' },
+        { name: 'Sources', weight: 30, description: 'References & citations' },
+        { name: 'Neutrality', weight: 20, description: 'Unbiased writing' },
+        { name: 'Formatting', weight: 10, description: 'Presentation & formatting' }
+      ]
+    }
+
+    // Reactive computed property for current user from multiple sources
     const currentUser = computed(() => {
       // Check store.state.currentUser first (direct reactive state access - most reliable)
       if (store.state && store.state.currentUser) {
@@ -275,6 +456,7 @@ export default {
       return null
     })
 
+    // Form data model for all contest fields
     const formData = reactive({
       name: '',
       project_name: '',
@@ -282,16 +464,18 @@ export default {
       start_date: '',
       end_date: '',
       jury_members: [],
+      organizers: [],
       marks_setting_accepted: 10,
       marks_setting_rejected: 0,
       rules_text: '',
       allowed_submission_type: 'both',
       min_byte_count: 0,
       categories: [''],
-      template_link: ''
+      template_link: '',
+      min_reference_count: 0,
     })
 
-    // Set default dates and ensure user is loaded
+    // Initialize default dates on component mount
     onMounted(async () => {
       const today = new Date()
       const tomorrow = new Date(today)
@@ -302,13 +486,11 @@ export default {
       formData.start_date = tomorrow.toISOString().split('T')[0]
       formData.end_date = nextWeek.toISOString().split('T')[0]
 
-      // Ensure current user is loaded from store
-      // This helps ensure the warning works correctly
-      // Try multiple times if needed (user might not be loaded immediately)
+      // Ensure current user is loaded from store with retries
       let retries = 0
       const maxRetries = 3
       while (!currentUser.value && retries < maxRetries) {
-        console.log(`🔄 [MODAL] Loading user (attempt ${retries + 1}/${maxRetries})...`)
+        console.log(` [MODAL] Loading user (attempt ${retries + 1}/${maxRetries})...`)
         await store.checkAuth()
         // Wait a bit for reactive state to update
         await new Promise(resolve => setTimeout(resolve, 200))
@@ -316,46 +498,45 @@ export default {
       }
 
       if (currentUser.value) {
-        console.log('✅ [MODAL] User loaded:', currentUser.value.username)
+        console.log('[MODAL] User loaded:', currentUser.value.username)
       } else {
-        console.warn('⚠️ [MODAL] User not loaded after retries')
+        console.warn('[MODAL] User not loaded after retries')
       }
     })
 
-    // Watch for modal visibility - when modal is shown, ensure user is loaded
-    // Bootstrap modals trigger 'shown.bs.modal' event when they become visible
+    // Listen for modal shown event to ensure user is loaded
     onMounted(() => {
       const modalElement = document.getElementById('createContestModal')
       if (modalElement) {
         modalElement.addEventListener('shown.bs.modal', async () => {
-          console.log('👁️ [MODAL] Modal shown, ensuring user is loaded...')
+          console.log('[MODAL] Modal shown, ensuring user is loaded...')
           if (!currentUser.value) {
             await store.checkAuth()
             await new Promise(resolve => setTimeout(resolve, 200))
           }
           if (currentUser.value) {
-            console.log('✅ [MODAL] User loaded after modal shown:', currentUser.value.username)
+            console.log(' [MODAL] User loaded after modal shown:', currentUser.value.username)
           }
         })
       }
     })
 
-    // Watch for user changes to update warning when user loads
+    // Watch for user changes to log and check self-selection
     watch(currentUser, (newUser, oldUser) => {
       if (newUser) {
-        console.log('👤 [MODAL] User loaded/changed:', {
+        console.log(' [MODAL] User loaded/changed:', {
           username: newUser.username,
           oldUser: oldUser?.username,
           selectedJury: selectedJury.value
         })
         // If user just loaded and we have selected jury, check for self-selection
         if (selectedJury.value.length > 0 && !oldUser) {
-          console.log('🔍 [MODAL] User loaded with jury selected, checking for self-selection...')
+          console.log(' [MODAL] User loaded with jury selected, checking for self-selection...')
         }
       }
     }, { immediate: true })
 
-    // Search for users (jury members)
+    // Debounced search for jury members with filtering
     const searchJury = async () => {
       const query = jurySearchQuery.value.trim()
 
@@ -364,7 +545,7 @@ export default {
         return
       }
 
-      // Debounce search
+      // Debounce search requests
       if (searchTimeout) {
         clearTimeout(searchTimeout)
       }
@@ -383,8 +564,7 @@ export default {
       }, 300)
     }
 
-    // Check if a username matches the current user
-    // Used to show warnings in dropdown and after selection
+    // Check if username matches current user (case-insensitive)
     const isCurrentUser = (username) => {
       // Use the computed currentUser property for reactivity
       const currentUsername = currentUser.value?.username
@@ -397,7 +577,7 @@ export default {
       return normalizedCurrent === normalizedUsername
     }
 
-    // Add jury member
+    // Add jury member with self-selection warning
     const addJury = async (username) => {
       // Check if user is trying to add themselves
       if (isCurrentUser(username)) {
@@ -424,25 +604,77 @@ export default {
       }
     }
 
-    // Remove jury member
+    // Remove jury member from selection
     const removeJury = (username) => {
       selectedJury.value = selectedJury.value.filter(u => u !== username)
       formData.jury_members = [...selectedJury.value]
     }
 
-    // Add category field
+    // Add new category URL field
     const addCategory = () => {
       formData.categories.push('')
     }
 
-    // Remove category field
+    // Remove category URL field by index
     const removeCategory = (index) => {
       if (formData.categories.length > 1) {
         formData.categories.splice(index, 1)
       }
     }
 
-    // Handle form submission
+    // Debounced search for organizers with filtering
+    const searchOrganizers = async () => {
+      const query = organizerSearchQuery.value.trim()
+
+      if (query.length < 2) {
+        organizerSearchResults.value = []
+        return
+      }
+
+      // Debounce search requests
+      if (organizerSearchTimeout) {
+        clearTimeout(organizerSearchTimeout)
+      }
+
+      organizerSearchTimeout = setTimeout(async () => {
+        try {
+          const response = await api.get(`/user/search?q=${encodeURIComponent(query)}&limit=10`)
+          // Filter out already selected organizers and current user
+          organizerSearchResults.value = (response.users || []).filter(
+            user => !selectedOrganizers.value.includes(user.username) &&
+              !isCurrentUser(user.username)
+          )
+        } catch (error) {
+          console.error('Organizer search error:', error)
+          organizerSearchResults.value = []
+        }
+      }, 300)
+    }
+
+    // Add organizer (prevent adding current user)
+    const addOrganizer = (username) => {
+      // Don't add current user (they're already creator)
+      if (isCurrentUser(username)) {
+        showAlert('You will be added automatically as contest creator', 'info')
+        return
+      }
+
+      // Add the organizer if not already selected
+      if (!selectedOrganizers.value.includes(username)) {
+        selectedOrganizers.value.push(username)
+        formData.organizers = [...selectedOrganizers.value]
+        organizerSearchQuery.value = ''
+        organizerSearchResults.value = []
+      }
+    }
+
+    // Remove organizer from selection
+    const removeOrganizer = (username) => {
+      selectedOrganizers.value = selectedOrganizers.value.filter(u => u !== username)
+      formData.organizers = [...selectedOrganizers.value]
+    }
+
+    // Validate and submit contest creation form
     const handleSubmit = async () => {
       // Validation
       if (!formData.name.trim()) {
@@ -489,19 +721,42 @@ export default {
         return
       }
 
-      // Validate category URLs
+      // Validate category URLs format
       for (const category of validCategories) {
         if (!category.startsWith('http://') && !category.startsWith('https://')) {
           showAlert('All category URLs must be valid HTTP/HTTPS URLs', 'warning')
           return
         }
       }
+      // Validate multi-parameter scoring weights
+      if (enableMultiParameterScoring.value && totalWeight.value !== 100) {
+        showAlert('Parameter weights must sum to 100%', 'warning')
+        return
+      }
 
       loading.value = true
       try {
+        let scoringParametersPayload = null;
+
+        // Build scoring parameters payload if multi-parameter scoring is enabled
+        if (enableMultiParameterScoring.value) {
+          scoringParametersPayload = {
+            enabled: true,
+            max_score: maxScore.value,
+            min_score: minScore.value,
+            parameters: scoringParameters.value.map(param => ({
+              name: param.name,
+              weight: param.weight,
+              description: param.description || ''
+            }))
+          };
+        }
+
+        // Construct contest data payload with all form values
         const contestData = {
           ...formData,
           jury_members: selectedJury.value,
+          organizers: selectedOrganizers.value,
           rules: {
             text: formData.rules_text.trim()
           },
@@ -510,14 +765,17 @@ export default {
           // Categories: filter out empty strings and trim
           categories: formData.categories.filter(cat => cat && cat.trim()).map(cat => cat.trim()),
           // Template link (optional): trim or set to null if empty
-          template_link: formData.template_link && formData.template_link.trim() ? formData.template_link.trim() : null
+          template_link: formData.template_link && formData.template_link.trim() ? formData.template_link.trim() : null,
+          scoring_parameters: scoringParametersPayload,
+          min_reference_count: formData.min_reference_count || 0
         }
 
+        // Submit contest creation request
         const result = await store.createContest(contestData)
         if (result.success) {
           showAlert('Contest created successfully!', 'success')
           emit('created')
-          // Close modal
+          // Close modal programmatically
           const modalElement = document.getElementById('createContestModal')
           const modal = bootstrap.Modal.getInstance(modalElement)
           if (modal) {
@@ -535,19 +793,22 @@ export default {
       }
     }
 
-    // Reset form
+    // Reset form to initial state
     const resetForm = () => {
       formData.name = ''
       formData.project_name = ''
       formData.description = ''
       selectedJury.value = []
       formData.jury_members = []
+      selectedOrganizers.value = []
+      formData.organizers = []
       formData.rules_text = ''
       formData.min_byte_count = 0
       formData.categories = ['']
       formData.template_link = ''
+      formData.min_reference_count = 0
 
-      // Reset dates
+      // Reset dates to default (tomorrow and next week)
       const today = new Date()
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
@@ -555,6 +816,10 @@ export default {
       nextWeek.setDate(nextWeek.getDate() + 7)
       formData.start_date = tomorrow.toISOString().split('T')[0]
       formData.end_date = nextWeek.toISOString().split('T')[0]
+      enableMultiParameterScoring.value = false
+      maxScore.value = 10
+      minScore.value = 0
+      loadDefaultParameters()
     }
 
     return {
@@ -562,25 +827,38 @@ export default {
       selectedJury,
       jurySearchQuery,
       jurySearchResults,
+      selectedOrganizers,
+      organizerSearchQuery,
+      organizerSearchResults,
       loading,
       isCurrentUser,
       currentUser,
       searchJury,
       addJury,
       removeJury,
+      searchOrganizers,
+      addOrganizer,
+      removeOrganizer,
       addCategory,
       removeCategory,
       handleSubmit,
-      store
+      store,
+      enableMultiParameterScoring,
+      maxScore,
+      minScore,
+      scoringParameters,
+      totalWeight,
+      weightTotalClass,
+      addParameter,
+      removeParameter,
+      loadDefaultParameters,
     }
   }
 }
 </script>
 
 <style scoped>
-/* Create Contest Modal Styling with Wikipedia Colors */
-
-/* Modal header - solid color, no gradient */
+/* Modal header with Wikipedia primary color */
 .modal-header {
   background-color: var(--wiki-primary);
   color: white;
@@ -594,23 +872,25 @@ export default {
   font-size: 1.5rem;
 }
 
+/* Close button with inverted colors */
 .modal-header .btn-close {
   filter: invert(1) brightness(1.2);
   opacity: 0.9;
 }
 
+/* Dark mode: brighter close button */
 [data-theme="dark"] .modal-header .btn-close {
   filter: invert(1) brightness(2);
 }
 
-/* Modal body */
+/* Modal body background adapts to theme */
 .modal-body {
   background-color: var(--wiki-modal-bg);
   color: var(--wiki-text);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Form styling */
+/* Form labels with consistent styling */
 .form-label {
   color: var(--wiki-dark);
   font-weight: 500;
@@ -618,6 +898,7 @@ export default {
   transition: color 0.3s ease;
 }
 
+/* All form inputs with theme-aware styling */
 .form-control {
   border-color: var(--wiki-input-border);
   background-color: var(--wiki-input-bg);
@@ -625,17 +906,19 @@ export default {
   transition: all 0.2s ease;
 }
 
+/* Dark mode: ensure visible borders */
 [data-theme="dark"] .form-control {
   border-width: 1px;
   border-style: solid;
 }
 
-/* Textarea specific styling */
+/* Textarea with vertical resize only */
 textarea.form-control {
   resize: vertical;
   min-height: 80px;
 }
 
+/* Focus state with Wikipedia blue accent */
 .form-control:focus {
   border-color: var(--wiki-primary);
   box-shadow: 0 0 0 0.2rem rgba(0, 102, 153, 0.25);
@@ -644,69 +927,76 @@ textarea.form-control {
   outline: none;
 }
 
+/* Dark mode: adjusted focus shadow */
 [data-theme="dark"] .form-control:focus {
   box-shadow: 0 0 0 0.2rem rgba(93, 184, 230, 0.3);
   border-color: var(--wiki-primary);
 }
 
-/* Placeholder text styling for dark mode */
+/* Placeholder text adapts to theme */
 .form-control::placeholder {
   color: var(--wiki-text-muted);
   opacity: 0.7;
   transition: color 0.3s ease;
 }
 
+/* Dark mode: slightly dimmer placeholder */
 [data-theme="dark"] .form-control::placeholder {
   opacity: 0.6;
 }
 
-/* Jury input placeholder - more visible */
+/* Jury input placeholder - enhanced visibility */
 #juryInput::placeholder {
   color: #666666 !important;
   opacity: 1 !important;
   font-weight: 500;
 }
 
+/* Dark mode: white placeholder for jury input */
 [data-theme="dark"] #juryInput::placeholder {
   color: #ffffff !important;
   opacity: 0.9 !important;
 }
 
-/* Date input styling */
+/* Date input color scheme adaptation */
 input[type="date"].form-control {
   color-scheme: light;
 }
 
+/* Dark mode: dark color scheme for date picker */
 [data-theme="dark"] input[type="date"].form-control {
   color-scheme: dark;
 }
 
-/* Badge styling */
+/* Base badge styling */
 .badge {
   font-weight: 500;
   padding: 0.4em 0.8em;
 }
 
+/* Primary badge with Wikipedia blue */
 .badge.bg-primary {
   background-color: var(--wiki-primary) !important;
 }
 
+/* Info badge also uses primary color */
 .badge.bg-info {
   background-color: var(--wiki-primary) !important;
   color: white;
 }
 
-/* Badge text-dark class - ensure visibility in dark mode */
+/* Text-dark badges adapt to theme */
 .badge.text-dark {
   color: var(--wiki-dark) !important;
   transition: color 0.3s ease;
 }
 
+/* Dark mode: light text for readability */
 [data-theme="dark"] .badge.text-dark {
   color: #f0f0f0 !important;
 }
 
-/* Jury members display - professional */
+/* Light background box for selected items */
 .bg-light {
   background-color: var(--wiki-hover-bg) !important;
   border-color: var(--wiki-primary) !important;
@@ -716,20 +1006,23 @@ input[type="date"].form-control {
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+/* Dark mode: subtle blue tint */
 [data-theme="dark"] .bg-light {
   background-color: rgba(93, 184, 230, 0.1) !important;
 }
 
-/* Jury selection box text - more visible */
+/* Placeholder text in jury selection box */
 .jury-selection-box .jury-placeholder-text {
   color: #333333 !important;
   font-weight: 500;
 }
 
+/* Dark mode: white placeholder text */
 [data-theme="dark"] .jury-selection-box .jury-placeholder-text {
   color: #ffffff !important;
 }
 
+/* Jury member badges with hover effect */
 .badge.bg-primary {
   background-color: var(--wiki-primary) !important;
   color: white;
@@ -741,7 +1034,7 @@ input[type="date"].form-control {
   background-color: var(--wiki-primary-hover) !important;
 }
 
-/* Autocomplete dropdown - professional */
+/* Dropdown container with theme-aware styling */
 .jury-autocomplete {
   border: 1px solid var(--wiki-border);
   border-top: none;
@@ -751,10 +1044,12 @@ input[type="date"].form-control {
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+/* Dark mode: stronger shadow */
 [data-theme="dark"] .jury-autocomplete {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* Dropdown items with hover state */
 .jury-autocomplete .p-2 {
   transition: background-color 0.2s ease;
   color: var(--wiki-text);
@@ -764,7 +1059,7 @@ input[type="date"].form-control {
   background-color: var(--wiki-hover-bg) !important;
 }
 
-/* Enhanced warning background for self-selection in dropdown */
+/* Enhanced warning background for self-selection */
 .jury-autocomplete .bg-warning-subtle.self-selection-warning {
   background-color: rgba(255, 193, 7, 0.25) !important;
   border-left: 5px solid #ffc107;
@@ -772,17 +1067,20 @@ input[type="date"].form-control {
   animation: pulse-warning 2s ease-in-out infinite;
 }
 
+/* Dark mode: stronger warning colors */
 [data-theme="dark"] .jury-autocomplete .bg-warning-subtle.self-selection-warning {
   background-color: rgba(255, 193, 7, 0.35) !important;
   border-left: 5px solid #ffc107;
   border-right: 2px solid rgba(255, 193, 7, 0.4);
 }
 
+/* Hover state for warning */
 .jury-autocomplete .bg-warning-subtle.self-selection-warning:hover {
   background-color: rgba(255, 193, 7, 0.35) !important;
   border-left: 5px solid #ff9800;
 }
 
+/* Dark mode: hover state */
 [data-theme="dark"] .jury-autocomplete .bg-warning-subtle.self-selection-warning:hover {
   background-color: rgba(255, 193, 7, 0.45) !important;
   border-left: 5px solid #ff9800;
@@ -803,6 +1101,7 @@ input[type="date"].form-control {
   border: 1px solid rgba(255, 193, 7, 0.6);
 }
 
+/* Dark mode: orange warning badge with white text */
 [data-theme="dark"] .self-warning-badge {
   background-color: #ff9800;
   color: #fff;
@@ -810,25 +1109,30 @@ input[type="date"].form-control {
   border: 1px solid rgba(255, 152, 0, 0.7);
 }
 
-/* Subtle pulse animation for warning */
+/* Pulse animation for warning indicator */
 @keyframes pulse-warning {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 4px rgba(255, 193, 7, 0);
   }
 }
 
+/* Dark mode: warning hover state */
 [data-theme="dark"] .jury-autocomplete .bg-warning-subtle:hover {
   background-color: rgba(255, 193, 7, 0.35) !important;
 }
 
+/* Primary text color in dropdown */
 .jury-autocomplete .text-primary {
   color: var(--wiki-primary) !important;
 }
 
-/* Button styling */
+/* Primary button with Wikipedia blue */
 .btn-primary {
   background-color: var(--wiki-primary);
   border-color: var(--wiki-primary);
@@ -836,17 +1140,20 @@ input[type="date"].form-control {
   transition: all 0.2s ease;
 }
 
+/* Primary button hover with shadow */
 .btn-primary:hover {
   background-color: var(--wiki-primary-hover);
   border-color: var(--wiki-primary-hover);
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.2);
 }
 
+/* Disabled button state */
 .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
+/* Secondary button styling */
 .btn-secondary {
   background-color: var(--wiki-text-muted);
   border-color: var(--wiki-text-muted);
@@ -858,6 +1165,7 @@ input[type="date"].form-control {
   border-color: var(--wiki-text-muted);
 }
 
+/* Dark mode: adjusted secondary button */
 [data-theme="dark"] .btn-secondary {
   background-color: #5a6268;
   border-color: #5a6268;
@@ -868,7 +1176,7 @@ input[type="date"].form-control {
   border-color: #6c757d;
 }
 
-/* Modal footer */
+/* Footer with theme-aware styling */
 .modal-footer {
   border-top: 1px solid var(--wiki-border);
   padding: 1rem 1.5rem;
@@ -876,13 +1184,13 @@ input[type="date"].form-control {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
-/* Text muted */
+/* Muted text color */
 .text-muted {
   color: var(--wiki-text-muted) !important;
   transition: color 0.3s ease;
 }
 
-/* Spinner */
+/* Small spinner for loading states */
 .spinner-border-sm {
   width: 1rem;
   height: 1rem;
@@ -891,7 +1199,7 @@ input[type="date"].form-control {
   border-right-color: transparent;
 }
 
-/* Full screen modal styling */
+/* Modal takes full viewport */
 .modal-fullscreen {
   width: 100vw;
   max-width: 100%;
@@ -900,6 +1208,7 @@ input[type="date"].form-control {
   padding: 0;
 }
 
+/* Content fills viewport with flexbox */
 .modal-fullscreen .modal-content {
   height: 100vh;
   border: 0;
@@ -908,6 +1217,7 @@ input[type="date"].form-control {
   flex-direction: column;
 }
 
+/* Body scrolls with flex grow */
 .modal-fullscreen .modal-body {
   flex: 1;
   overflow-y: auto;
@@ -923,9 +1233,94 @@ input[type="date"].form-control {
   margin-bottom: 1.5rem !important;
 }
 
-/* Ensure form uses available space well */
+/* Center form with max width */
 .modal-fullscreen .modal-body form {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Organizer selection box with green accent */
+.organizer-selection-box {
+  background-color: var(--wiki-hover-bg) !important;
+  border-color: #28a745 !important;
+  border: 1px solid var(--wiki-border);
+  border-radius: 4px;
+  padding: 1rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Dark mode: green tint */
+[data-theme="dark"] .organizer-selection-box {
+  background-color: rgba(40, 167, 69, 0.1) !important;
+}
+
+/* Organizer placeholder text */
+.organizer-selection-box .organizer-placeholder-text {
+  color: #333333 !important;
+  font-weight: 500;
+}
+
+/* Dark mode: white placeholder */
+[data-theme="dark"] .organizer-selection-box .organizer-placeholder-text {
+  color: #ffffff !important;
+}
+
+/* Success badge for organizers */
+.badge.bg-success {
+  background-color: #28a745 !important;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.badge.bg-success:hover {
+  background-color: #218838 !important;
+}
+
+/* Organizer dropdown styling */
+.organizer-autocomplete {
+  border: 1px solid var(--wiki-border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--wiki-card-bg);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Dark mode: stronger shadow */
+[data-theme="dark"] .organizer-autocomplete {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Dropdown items with hover */
+.organizer-autocomplete .p-2 {
+  transition: background-color 0.2s ease;
+  color: var(--wiki-text);
+}
+
+.organizer-autocomplete .p-2:hover {
+  background-color: var(--wiki-hover-bg) !important;
+}
+
+/* Current user indicator in organizer dropdown */
+.organizer-autocomplete .bg-info-subtle {
+  background-color: rgba(13, 202, 240, 0.15) !important;
+  border-left: 3px solid #0dcaf0;
+}
+
+/* Dark mode: info indicator */
+[data-theme="dark"] .organizer-autocomplete .bg-info-subtle {
+  background-color: rgba(13, 202, 240, 0.25) !important;
+}
+
+/* Success text color */
+.organizer-autocomplete .text-success {
+  color: #28a745 !important;
+}
+
+/* Secondary badge for informational text */
+.badge.bg-secondary {
+  background-color: #6c757d !important;
+  color: white;
 }
 </style>
