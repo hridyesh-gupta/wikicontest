@@ -119,7 +119,9 @@ def get_article_metadata(article_url: str) -> Optional[dict]:
         print(f"[>] Calling MediaWiki API: {api_url}")
         print()
         
-        response = requests.get(api_url, params=api_params, headers=headers, timeout=10)
+        # Use increased timeout (30 seconds) to handle slow API responses
+        # MediaWiki API can sometimes be slow, especially for large articles or during high traffic
+        response = requests.get(api_url, params=api_params, headers=headers, timeout=30)
         
         # Check if request was successful
         if response.status_code != 200:
