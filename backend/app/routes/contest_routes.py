@@ -25,6 +25,9 @@ from app.utils import (
     extract_template_name_from_url,
     check_article_has_template,
     prepend_template_to_article,
+    extract_category_name_from_url,
+    check_article_has_category,
+    append_categories_to_article,
     MEDIAWIKI_API_TIMEOUT
 )
 
@@ -1501,6 +1504,161 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
+    # Category enforcement logic
+    # If contest has categories, check if article has them and add missing ones
+    # This is a separate MediaWiki API request from template attachment
+    categories_added = []
+    category_error = None
+
+    contest_categories = contest.get_categories()
+    if contest_categories:
+        try:
+            # Log category enforcement start
+            current_app.logger.info(
+                f"Category enforcement: contest_id={contest_id}, categories={contest_categories}, "
+                f"user_id={user.id}, has_oauth_token={bool(user.oauth_token)}, "
+                f"has_oauth_secret={bool(user.oauth_token_secret)}"
+            )
+            
+            # Extract category names from URLs
+            category_names = []
+            for category_url in contest_categories:
+                category_name = extract_category_name_from_url(category_url)
+                if category_name:
+                    category_names.append(category_name)
+                    current_app.logger.info(f"Extracted category name: {category_name} from {category_url}")
+                else:
+                    current_app.logger.warning(f"Could not extract category name from URL: {category_url}")
+
+            if category_names:
+                # Check which categories the article already has
+                categories_to_add = []
+                for category_name in category_names:
+                    category_check = check_article_has_category(article_link, category_name)
+                    
+                    if category_check.get('error'):
+                        # Log warning but continue - we'll try to add it anyway
+                        try:
+                            current_app.logger.warning(
+                                f"Category check failed for {category_name} in {article_link}: {category_check['error']}"
+                            )
+                        except Exception:  # pylint: disable=broad-exception-caught
+                            pass
+                        # Add to list anyway - better to try than skip
+                        categories_to_add.append(category_name)
+                    elif not category_check.get('has_category'):
+                        # Category not present, add it to the list
+                        categories_to_add.append(category_name)
+                        current_app.logger.info(f"Category {category_name} not found in article. Will add...")
+                    else:
+                        # Category already present
+                        try:
+                            current_app.logger.info(
+                                f"Category {category_name} already present in {article_link}"
+                            )
+                        except Exception:  # pylint: disable=broad-exception-caught
+                            pass
+
+                # If there are categories to add, attempt to add them
+                if categories_to_add:
+                    current_app.logger.info(f"Attempting to add {len(categories_to_add)} categories to article...")
+                    
+                    # Check if user has OAuth tokens
+                    if user.oauth_token and user.oauth_token_secret:
+                        current_app.logger.info(f"User has OAuth tokens. Proceeding with category edit...")
+                        # Get OAuth consumer credentials from config
+                        consumer_key = current_app.config.get('CONSUMER_KEY')
+                        consumer_secret = current_app.config.get('CONSUMER_SECRET')
+
+                        if consumer_key and consumer_secret:
+                            # Log the target wiki for debugging OAuth issues
+                            from urllib.parse import urlparse
+                            article_domain = urlparse(article_link).netloc
+                            current_app.logger.info(
+                                f"Attempting OAuth edit on wiki: {article_domain} for categories"
+                            )
+                            
+                            # Attempt to append categories to article
+                            # This is a separate MediaWiki API request from template attachment
+                            edit_result = append_categories_to_article(
+                                article_url=article_link,
+                                category_names=categories_to_add,
+                                oauth_token=user.oauth_token,
+                                oauth_token_secret=user.oauth_token_secret,
+                                consumer_key=consumer_key,
+                                consumer_secret=consumer_secret,
+                                edit_summary=f"Adding contest categories (via WikiContest submission)"
+                            )
+
+                            if edit_result.get('success'):
+                                categories_added = edit_result.get('categories_added', [])
+                                categories_skipped = edit_result.get('categories_skipped', [])
+                                try:
+                                    current_app.logger.info(
+                                        f"Successfully added categories {categories_added} to {article_link}"
+                                    )
+                                    if categories_skipped:
+                                        current_app.logger.info(
+                                            f"Categories {categories_skipped} were already present and skipped"
+                                        )
+                                except Exception:  # pylint: disable=broad-exception-caught
+                                    pass
+                            else:
+                                category_error = edit_result.get('error', 'Unknown error')
+                                try:
+                                    current_app.logger.warning(
+                                        f"Failed to add categories to {article_link}: {category_error}"
+                                    )
+                                    
+                                    # Provide helpful error messages for common OAuth issues
+                                    if 'readapidenied' in category_error.lower():
+                                        current_app.logger.error(
+                                            f"OAuth permission error: The OAuth consumer does not have read/edit "
+                                            f"permissions on this wiki. Ensure the OAuth consumer is registered on "
+                                            f"the target wiki (not just meta.wikimedia.org) with 'Edit existing pages' grant."
+                                        )
+                                    elif 'mwoauth-invalid-authorization' in category_error.lower():
+                                        current_app.logger.error(
+                                            f"OAuth authentication error: Invalid OAuth signature. Verify CONSUMER_KEY "
+                                            f"and CONSUMER_SECRET match the registered OAuth consumer."
+                                        )
+                                except Exception:  # pylint: disable=broad-exception-caught
+                                    pass
+                        else:
+                            category_error = 'OAuth consumer credentials not configured'
+                            current_app.logger.warning(
+                                f"OAuth consumer credentials not configured: "
+                                f"CONSUMER_KEY={bool(consumer_key)}, "
+                                f"CONSUMER_SECRET={bool(consumer_secret)}"
+                            )
+                    else:
+                        category_error = 'User does not have OAuth tokens for Wikipedia editing'
+                        current_app.logger.warning(
+                            f"User {user.id} does not have OAuth tokens: "
+                            f"oauth_token={user.oauth_token}, oauth_token_secret={user.oauth_token_secret}"
+                        )
+                else:
+                    # All categories already present
+                    try:
+                        current_app.logger.info(
+                            f"All contest categories already present in {article_link}"
+                        )
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+            else:
+                category_error = 'Could not extract category names from contest category URLs'
+                current_app.logger.warning(
+                    f"Could not extract any category names from contest categories: {contest_categories}"
+                )
+        except Exception as category_err:  # pylint: disable=broad-exception-caught
+            category_error = str(category_err)
+            try:
+                current_app.logger.error(
+                    f"Category enforcement error: {category_error}"
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+
     # --- Create Submission Record ---
     # Create submission with fetched information
     try:
@@ -1516,7 +1674,9 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             article_page_id=article_page_id,
             article_size_at_start=article_size_at_start,
             article_expansion_bytes=article_expansion_bytes,
-            template_added=template_added
+            template_added=template_added,
+            categories_added=categories_added,
+            category_error=category_error
         )
 
         submission.save()
@@ -1542,7 +1702,9 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             'article_created_at': article_created_at,
             'article_expansion_bytes': article_expansion_bytes,
             'template_added': template_added,
-            'template_error': template_error
+            'template_error': template_error,
+            'categories_added': categories_added,
+            'category_error': category_error
         }), 201
 
     except IntegrityError as e:
