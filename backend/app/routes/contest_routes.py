@@ -24,7 +24,8 @@ from app.utils import (
     validate_template_link,
     extract_template_name_from_url,
     check_article_has_template,
-    prepend_template_to_article
+    prepend_template_to_article,
+    MEDIAWIKI_API_TIMEOUT
 )
 
 # Create blueprint
@@ -605,8 +606,9 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             api_params['inprop'] = 'url|displaytitle'
 
             # Make request to MediaWiki API using shared headers
+            # Use increased timeout to handle slow API responses
             headers = get_mediawiki_headers()
-            response = requests.get(api_url, params=api_params, headers=headers, timeout=10)
+            response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
 
             if response.status_code == 200:
                 api_data = response.json()
@@ -713,7 +715,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                         'redirects': 'true'
                                     }
                                     rev_response = requests.get(
-                                        api_url, params=rev_api_params, headers=headers, timeout=10
+                                        api_url, params=rev_api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT
                                     )
                                     if rev_response.status_code == 200:
                                         rev_data = rev_response.json()
@@ -812,8 +814,29 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             else:
                 article_title = 'Article'  # Last resort fallback
 
+    except requests.exceptions.Timeout as timeout_error:
+        # Handle timeout errors specifically with a clear error message
+        # Timeout means the MediaWiki API didn't respond within the timeout period
+        # This could be due to slow API response, network issues, or high server load
+        try:
+            current_app.logger.warning(
+                f'MediaWiki API request timed out after {MEDIAWIKI_API_TIMEOUT} seconds: {str(timeout_error)}'
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Logging failure shouldn't break the flow
+            pass
+        
+        # Return a clear error message to the user
+        # We can't create a submission without article information (byte count is required)
+        return jsonify({
+            'error': (
+                f'Request to MediaWiki API timed out after {MEDIAWIKI_API_TIMEOUT} seconds. '
+                'The server may be slow or experiencing high traffic. Please try again in a moment.'
+            )
+        }), 504  # 504 Gateway Timeout is the appropriate status code
+    
     except Exception as error:  # pylint: disable=broad-exception-caught
-        # If MediaWiki API fetch fails, we'll still create the submission
+        # If MediaWiki API fetch fails for other reasons, we'll still create the submission
         # but with limited information
         # Log the error but don't fail the submission
         try:
@@ -891,8 +914,16 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
 
     if contest.template_link:
         try:
+            # Log template enforcement start
+            current_app.logger.info(
+                f"Template enforcement: contest_id={contest_id}, template_link={contest.template_link}, "
+                f"user_id={user.id}, has_oauth_token={bool(user.oauth_token)}, "
+                f"has_oauth_secret={bool(user.oauth_token_secret)}"
+            )
+            
             # Extract template name from the contest's template link
             template_name = extract_template_name_from_url(contest.template_link)
+            current_app.logger.info(f"Extracted template name: {template_name}")
 
             if template_name:
                 # Check if article already has the template at the beginning
@@ -908,13 +939,23 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                         pass
                 elif not template_check.get('has_template'):
                     # Template not present, attempt to add it
+                    current_app.logger.info(f"Template not found in article. Attempting to add...")
+                    
                     # Check if user has OAuth tokens
                     if user.oauth_token and user.oauth_token_secret:
+                        current_app.logger.info(f"User has OAuth tokens. Proceeding with edit...")
                         # Get OAuth consumer credentials from config
-                        consumer_key = current_app.config.get('MEDIAWIKI_CONSUMER_KEY')
-                        consumer_secret = current_app.config.get('MEDIAWIKI_CONSUMER_SECRET')
+                        consumer_key = current_app.config.get('CONSUMER_KEY')
+                        consumer_secret = current_app.config.get('CONSUMER_SECRET')
 
                         if consumer_key and consumer_secret:
+                            # Log the target wiki for debugging OAuth issues
+                            from urllib.parse import urlparse
+                            article_domain = urlparse(article_link).netloc
+                            current_app.logger.info(
+                                f"Attempting OAuth edit on wiki: {article_domain}"
+                            )
+                            
                             # Attempt to prepend template to article
                             edit_result = prepend_template_to_article(
                                 article_url=article_link,
@@ -940,12 +981,34 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                     current_app.logger.warning(
                                         f"Failed to add template to {article_link}: {template_error}"
                                     )
+                                    
+                                    # Provide helpful error messages for common OAuth issues
+                                    if 'readapidenied' in template_error.lower():
+                                        current_app.logger.error(
+                                            f"OAuth permission error: The OAuth consumer does not have read/edit "
+                                            f"permissions on this wiki. Ensure the OAuth consumer is registered on "
+                                            f"the target wiki (not just meta.wikimedia.org) with 'Edit existing pages' grant."
+                                        )
+                                    elif 'mwoauth-invalid-authorization' in template_error.lower():
+                                        current_app.logger.error(
+                                            f"OAuth authentication error: Invalid OAuth signature. Verify CONSUMER_KEY "
+                                            f"and CONSUMER_SECRET match the registered OAuth consumer."
+                                        )
                                 except Exception:  # pylint: disable=broad-exception-caught
                                     pass
                         else:
                             template_error = 'OAuth consumer credentials not configured'
+                            current_app.logger.warning(
+                                f"OAuth consumer credentials not configured: "
+                                f"CONSUMER_KEY={bool(consumer_key)}, "
+                                f"CONSUMER_SECRET={bool(consumer_secret)}"
+                            )
                     else:
                         template_error = 'User does not have OAuth tokens for Wikipedia editing'
+                        current_app.logger.warning(
+                            f"User {user.id} does not have OAuth tokens: "
+                            f"oauth_token={user.oauth_token}, oauth_token_secret={user.oauth_token_secret}"
+                        )
                 else:
                     # Template already present
                     try:
