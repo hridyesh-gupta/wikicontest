@@ -36,6 +36,24 @@
               </small>
             </div>
 
+            <!-- Category Enforcement Info (if contest has categories) -->
+            <div v-if="contest && contest.categories && contest.categories.length > 0" class="alert alert-info mb-3">
+              <i class="fas fa-tags me-2"></i>
+              <strong>Contest Categories:</strong> This contest requires articles to belong to the following categories:
+              <ul class="mb-0 mt-2">
+                <li v-for="(categoryUrl, index) in contest.categories" :key="index">
+                  <a :href="categoryUrl" target="_blank" rel="noopener noreferrer" class="alert-link">
+                    {{ categoryUrl }}
+                    <i class="fas fa-external-link-alt ms-1" style="font-size: 0.8em;"></i>
+                  </a>
+                </li>
+              </ul>
+              <small class="text-muted d-block mt-2">
+                <i class="fas fa-magic me-1"></i>
+                If your article doesn't have these categories, they will be automatically added during submission.
+              </small>
+            </div>
+
             <!-- Article URL Input Field -->
             <div class="mb-3">
               <label for="articleUrl" class="form-label">
