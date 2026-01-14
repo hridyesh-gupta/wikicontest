@@ -172,7 +172,7 @@ export default {
       default: null
     }
   },
-  emits: ['reviewed'],
+  emits: ['reviewed', 'deleted'],
 
   setup(props, { emit }) {
     // Form state variables

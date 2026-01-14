@@ -15,6 +15,7 @@ sys.path.insert(0, backend_dir)
 
 from app import app, db
 from app.models.submission import Submission
+from app.utils import MEDIAWIKI_API_TIMEOUT
 import requests
 from urllib.parse import urlparse, unquote, parse_qs
 
@@ -58,7 +59,7 @@ def fetch_article_info(article_link):
             'User-Agent': 'WikiContest/1.0 (https://wikicontest.toolforge.org; contact@wikicontest.org) Python/requests'
         }
         
-        response = requests.get(api_url, params=api_params, headers=headers, timeout=10)
+        response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
         
         if response.status_code != 200:
             return None

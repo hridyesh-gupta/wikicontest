@@ -359,6 +359,16 @@ class="btn btn-sm btn-outline-primary"
                       title="Preview Article">
                       <i class="fas fa-eye"></i>
                     </button>
+                    <button
+                      v-if="canViewSubmissions"
+                      @click="handleDeleteSubmission(submission)"
+                      class="btn btn-sm btn-outline-danger"
+                      title="Delete Submission"
+                      :disabled="deletingSubmissionId === submission.id">
+                      <span v-if="deletingSubmissionId === submission.id"
+                        class="spinner-border spinner-border-sm"></span>
+                      <i v-else class="fas fa-trash"></i>
+                    </button>
                   </td>
                 </tr>
               </tbody>
@@ -370,7 +380,8 @@ class="btn btn-sm btn-outline-primary"
       <!-- Bottom Action Row -->
       <div class="d-flex justify-content-between align-items-center gap-2 mb-4">
         <!-- Debug warning for auth issues -->
-        <div v-if="contest && !currentUser && !checkingAuth" class="alert alert-warning py-1 px-2 mb-0 me-auto">
+        <div v-if="contest && !currentUser && !checkingAuth"
+          class="alert alert-warning py-1 px-2 mb-0 me-auto">
           <i class="fas fa-exclamation-triangle me-1"></i>
           <strong>User not loaded!</strong>
           <button class="btn btn-sm btn-outline-warning ms-2" @click="forceAuthRefresh">
@@ -394,14 +405,14 @@ class="btn btn-sm btn-outline-primary"
     @submitted="handleArticleSubmitted" />
 
   <ArticlePreviewModal v-if="!!currentSubmission"
-:can-review="canUserReview"
+    :can-review="canUserReview"
     :article-url="currentSubmission.article_link"
-:article-title="currentSubmission.article_title"
+    :article-title="currentSubmission.article_title"
     :submission-id="currentSubmission.id"
-:submission="currentSubmission"
+    :submission="currentSubmission"
     :contest-scoring-config="contest?.scoring_parameters"
-@reviewed="handleSubmissionReviewed" />
-
+    @reviewed="handleSubmissionReviewed"
+    @deleted="handleSubmissionDeleted" />
   <!-- Edit Contest Modal -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
@@ -415,7 +426,7 @@ class="btn btn-sm btn-outline-primary"
 
         <div class="modal-body">
           <form @submit.prevent="saveContestEdits">
-            <!-- Basic Contest Information -->
+
             <div class="mb-3">
               <label class="form-label">Contest Name</label>
               <input v-model="editForm.name" class="form-control" required />
@@ -427,68 +438,77 @@ class="btn btn-sm btn-outline-primary"
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea v-model="editForm.description" rows="4" class="form-control"></textarea>
+              <label for="editContestDescription" class="form-label">Description</label>
+              <textarea class="form-control"
+                        id="editContestDescription"
+                        rows="3"
+                        v-model="editForm.description"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="editContestRules" class="form-label">Contest Rules *</label>
+              <textarea class="form-control"
+                        id="editContestRules"
+                        rows="4"
+                        placeholder="Write rules about how articles must be submitted."
+                        v-model="editForm.rules"
+                        required></textarea>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Rules</label>
-              <textarea v-model="editForm.rules" rows="6" class="form-control"></textarea>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label">Allowed Submission Type</label>
-              <select class="form-control" v-model="editForm.allowed_submission_type">
-                <option value="new">New Articles Only</option>
+              <label for="editAllowedType" class="form-label">Allowed Submission Type</label>
+              <select id="editAllowedType" class="form-control" v-model="editForm.allowed_submission_type">
+                <option value="new">New Article Only</option>
                 <option value="expansion">Improved Article Only</option>
-                <option value="both">Both (New Article + Improved Article)</option>
+                <option value="both">Both(New Article + Improved Article)</option>
               </select>
             </div>
 
-            <!-- Contest Date Range -->
+
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label">Start Date</label>
-                <input type="date" v-model="editForm.start_date" class="form-control" />
+                <label for="editStartDate" class="form-label">Start Date *</label>
+                <input type="date"
+                       class="form-control"
+                       id="editStartDate"
+                       v-model="editForm.start_date"
+                       required />
               </div>
-
               <div class="col-md-6 mb-3">
-                <label class="form-label">End Date</label>
-                <input type="date" v-model="editForm.end_date" class="form-control" />
+                <label for="editEndDate" class="form-label">End Date *</label>
+                <input type="date"
+                       class="form-control"
+                       id="editEndDate"
+                       v-model="editForm.end_date"
+                       required />
               </div>
             </div>
 
-            <!-- Organizer Management with Search -->
+            <!-- Organizers section with autocomplete search -->
             <div class="mb-3">
               <label class="form-label">
-                Contest Organizers
-                <span class="badge bg-info">Type to search and add users</span>
+                Organizers
               </label>
 
-              <!-- Selected Organizers Display -->
-              <div class="mb-2 p-2 border rounded bg-light organizer-selection-box" style="min-height: 60px;">
-                <small v-if="editForm.selectedOrganizers.length === 0" class="text-muted">
-                  No organizers selected
+              <!-- Display selected organizers as removable badges -->
+              <div class="mb-2 p-2 border rounded bg-light organizer-selection-box" style="min-height: 40px;">
+                <small v-if="editForm.selectedOrganizers.length === 0" class="organizer-placeholder-text">
+                  No additional organizers added
                 </small>
                 <span v-for="username in editForm.selectedOrganizers"
 :key="username"
 class="badge bg-success me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;">
-                  <i class="fas fa-user-tie me-1"></i>{{ username }}
+                  {{ username }}
                   <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
                 </span>
               </div>
 
-              <!-- Organizer Search Input with Autocomplete -->
+              <!-- Organizer search input with autocomplete dropdown -->
               <div style="position: relative;">
-                <input type="text"
-class="form-control"
-v-model="organizerSearchQuery"
-@input="searchOrganizers"
-                  placeholder="Type username to search and add..."
-autocomplete="off" />
+                <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
+                  placeholder="Type username to add additional organizers..." autocomplete="off" />
 
-                <!-- Autocomplete Dropdown -->
+                <!-- Autocomplete results dropdown -->
                 <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
                   class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
@@ -500,13 +520,12 @@ style="cursor: pointer;"
                     @click="addOrganizer(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
-                        <i class="fas fa-user me-2 text-success"></i>
+                        <i class="fas fa-user-tie me-2 text-success"></i>
                         <strong>{{ user.username }}</strong>
                       </div>
-                      <!-- Warn when adding self as organizer -->
-                      <div v-if="isCurrentUser(user.username)" class="self-warning-badge">
-                        <i class="fas fa-exclamation-triangle me-1"></i>
-                        <small>This is you</small>
+                      <!-- Show info badge if user tries to select themselves -->
+                      <div v-if="isCurrentUser(user.username)" class="badge bg-info">
+                        You (already added as creator)
                       </div>
                     </div>
                   </div>
@@ -514,21 +533,21 @@ style="cursor: pointer;"
               </div>
 
               <small class="form-text text-muted mt-1">
-                Search and click to add organizers. Click × to remove. Organizers can manage this contest.
+                <i class="fas fa-info-circle me-1"></i>
+                You will be automatically added as an organizer. Add others who should manage this contest.
               </small>
             </div>
 
-            <!-- Jury Member Management with Search -->
             <div class="mb-3">
-              <label class="form-label">
-                Jury Members
-                <span class="badge bg-info">Type to search and add users</span>
+              <label for="editJuryInput" class="form-label">
+                Jury Members *
+                <span class="badge bg-info">Type to search users</span>
               </label>
 
               <!-- Selected Jury Members Display -->
-              <div class="mb-2 p-2 border rounded bg-light jury-selection-box" style="min-height: 60px;">
-                <small v-if="editForm.selectedJuryMembers.length === 0" class="text-muted">
-                  No jury members selected
+              <div class="mb-2 p-2 border rounded bg-light jury-selection-box" style="min-height: 40px;">
+                <small v-if="editForm.selectedJuryMembers.length === 0" class="jury-placeholder-text">
+                  No jury members selected yet
                 </small>
                 <span v-for="username in editForm.selectedJuryMembers"
 :key="username"
@@ -539,7 +558,7 @@ style="font-size: 0.9rem; cursor: pointer;">
                 </span>
               </div>
 
-              <!-- Jury Search Input with Autocomplete -->
+              <!-- Jury Input with Autocomplete -->
               <div style="position: relative;">
                 <input type="text"
 class="form-control"
@@ -563,83 +582,149 @@ style="cursor: pointer;"
                         <i class="fas fa-user me-2 text-primary"></i>
                         <strong>{{ user.username }}</strong>
                       </div>
-                      <!-- Warn when adding self as jury -->
                       <div v-if="isCurrentUser(user.username)" class="self-warning-badge">
                         <i class="fas fa-exclamation-triangle me-1"></i>
-                        <small>This is you</small>
+                        <strong>This is you - Not Recommended</strong>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-
-              <small class="form-text text-muted mt-1">
-                Search and click to add jury members. Click × to remove.
-              </small>
             </div>
 
-            <!-- Simple Scoring Configuration -->
-            <div v-if="editForm.scoring_mode === 'simple'">
-              <div class="mb-3">
-                <label class="form-label">Accepted Points</label>
-                <input type="number" v-model.number="editForm.marks_setting_accepted" class="form-control" />
+            <!-- Scoring settings: points for accepted and rejected submissions -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="editMarksAccepted" class="form-label">Points for Accepted Submissions</label>
+                <input type="number" class="form-control" id="editMarksAccepted"
+                  v-model.number="editForm.marks_setting_accepted" min="0" />
+                <small class="form-text text-muted">
+                  Maximum points that can be awarded. Jury can assign points from 0 up to
+                  this value for accepted submissions.
+                </small>
               </div>
-
-              <div class="mb-3">
-                <label class="form-label">Rejected Points</label>
-                <input type="number" v-model.number="editForm.marks_setting_rejected" class="form-control" />
+              <div class="col-md-6 mb-3">
+                <label for="editMarksRejected" class="form-label">Points for Rejected Submissions</label>
+                <input type="number" class="form-control" id="editMarksRejected"
+                  v-model.number="editForm.marks_setting_rejected" min="0" />
+                <small class="form-text text-muted">
+                  Fixed points awarded automatically for rejected submissions (usually 0 or negative).
+                </small>
               </div>
             </div>
 
-            <!-- Multi-Parameter Scoring Configuration -->
-            <div v-if="editForm.scoring_mode === 'multi'">
-              <div class="mb-3">
-                <label class="form-label">Maximum Score</label>
-                <input type="number" v-model.number="editForm.scoring_parameters.max_score" class="form-control" />
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label">Minimum Score</label>
-                <input type="number" v-model.number="editForm.scoring_parameters.min_score" class="form-control" />
-              </div>
-
-              <hr />
-
-              <h6>Scoring Parameters</h6>
-
-              <!-- Dynamic parameter list -->
-              <div v-for="(param, index) in editForm.scoring_parameters.parameters"
-:key="index"
-                class="border rounded p-3 mb-2">
-                <div class="row">
-                  <div class="col-md-4">
-                    <input v-model="param.name" placeholder="Parameter name" class="form-control" />
-                  </div>
-
-                  <div class="col-md-3">
-                    <input type="number"
-v-model.number="param.weight"
-placeholder="Weight %"
-class="form-control" />
-                  </div>
-
-                  <div class="col-md-4">
-                    <input v-model="param.description" placeholder="Description (optional)" class="form-control" />
-                  </div>
-
-                  <div class="col-md-1 text-end">
-                    <button class="btn btn-outline-danger btn-sm"
-                      @click="editForm.scoring_parameters.parameters.splice(index, 1)">
-                      <i class="fas fa-trash"></i>
-                    </button>
-                  </div>
+            <!-- Advanced scoring system with multiple weighted parameters -->
+            <div class="card mb-4 scoring-section">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                  <i class="fas fa-chart-line me-2"></i> Scoring System
+                </h6>
+                <!-- Toggle between simple and multi-parameter scoring -->
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="editEnableMultiParam"
+                    v-model="enableMultiParameterScoring">
+                  <label class="form-check-label" for="editEnableMultiParam">
+                    Enable Multi-Parameter Scoring
+                  </label>
                 </div>
               </div>
 
-              <button class="btn btn-outline-primary btn-sm"
-                @click="editForm.scoring_parameters.parameters.push({ name: '', weight: 0, description: '' })">
-                <i class="fas fa-plus me-1"></i>Add Parameter
-              </button>
+              <div class="card-body">
+                <!-- Simple scoring mode: single score per submission -->
+                <div v-if="!enableMultiParameterScoring" class="alert alert-info">
+                  <i class="fas fa-info-circle me-2"></i>
+                  <strong>Simple Scoring Mode:</strong> Jury will assign a single score (0-{{
+                    editForm.marks_setting_accepted }})
+                  for accepted submissions.
+                  <br>
+                  <i class="fas fa-info-circle me-2"></i>
+                  <strong>Simple Scoring Mode:</strong> Jury will assign a single score (0-{{
+                    editForm.marks_setting_rejected }})
+                  for rejected submissions.
+                </div>
+                <!-- Multi-parameter scoring mode: weighted calculation -->
+                <div v-else>
+                  <div class="alert alert-success">
+                    <i class="fas fa-star me-2"></i>
+                    <strong>Multi-Parameter Scoring Enabled:</strong> Jury will score submissions on multiple parameters
+                    with weighted calculation.
+                  </div>
+
+                  <!-- Maximum score for accepted submissions -->
+                  <div class="mb-3">
+                    <label class="form-label">Point of Acceptance</label>
+                    <input type="number" class="form-control" v-model.number="maxScore" min="1" max="100"
+                      placeholder="10">
+                    <small class="text-muted">Final calculated score will be scaled to this value</small>
+                  </div>
+
+                  <!-- Minimum score for rejected submissions -->
+                  <div class="mb-3">
+                    <label class="form-label">Point of Rejection </label>
+                    <input type="number" class="form-control" v-model.number="minScore" min="1" max="100"
+                      placeholder="0">
+
+                  </div>
+
+                  <!-- Define scoring parameters with weights -->
+                  <div class="mb-3">
+                    <label class="form-label">Scoring Parameters</label>
+                    <div class="parameters-list">
+                      <!-- Each parameter has name, weight, and description -->
+                      <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-item card mb-2">
+                        <div class="card-body">
+                          <div class="row align-items-center">
+                            <div class="col-md-3">
+                              <input type="text" class="form-control" v-model="param.name" placeholder="Parameter name"
+                                required>
+                            </div>
+                            <div class="col-md-3">
+                              <div class="input-group">
+                                <input type="number" class="form-control" v-model.number="param.weight" min="0"
+                                  max="100" placeholder="Weight" required>
+                                <span class="input-group-text">%</span>
+                              </div>
+                            </div>
+                            <div class="col-md-5">
+                              <input type="text" class="form-control" v-model="param.description"
+                                placeholder="Description (optional)">
+                            </div>
+                            <div class="col-md-1 text-end">
+                              <!-- Remove parameter button (disabled if only one parameter) -->
+                              <button type="button" class="btn btn-sm btn-outline-danger"
+                                @click="removeParameter(index)" :disabled="scoringParameters.length <= 1">
+                                <i class="fas fa-times"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="addParameter">
+                      <i class="fas fa-plus me-1"></i>Add Parameter
+                    </button>
+
+                    <!-- Weight validation: must sum to 100% -->
+                    <div class="mt-3 p-3 rounded" :class="weightTotalClass">
+                      <strong>Total Weight: {{ totalWeight }}%</strong>
+                      <span v-if="totalWeight !== 100" class="ms-2 text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Must equal 100%
+                      </span>
+                      <span v-else class="ms-2 text-success">
+                        <i class="fas fa-check-circle"></i>
+                        Valid
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Reset to default parameters -->
+                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="loadDefaultParameters">
+                    <i class="fas fa-redo me-1"></i>Load Default Parameters
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Article Requirements -->
@@ -701,13 +786,35 @@ title="Remove category">
                 At least one MediaWiki category URL is required. Articles must belong to these categories.
               </small>
             </div>
+
+            <!-- Template Link (Optional) -->
+            <div class="mb-3">
+              <label for="editTemplateLink" class="form-label">
+                Contest Template Link
+                <span class="badge bg-secondary ms-1">Optional</span>
+              </label>
+              <input type="url"
+                     class="form-control"
+                     id="editTemplateLink"
+                     v-model="editForm.template_link"
+                     placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
+              <small class="form-text text-muted d-block mt-2">
+                <i class="fas fa-info-circle me-1"></i>
+                If set, this template will be automatically added to submitted articles that don't already have it.
+                The URL must point to a Wiki Template namespace page (e.g., Template:Editathon2025).
+              </small>
+            </div>
+
           </form>
         </div>
-
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" @click="saveContestEdits">
-            <i class="fas fa-save me-2"></i>Save Changes
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button"
+                  class="btn btn-primary"
+                  @click="saveContestEdits"
+                  :disabled="savingContest">
+            <span v-if="savingContest" class="spinner-border spinner-border-sm me-2"></span>
+            Save Changes
           </button>
         </div>
       </div>
@@ -753,11 +860,58 @@ export default {
     const jurySearchResults = ref([])
     const organizerSearchQuery = ref('')
     const organizerSearchResults = ref([])
-
-    // Debounce timers for search functionality
+    const deletingSubmissionId = ref(null)
+    const savingContest = ref(false)
     let jurySearchTimeout = null
     let organizerSearchTimeout = null
-    const scoringMode = ref('simple')
+    let editModal = null
+
+    // Scoring system state
+    const enableMultiParameterScoring = ref(false)
+    const maxScore = ref(10)
+    const minScore = ref(0)
+    const scoringParameters = ref([
+      { name: 'Quality', weight: 40, description: 'Article structure & content quality' },
+      { name: 'Sources', weight: 30, description: 'References & citations' },
+      { name: 'Neutrality', weight: 20, description: 'Unbiased writing' },
+      { name: 'Formatting', weight: 10, description: 'Presentation & formatting' }
+    ])
+
+    // Calculate total weight of all parameters
+    const totalWeight = computed(() => {
+      return scoringParameters.value.reduce((sum, param) => sum + (param.weight || 0), 0)
+    })
+
+    // Determine background class based on weight validity
+    const weightTotalClass = computed(() => {
+      return totalWeight.value === 100 ? 'bg-success-subtle' : 'bg-danger-subtle'
+    })
+
+    // Add new scoring parameter
+    const addParameter = () => {
+      scoringParameters.value.push({
+        name: '',
+        weight: 0,
+        description: ''
+      })
+    }
+
+    // Remove scoring parameter by index
+    const removeParameter = (index) => {
+      if (scoringParameters.value.length > 1) {
+        scoringParameters.value.splice(index, 1)
+      }
+    }
+
+    // Reset to default parameter configuration
+    const loadDefaultParameters = () => {
+      scoringParameters.value = [
+        { name: 'Quality', weight: 40, description: 'Article structure & content quality' },
+        { name: 'Sources', weight: 30, description: 'References & citations' },
+        { name: 'Neutrality', weight: 20, description: 'Unbiased writing' },
+        { name: 'Formatting', weight: 10, description: 'Presentation & formatting' }
+      ]
+    }
 
     // Track current submission for preview modal
     const currentSubmissionId = ref(null)
@@ -1199,6 +1353,61 @@ export default {
       }
     }
 
+    // Handle submission deleted from modal
+    const handleSubmissionDeleted = (submissionId) => {
+      console.log('Submission deleted:', submissionId)
+
+      // Remove the submission from the array
+      const submissionIndex = submissions.value.findIndex(
+        s => s.id === submissionId
+      )
+
+      if (submissionIndex !== -1) {
+        submissions.value.splice(submissionIndex, 1)
+        showAlert('Submission deleted successfully', 'success')
+
+        // Update contest submission count if available
+        if (contest.value && contest.value.submission_count) {
+          contest.value.submission_count -= 1
+        }
+      }
+    }
+
+    // Handle delete submission from table
+    const handleDeleteSubmission = async (submission) => {
+      // Confirmation dialog
+      const confirmed = confirm(
+        `Are you sure you want to delete the submission "${submission.article_title}"?\n\n` +
+        'This action cannot be undone and will adjust the user\'s score.'
+      )
+
+      if (!confirmed) return
+
+      deletingSubmissionId.value = submission.id
+
+      try {
+        await api.deleteSubmission(submission.id)
+
+        // Remove from array
+        const index = submissions.value.findIndex(s => s.id === submission.id)
+        if (index !== -1) {
+          submissions.value.splice(index, 1)
+        }
+
+        showAlert('Submission deleted successfully', 'success')
+
+        // Update contest submission count
+        if (contest.value && contest.value.submission_count) {
+          contest.value.submission_count -= 1
+        }
+      } catch (error) {
+        console.error('Failed to delete submission:', error)
+        showAlert('Failed to delete submission: ' + error.message, 'danger')
+      } finally {
+        deletingSubmissionId.value = null
+      }
+    }
+
     // Watch for user changes and update permissions
     watch(() => currentUser.value, (newUser) => {
       if (newUser && contest.value && !checkingAuth.value) {
@@ -1225,9 +1434,10 @@ export default {
       selectedJuryMembers: [],
       selectedOrganizers: [],
       min_byte_count: 0,
-      categories: [''],
       min_reference_count: 0,
-      scoring_mode: '',
+      categories: [''],
+      template_link: '',
+      scoring_mode: 'simple',
       scoring_parameters: {
         max_score: 10,
         min_score: 0,
@@ -1235,9 +1445,6 @@ export default {
       }
     })
 
-    let editModal = null
-
-    // Initialize modal on mount
     onMounted(() => {
       loadContest()
       const modalEl = document.getElementById('editContestModal')
@@ -1282,16 +1489,23 @@ export default {
 
     // Add jury member with self-selection warning
     const addJuryMember = (username) => {
+      // Check if trying to add self
       if (isCurrentUser(username)) {
+        // Show confirmation dialog before adding
         const confirmed = window.confirm(
           '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
-          'You are about to add yourself as a jury member.\n\n' +
-          'It is recommended to select other users as jury members.\n\n' +
-          'Continue?'
+          'You are about to select yourself as a jury member.\n\n' +
+          'It is strongly recommended to select other users as jury members to maintain fairness and objectivity.\n\n' +
+          'Are you sure you want to proceed with selecting yourself?'
         )
-        if (!confirmed) return
+
+        // If user cancels, don't add them
+        if (!confirmed) {
+          return
+        }
       }
 
+      // Add if not already in list
       if (!editForm.selectedJuryMembers.includes(username)) {
         editForm.selectedJuryMembers.push(username)
         jurySearchQuery.value = ''
@@ -1322,8 +1536,10 @@ export default {
       organizerSearchTimeout = setTimeout(async () => {
         try {
           const response = await api.get(`/user/search?q=${encodeURIComponent(query)}&limit=10`)
+          // Filter out already selected organizers and current user
           organizerSearchResults.value = (response.users || []).filter(
-            user => !editForm.selectedOrganizers.includes(user.username)
+            user => !editForm.selectedOrganizers.includes(user.username) &&
+              !isCurrentUser(user.username)
           )
         } catch (error) {
           console.error('Organizer search error:', error)
@@ -1332,17 +1548,15 @@ export default {
       }, 300)
     }
 
-    // Add organizer with confirmation
+    // Add organizer (prevent adding current user)
     const addOrganizer = (username) => {
+      // Don't add current user (they're already creator)
       if (isCurrentUser(username)) {
-        const confirmed = window.confirm(
-          '⚠️ WARNING: Self-Selection as Organizer\n\n' +
-          'You are about to add yourself as an organizer.\n\n' +
-          'Continue?'
-        )
-        if (!confirmed) return
+        showAlert('You will be added automatically as contest creator', 'info')
+        return
       }
 
+      // Add the organizer if not already selected
       if (!editForm.selectedOrganizers.includes(username)) {
         editForm.selectedOrganizers.push(username)
         organizerSearchQuery.value = ''
@@ -1404,21 +1618,38 @@ export default {
         editForm.categories = ['']
       }
 
+      // Load template link
+      editForm.template_link = contest.value.template_link || ''
+
       // Populate scoring configuration
       if (contest.value.scoring_parameters?.enabled) {
         editForm.scoring_mode = 'multi'
+        enableMultiParameterScoring.value = true
+
+        maxScore.value = contest.value.scoring_parameters.max_score ?? 10
+        minScore.value = contest.value.scoring_parameters.min_score ?? 0
+
+        // Load scoring parameters into the ref
+        if (contest.value.scoring_parameters.parameters && contest.value.scoring_parameters.parameters.length > 0) {
+          scoringParameters.value = contest.value.scoring_parameters.parameters.map(p => ({ ...p }))
+        } else {
+          loadDefaultParameters()
+        }
 
         editForm.scoring_parameters = {
-          max_score: contest.value.scoring_parameters.max_score ?? 10,
-          min_score: contest.value.scoring_parameters.min_score ?? 0,
-          parameters: contest.value.scoring_parameters.parameters
-            ? [...contest.value.scoring_parameters.parameters]
-            : []
+          max_score: maxScore.value,
+          min_score: minScore.value,
+          parameters: scoringParameters.value.map(p => ({ ...p }))
         }
       } else {
         editForm.scoring_mode = 'simple'
+        enableMultiParameterScoring.value = false
         editForm.marks_setting_accepted = Number(contest.value.marks_setting_accepted ?? 0)
         editForm.marks_setting_rejected = Number(contest.value.marks_setting_rejected ?? 0)
+
+        maxScore.value = 10
+        minScore.value = 0
+        loadDefaultParameters()
 
         editForm.scoring_parameters = {
           max_score: 10,
@@ -1439,52 +1670,70 @@ export default {
     // Save contest edits with validation
     const saveContestEdits = async () => {
       try {
-        // Validate multi-parameter scoring weights sum to 100%
-        if (editForm.scoring_mode === 'multi') {
-          const totalWeight = editForm.scoring_parameters.parameters
-            .reduce((sum, p) => sum + Number(p.weight || 0), 0)
+        savingContest.value = true
 
-          if (totalWeight !== 100) {
-            showAlert('Total parameter weight must be 100%', 'warning')
-            return
-          }
-        }
-
-        // Ensure at least one category is provided
+        // Validate categories
         const validCategories = editForm.categories.filter(cat => cat && cat.trim())
         if (validCategories.length === 0) {
           showAlert('At least one category URL is required', 'warning')
           return
         }
 
-        // Build update payload
+        // Validate category URLs
+        for (const category of validCategories) {
+          if (!category.startsWith('http://') && !category.startsWith('https://')) {
+            showAlert('All category URLs must be valid HTTP/HTTPS URLs', 'warning')
+            return
+          }
+        }
+
+        // Validate multi-parameter scoring weights if enabled
+        if (enableMultiParameterScoring.value && totalWeight.value !== 100) {
+          showAlert('Parameter weights must sum to 100%', 'warning')
+          return
+        }
+
+        // Build scoring parameters payload
+        let scoringParametersPayload = null
+        if (enableMultiParameterScoring.value) {
+          scoringParametersPayload = {
+            enabled: true,
+            max_score: maxScore.value,
+            min_score: minScore.value,
+            parameters: scoringParameters.value.map(param => ({
+              name: param.name,
+              weight: param.weight,
+              description: param.description || ''
+            }))
+          }
+        }
+
+        // Prepare template link: trim if provided, otherwise set to null
+        let templateLinkValue = null
+        if (editForm.template_link && typeof editForm.template_link === 'string') {
+          const trimmed = editForm.template_link.trim()
+          templateLinkValue = trimmed.length > 0 ? trimmed : null
+        }
+
         const payload = {
-          name: editForm.name,
-          project_name: editForm.project_name,
-          description: editForm.description,
-          rules: editForm.rules?.trim() || '',
+          name: editForm.name || '',
+          project_name: editForm.project_name || '',
+          description: editForm.description || '',
+          rules: {
+            text: editForm.rules?.trim() || ''
+          },
           start_date: editForm.start_date || null,
           end_date: editForm.end_date || null,
           jury_members: editForm.selectedJuryMembers,
           organizers: editForm.selectedOrganizers,
           allowed_submission_type: editForm.allowed_submission_type,
-          min_byte_count: Number(editForm.min_byte_count),
-          categories: validCategories,
-          min_reference_count: Number(editForm.min_reference_count)
-        }
-
-        // Add scoring configuration based on mode
-        if (editForm.scoring_mode === 'multi') {
-          payload.scoring_parameters = {
-            enabled: true,
-            max_score: Number(editForm.scoring_parameters.max_score),
-            min_score: Number(editForm.scoring_parameters.min_score),
-            parameters: editForm.scoring_parameters.parameters
-          }
-        } else {
-          payload.marks_setting_accepted = Number(editForm.marks_setting_accepted)
-          payload.marks_setting_rejected = Number(editForm.marks_setting_rejected)
-          payload.scoring_parameters = { enabled: false }
+          min_byte_count: Number(editForm.min_byte_count) || 0,
+          min_reference_count: Number(editForm.min_reference_count) || 0,
+          categories: validCategories.map(cat => cat.trim()),
+          template_link: templateLinkValue,
+          marks_setting_accepted: Number(editForm.marks_setting_accepted),
+          marks_setting_rejected: Number(editForm.marks_setting_rejected),
+          scoring_parameters: scoringParametersPayload
         }
 
         await api.put(`/contest/${contest.value.id}`, payload)
@@ -1499,6 +1748,8 @@ export default {
           'Failed to save: ' + (error.response?.data?.detail || error.message),
           'danger'
         )
+      } finally {
+        savingContest.value = false
       }
     }
 
@@ -1547,6 +1798,7 @@ export default {
       isAuthenticated,
       canViewSubmissions,
       currentSubmission,
+      deletingSubmissionId,
       formatDate,
       formatDateShort,
       formatByteCount,
@@ -1576,16 +1828,26 @@ export default {
       removeCategory,
       isCurrentUser,
       goBack,
+      goToLeaderboard,
       showArticlePreview,
       handleSubmissionReviewed,
+      handleSubmissionDeleted,
+      handleDeleteSubmission,
       previewArticleUrl,
       previewArticleTitle,
       editForm,
       openEditModal,
       saveContestEdits,
       canUserReview,
-      goToLeaderboard,
-      scoringMode
+      enableMultiParameterScoring,
+      maxScore,
+      minScore,
+      scoringParameters,
+      totalWeight,
+      weightTotalClass,
+      addParameter,
+      removeParameter,
+      loadDefaultParameters
     }
   }
 }

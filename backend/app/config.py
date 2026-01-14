@@ -108,7 +108,6 @@ class Config:
     CONSUMER_KEY = os.getenv('CONSUMER_KEY', '')
     CONSUMER_SECRET = os.getenv('CONSUMER_SECRET', '')
 
-
 class DevelopmentConfig(Config):
     """
     Development environment configuration.

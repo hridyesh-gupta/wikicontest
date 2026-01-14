@@ -70,12 +70,12 @@ class Submission(BaseModel):
     # Can be negative if article was reduced in size
     article_expansion_bytes = db.Column(db.Integer, nullable=True)
 
+    # Template enforcement tracking
+    # True if template was automatically added to the article during submission
+    template_added = db.Column(db.Boolean, nullable=True, default=False)
 
-    # ------------------------------------------------------------------------
-    # Database Columns - Submission Status & Scoring
-    # ------------------------------------------------------------------------
-
-    # Status: 'pending', 'accepted', 'rejected', or 'auto_rejected'
+    # Submission status and scoring
+    # pending | accepted | rejected | auto_rejected
     status = db.Column(db.String(20), nullable=False, default="pending")
 
     # Total score awarded to this submission
@@ -164,6 +164,7 @@ class Submission(BaseModel):
         article_page_id=None,
         article_size_at_start=None,
         article_expansion_bytes=None,
+        template_added=False,
     ):
         """
         Initialize a new Submission instance
@@ -180,6 +181,7 @@ class Submission(BaseModel):
             article_page_id: MediaWiki page ID (optional, fetched from MediaWiki API)
             article_size_at_start: Article size in bytes at contest start (optional)
             article_expansion_bytes: Bytes added between contest start and submission time (optional)
+            template_added: Whether template was automatically added to article (optional)
         """
         # Set required fields
         self.user_id = user_id
@@ -196,8 +198,7 @@ class Submission(BaseModel):
         self.article_page_id = article_page_id
         self.article_size_at_start = article_size_at_start
         self.article_expansion_bytes = article_expansion_bytes
-
-        # Initialize review fields (set when jury reviews)
+        self.template_added = template_added
         self.reviewed_by = None
         self.reviewed_at = None
         self.review_comment = None
@@ -390,6 +391,30 @@ class Submission(BaseModel):
 
         return False
 
+    def can_be_deleted_by(self, user):
+        """
+        Check if a user can delete this submission
+
+        Args:
+            user: User instance to check
+
+        Returns:
+            bool: True if user can delete submission, False otherwise
+        """
+        # Admin can delete all submissions
+        if user.is_admin():
+            return True
+
+        # Jury members can delete submissions in their contests
+        if user.is_jury_member(self.contest):
+            return True
+
+        # Contest creators can delete submissions in their contests
+        if user.is_contest_creator(self.contest):
+            return True
+
+        return False
+
 
     def can_be_viewed_by(self, user):
         """
@@ -464,8 +489,7 @@ class Submission(BaseModel):
             "article_page_id": self.article_page_id,
             "article_size_at_start": self.article_size_at_start,
             "article_expansion_bytes": self.article_expansion_bytes,
-
-            # Review information
+            "template_added": self.template_added,
             "reviewed_by": self.reviewed_by,
             "reviewed_at": (
                 self.reviewed_at.isoformat() + "Z" if self.reviewed_at else None

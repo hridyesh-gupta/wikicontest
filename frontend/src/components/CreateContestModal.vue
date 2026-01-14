@@ -424,6 +424,23 @@ title="Remove category">
               </small>
             </div>
 
+            <!-- Template Link (Optional) -->
+            <div class="mb-3">
+              <label for="templateLink" class="form-label">
+                Contest Template Link
+                <span class="badge bg-secondary ms-1">Optional</span>
+              </label>
+              <input type="url"
+                     class="form-control"
+                     id="templateLink"
+                     v-model="formData.template_link"
+                     placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
+              <small class="form-text text-muted d-block mt-2">
+                <i class="fas fa-info-circle me-1"></i>
+                If set, this template will be automatically added to submitted articles that don't already have it.
+                The URL must point to a Wiki Template namespace page (e.g., Template:Editathon2025).
+              </small>
+            </div>
 
           </form>
         </div>
@@ -537,6 +554,7 @@ export default {
       allowed_submission_type: 'both',
       min_byte_count: 0,
       categories: [''],
+      template_link: '',
       min_reference_count: 0
     })
 
@@ -793,6 +811,27 @@ export default {
           return
         }
       }
+
+      // Validate template link if provided
+      if (formData.template_link && formData.template_link.trim()) {
+        const templateLink = formData.template_link.trim()
+        // Basic URL format validation
+        if (!templateLink.startsWith('http://') && !templateLink.startsWith('https://')) {
+          showAlert('Template link must be a valid HTTP/HTTPS URL', 'warning')
+          return
+        }
+        // Check if URL appears to point to a Template namespace page
+        // This is a basic check - backend will do comprehensive validation
+        const urlLower = templateLink.toLowerCase()
+        if (!urlLower.includes('template:') && !urlLower.includes('/template/')) {
+          showAlert(
+            'Template link should point to a Template namespace page (e.g., Template:YourTemplate)',
+            'warning'
+          )
+          return
+        }
+      }
+
       // Validate multi-parameter scoring weights
       if (enableMultiParameterScoring.value && totalWeight.value !== 100) {
         showAlert('Parameter weights must sum to 100%', 'warning')
@@ -817,6 +856,13 @@ export default {
           }
         }
 
+        // Prepare template link: trim if provided, otherwise set to null
+        let templateLinkValue = null
+        if (formData.template_link && typeof formData.template_link === 'string') {
+          const trimmed = formData.template_link.trim()
+          templateLinkValue = trimmed.length > 0 ? trimmed : null
+        }
+
         // Construct contest data payload with all form values
         const contestData = {
           ...formData,
@@ -829,8 +875,10 @@ export default {
           min_byte_count: Number(formData.min_byte_count),
           // Categories: filter out empty strings and trim
           categories: formData.categories.filter(cat => cat && cat.trim()).map(cat => cat.trim()),
-          scoring_parameters:
-            scoringParametersPayload
+          // Template link (optional): trim or set to null if empty
+          template_link: templateLinkValue,
+          scoring_parameters: scoringParametersPayload,
+          min_reference_count: formData.min_reference_count || 0
         }
 
         // Submit contest creation request
@@ -868,6 +916,7 @@ export default {
       formData.rules_text = ''
       formData.min_byte_count = 0
       formData.categories = ['']
+      formData.template_link = ''
       formData.min_reference_count = 0
 
       // Reset dates to default (tomorrow and next week)

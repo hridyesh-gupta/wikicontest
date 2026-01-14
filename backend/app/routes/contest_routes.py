@@ -21,6 +21,11 @@ from app.utils import (
     get_latest_revision_author,
     build_mediawiki_revisions_api_params,
     get_mediawiki_headers,
+    validate_template_link,
+    extract_template_name_from_url,
+    check_article_has_template,
+    prepend_template_to_article,
+    MEDIAWIKI_API_TIMEOUT,
     get_article_reference_count,
 )
 
@@ -559,6 +564,21 @@ def create_contest():
     # Create Contest
     # -----------------------------------------------------------------------
 
+    # Parse template_link (optional)
+    # If provided, validate that it points to a valid Wiki template page
+    template_link = data.get('template_link')
+    if template_link:
+        template_link = template_link.strip()
+        if template_link:  # Non-empty after strip
+            validation_result = validate_template_link(template_link)
+            if not validation_result['valid']:
+                return jsonify({
+                    'error': f"Invalid template link: {validation_result['error']}"
+                }), 400
+        else:
+            template_link = None  # Empty string becomes None
+
+    # Create contest
     try:
         # Parse additional organizers (creator is automatically added)
         additional_organizers = data.get('organizers', [])
@@ -580,6 +600,7 @@ def create_contest():
             allowed_submission_type=allowed_submission_type,
             min_byte_count=min_byte_count,
             categories=categories,
+            template_link=template_link,
             scoring_parameters=scoring_parameters,
             organizers=additional_organizers,
             min_reference_count=min_reference_count,
@@ -598,21 +619,6 @@ def create_contest():
     except Exception:  # pylint: disable=broad-exception-caught
         # Log error internally but don't expose details to client
         return jsonify({"error": "Failed to create contest"}), 500
-
-        db.session.add(contest)
-        db.session.commit()
-
-        current_app.logger.info("Contest %s updated by %s", contest_id, user.username)
-        return (
-            jsonify({"message": "Contest updated", "contest": contest.to_dict()}),
-            200,
-        )
-
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        # Log error with traceback for debugging
-        current_app.logger.error("Error updating contest %s: %s", contest_id, exc)
-        current_app.logger.error(traceback.format_exc())
-        return jsonify({"error": "Internal server error"}), 500
 
 
 # ------------------------------------------------------------------------
@@ -829,6 +835,23 @@ def update_contest(contest_id):
 
             contest.set_categories(categories_value)
 
+        # --- Template link ---
+        if 'template_link' in data:
+            template_link_value = data.get('template_link')
+            if template_link_value:
+                template_link_value = template_link_value.strip()
+                if template_link_value:  # Non-empty after strip
+                    validation_result = validate_template_link(template_link_value)
+                    if not validation_result['valid']:
+                        return jsonify({
+                            'error': f"Invalid template link: {validation_result['error']}"
+                        }), 400
+                    contest.template_link = template_link_value
+                else:
+                    contest.template_link = None  # Empty string clears the field
+            else:
+                contest.template_link = None  # None clears the field
+
         # --- Jury Members ---
         # Accept both list and comma-separated string formats
         if "jury_members" in data:
@@ -1019,10 +1042,9 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             api_params["inprop"] = "url|displaytitle"
 
             # Make request to MediaWiki API using shared headers
+            # Use increased timeout to handle slow API responses
             headers = get_mediawiki_headers()
-            response = requests.get(
-                api_url, params=api_params, headers=headers, timeout=10
-            )
+            response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
 
             if response.status_code == 200:
                 api_data = response.json()
@@ -1136,10 +1158,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
                                         "redirects": "true",
                                     }
                                     rev_response = requests.get(
-                                        api_url,
-                                        params=rev_api_params,
-                                        headers=headers,
-                                        timeout=10,
+                                        api_url, params=rev_api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT
                                     )
                                     if rev_response.status_code == 200:
                                         rev_data = rev_response.json()
@@ -1266,8 +1285,29 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             else:
                 article_title = "Article"  # Last resort fallback
 
+    except requests.exceptions.Timeout as timeout_error:
+        # Handle timeout errors specifically with a clear error message
+        # Timeout means the MediaWiki API didn't respond within the timeout period
+        # This could be due to slow API response, network issues, or high server load
+        try:
+            current_app.logger.warning(
+                f'MediaWiki API request timed out after {MEDIAWIKI_API_TIMEOUT} seconds: {str(timeout_error)}'
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Logging failure shouldn't break the flow
+            pass
+        
+        # Return a clear error message to the user
+        # We can't create a submission without article information (byte count is required)
+        return jsonify({
+            'error': (
+                f'Request to MediaWiki API timed out after {MEDIAWIKI_API_TIMEOUT} seconds. '
+                'The server may be slow or experiencing high traffic. Please try again in a moment.'
+            )
+        }), 504  # 504 Gateway Timeout is the appropriate status code
+    
     except Exception as error:  # pylint: disable=broad-exception-caught
-        # If MediaWiki API fetch fails, we'll still create the submission
+        # If MediaWiki API fetch fails for other reasons, we'll still create the submission
         # but with limited information
         # Log the error but don't fail the submission
         try:
@@ -1367,6 +1407,127 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
     if not is_valid_reference_count:
         return jsonify({"error": reference_count_error}), 400
 
+    # Template enforcement logic
+    # If contest has a template_link, check if article has the template and add it if not
+    template_added = False
+    template_error = None
+
+    if contest.template_link:
+        try:
+            # Log template enforcement start
+            current_app.logger.info(
+                f"Template enforcement: contest_id={contest_id}, template_link={contest.template_link}, "
+                f"user_id={user.id}, has_oauth_token={bool(user.oauth_token)}, "
+                f"has_oauth_secret={bool(user.oauth_token_secret)}"
+            )
+            
+            # Extract template name from the contest's template link
+            template_name = extract_template_name_from_url(contest.template_link)
+            current_app.logger.info(f"Extracted template name: {template_name}")
+
+            if template_name:
+                # Check if article already has the template at the beginning
+                template_check = check_article_has_template(article_link, template_name)
+
+                if template_check.get('error'):
+                    # Log warning but don't fail submission
+                    try:
+                        current_app.logger.warning(
+                            f"Template check failed for {article_link}: {template_check['error']}"
+                        )
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+                elif not template_check.get('has_template'):
+                    # Template not present, attempt to add it
+                    current_app.logger.info(f"Template not found in article. Attempting to add...")
+                    
+                    # Check if user has OAuth tokens
+                    if user.oauth_token and user.oauth_token_secret:
+                        current_app.logger.info(f"User has OAuth tokens. Proceeding with edit...")
+                        # Get OAuth consumer credentials from config
+                        consumer_key = current_app.config.get('CONSUMER_KEY')
+                        consumer_secret = current_app.config.get('CONSUMER_SECRET')
+
+                        if consumer_key and consumer_secret:
+                            # Log the target wiki for debugging OAuth issues
+                            from urllib.parse import urlparse
+                            article_domain = urlparse(article_link).netloc
+                            current_app.logger.info(
+                                f"Attempting OAuth edit on wiki: {article_domain}"
+                            )
+                            
+                            # Attempt to prepend template to article
+                            edit_result = prepend_template_to_article(
+                                article_url=article_link,
+                                template_name=template_name,
+                                oauth_token=user.oauth_token,
+                                oauth_token_secret=user.oauth_token_secret,
+                                consumer_key=consumer_key,
+                                consumer_secret=consumer_secret,
+                                edit_summary=f"Adding {{{{{template_name}}}}} contest template (via WikiContest submission)"
+                            )
+
+                            if edit_result.get('success'):
+                                template_added = True
+                                try:
+                                    current_app.logger.info(
+                                        f"Successfully added template {{{{{template_name}}}}} to {article_link}"
+                                    )
+                                except Exception:  # pylint: disable=broad-exception-caught
+                                    pass
+                            else:
+                                template_error = edit_result.get('error', 'Unknown error')
+                                try:
+                                    current_app.logger.warning(
+                                        f"Failed to add template to {article_link}: {template_error}"
+                                    )
+                                    
+                                    # Provide helpful error messages for common OAuth issues
+                                    if 'readapidenied' in template_error.lower():
+                                        current_app.logger.error(
+                                            f"OAuth permission error: The OAuth consumer does not have read/edit "
+                                            f"permissions on this wiki. Ensure the OAuth consumer is registered on "
+                                            f"the target wiki (not just meta.wikimedia.org) with 'Edit existing pages' grant."
+                                        )
+                                    elif 'mwoauth-invalid-authorization' in template_error.lower():
+                                        current_app.logger.error(
+                                            f"OAuth authentication error: Invalid OAuth signature. Verify CONSUMER_KEY "
+                                            f"and CONSUMER_SECRET match the registered OAuth consumer."
+                                        )
+                                except Exception:  # pylint: disable=broad-exception-caught
+                                    pass
+                        else:
+                            template_error = 'OAuth consumer credentials not configured'
+                            current_app.logger.warning(
+                                f"OAuth consumer credentials not configured: "
+                                f"CONSUMER_KEY={bool(consumer_key)}, "
+                                f"CONSUMER_SECRET={bool(consumer_secret)}"
+                            )
+                    else:
+                        template_error = 'User does not have OAuth tokens for Wikipedia editing'
+                        current_app.logger.warning(
+                            f"User {user.id} does not have OAuth tokens: "
+                            f"oauth_token={user.oauth_token}, oauth_token_secret={user.oauth_token_secret}"
+                        )
+                else:
+                    # Template already present
+                    try:
+                        current_app.logger.info(
+                            f"Template {{{{{template_name}}}}} already present in {article_link}"
+                        )
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+            else:
+                template_error = 'Could not extract template name from contest template link'
+        except Exception as template_err:  # pylint: disable=broad-exception-caught
+            template_error = str(template_err)
+            try:
+                current_app.logger.error(
+                    f"Template enforcement error: {template_error}"
+                )
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+
     # --- Create Submission Record ---
     # Create submission with fetched information
     try:
@@ -1382,6 +1543,7 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             article_page_id=article_page_id,
             article_size_at_start=article_size_at_start,
             article_expansion_bytes=article_expansion_bytes,
+            template_added=template_added
         )
 
         submission.save()
@@ -1397,21 +1559,18 @@ def submit_to_contest(contest_id):  # pylint: disable=too-many-return-statements
             # Logging failure shouldn't break the flow
             pass
 
-        return (
-            jsonify(
-                {
-                    "message": "Submission created successfully",
-                    "submissionId": submission.id,
-                    "contest_id": contest_id,
-                    "article_title": article_title,
-                    "article_author": article_author,
-                    "article_word_count": article_word_count,
-                    "article_created_at": article_created_at,
-                    "article_expansion_bytes": article_expansion_bytes,
-                }
-            ),
-            201,
-        )
+        return jsonify({
+            'message': 'Submission created successfully',
+            'submissionId': submission.id,
+            'contest_id': contest_id,
+            'article_title': article_title,
+            'article_author': article_author,
+            'article_word_count': article_word_count,
+            'article_created_at': article_created_at,
+            'article_expansion_bytes': article_expansion_bytes,
+            'template_added': template_added,
+            'template_error': template_error
+        }), 201
 
     except IntegrityError as e:
         # Handle database integrity errors (e.g., duplicate submissions)

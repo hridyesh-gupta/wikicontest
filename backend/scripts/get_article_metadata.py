@@ -27,6 +27,7 @@ Usage:
 import sys
 import json
 import requests
+from app.utils import MEDIAWIKI_API_TIMEOUT
 from typing import Optional
 from urllib.parse import urlparse, unquote, parse_qs
 
@@ -119,7 +120,8 @@ def get_article_metadata(article_url: str) -> Optional[dict]:
         print(f"[>] Calling MediaWiki API: {api_url}")
         print()
         
-        response = requests.get(api_url, params=api_params, headers=headers, timeout=10)
+        # Make request to MediaWiki API, using the same timeout as the submission route
+        response = requests.get(api_url, params=api_params, headers=headers, timeout=MEDIAWIKI_API_TIMEOUT)
         
         # Check if request was successful
         if response.status_code != 200:

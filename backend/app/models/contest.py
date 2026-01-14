@@ -99,6 +99,10 @@ class Contest(BaseModel):
     # Jury members who can review submissions (comma-separated usernames)
     jury_members = db.Column(db.Text, nullable=True)
 
+    # Template link for contest (URL to Wiki template page)
+    # Used to enforce template attachment on submitted articles
+    template_link = db.Column(db.Text, nullable=True)
+
     # Contest organizers who can manage the contest (comma-separated usernames)
     # Creator is always included as an organizer
     organizers = db.Column(db.Text, nullable=True)
@@ -157,18 +161,15 @@ class Contest(BaseModel):
         self.min_byte_count = kwargs.get("min_byte_count", 0)
         self.min_reference_count = kwargs.get("min_reference_count", 0)
 
+        # Set template link (optional)
+        self.template_link = kwargs.get("template_link")
+
         # Set complex fields using setter methods (handle JSON/list conversion)
         self.set_categories(kwargs.get("categories", []))
         self.set_rules(kwargs.get("rules", {}))
         self.set_jury_members(kwargs.get("jury_members", []))
-
-        # Set organizers (creator is automatically added)
-        self.set_organizers(kwargs.get("organizers", []), created_by)
-
-
-    # ------------------------------------------------------------------------
-    # RULES MANAGEMENT (JSON Storage)
-    # ------------------------------------------------------------------------
+        # Set organizers (creator is automatically added by set_organizers)
+        self.set_organizers(kwargs.get("organizers", []), creator_username=created_by)
 
     def set_rules(self, rules_dict):
         """
@@ -716,39 +717,22 @@ class Contest(BaseModel):
             dict: Contest data
         """
         return {
-            "id": self.id,
-            "name": self.name,
-            "project_name": self.project_name,
-            "created_by": self.created_by,
-            "description": self.description,
-
-            # Convert dates to ISO format strings
-            "start_date": self.start_date.isoformat() if self.start_date else None,
-            "end_date": self.end_date.isoformat() if self.end_date else None,
-
-            # Parse JSON/comma-separated fields to native types
-            "rules": self.get_rules(),
-            "scoring_parameters": (
-                self.get_scoring_parameters()
-                if self.get_scoring_parameters()
-                else {"enabled": False}  # Default for simple scoring
-            ),
-
-            # Scoring settings
-            "marks_setting_accepted": self.marks_setting_accepted,
-            "marks_setting_rejected": self.marks_setting_rejected,
-            "allowed_submission_type": self.allowed_submission_type,
-
-            # Article requirements
-            "min_byte_count": self.min_byte_count,
-            "min_reference_count": self.min_reference_count,
-            "categories": self.get_categories(),
-
-            # People management
-            "jury_members": self.get_jury_members(),
-            "organizers": self.get_organizers(),
-
-            # Metadata - add 'Z' suffix to indicate UTC timezone
+            'id': self.id,
+            'name': self.name,
+            'project_name': self.project_name,
+            'created_by': self.created_by,
+            'description': self.description,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'rules': self.get_rules(),
+            'marks_setting_accepted': self.marks_setting_accepted,
+            'marks_setting_rejected': self.marks_setting_rejected,
+            'allowed_submission_type': self.allowed_submission_type,
+            'min_byte_count': self.min_byte_count,
+            'categories': self.get_categories(),
+            'jury_members': self.get_jury_members(),
+            'template_link': self.template_link,  # Template link for contest (optional)
+            # Format datetime as ISO string with 'Z' suffix to indicate UTC
             # This ensures JavaScript interprets it as UTC, not local time
             "created_at": (
                 (self.created_at.isoformat() + "Z") if self.created_at else None
