@@ -243,6 +243,7 @@ class="text-decoration-none">
               <span class="spinner-border spinner-border-sm me-2"></span>
               {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
             </button>
+            <!-- Refresh metadata fetches latest article data from MediaWiki -->
             <button v-else
 class="btn btn-sm btn-outline-light"
 @click="refreshMetadata"
@@ -403,14 +404,15 @@ class="btn btn-sm btn-outline-primary"
 :contest-id="submittingToContestId"
     @submitted="handleArticleSubmitted" />
 
-    <!-- Article Preview Modal - Pass computed currentSubmission -->
-    <ArticlePreviewModal v-if="!!currentSubmission"
-      :can-review="canUserReview"
-      :article-url="currentSubmission.article_link"
-      :article-title="currentSubmission.article_title"
-      :submission-id="currentSubmission.id"
-      :submission="currentSubmission"
-      @reviewed="handleSubmissionReviewed" />
+  <ArticlePreviewModal v-if="!!currentSubmission"
+    :can-review="canUserReview"
+    :article-url="currentSubmission.article_link"
+    :article-title="currentSubmission.article_title"
+    :submission-id="currentSubmission.id"
+    :submission="currentSubmission"
+    :contest-scoring-config="contest?.scoring_parameters"
+    @reviewed="handleSubmissionReviewed"
+    @deleted="handleSubmissionDeleted" />
   <!-- Edit Contest Modal -->
   <div class="modal fade" id="editContestModal" tabindex="-1">
     <div class="modal-dialog modal-fullscreen">
@@ -492,7 +494,9 @@ class="btn btn-sm btn-outline-primary"
                 <small v-if="editForm.selectedOrganizers.length === 0" class="organizer-placeholder-text">
                   No additional organizers added
                 </small>
-                <span v-for="username in editForm.selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
+                <span v-for="username in editForm.selectedOrganizers"
+:key="username"
+class="badge bg-success me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;">
                   {{ username }}
                   <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
@@ -508,9 +512,12 @@ class="btn btn-sm btn-outline-primary"
                 <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
                   class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div v-for="user in organizerSearchResults" :key="user.username"
-                    class="p-2 border-bottom cursor-pointer" :class="{ 'bg-info-subtle': isCurrentUser(user.username) }"
-                    style="cursor: pointer;" @click="addOrganizer(user.username)">
+                  <div v-for="user in organizerSearchResults"
+:key="user.username"
+                    class="p-2 border-bottom cursor-pointer"
+                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
+style="cursor: pointer;"
+                    @click="addOrganizer(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
                         <i class="fas fa-user-tie me-2 text-success"></i>
@@ -546,7 +553,7 @@ class="btn btn-sm btn-outline-primary"
 :key="username"
                   class="badge bg-primary me-2 mb-2"
 style="font-size: 0.9rem; cursor: pointer;">
-                  {{ username }}
+                  <i class="fas fa-gavel me-1"></i>{{ username }}
                   <i class="fas fa-times ms-1" @click="removeJuryMember(username)"></i>
                 </span>
               </div>
@@ -724,11 +731,11 @@ style="cursor: pointer;"
             <div class="mb-3">
               <label class="form-label">Minimum Byte Count *</label>
               <input type="number"
-                     v-model.number="editForm.min_byte_count"
-                     class="form-control"
-                     min="0"
-                     placeholder="e.g., 1000"
-                     required />
+v-model.number="editForm.min_byte_count"
+class="form-control"
+min="0"
+                placeholder="e.g., 1000"
+required />
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
             </div>
 
@@ -1724,6 +1731,8 @@ export default {
           min_reference_count: Number(editForm.min_reference_count) || 0,
           categories: validCategories.map(cat => cat.trim()),
           template_link: templateLinkValue,
+          marks_setting_accepted: Number(editForm.marks_setting_accepted),
+          marks_setting_rejected: Number(editForm.marks_setting_rejected),
           scoring_parameters: scoringParametersPayload
         }
 
@@ -2252,5 +2261,323 @@ export default {
 .modal-fullscreen .modal-body form {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+/* Card container for scoring criteria */
+.scoring-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+[data-theme="dark"] .scoring-card {
+  background: #2a2a2a;
+  border-color: #404040;
+}
+
+/* Inner content padding */
+.scoring-content {
+  padding: 1.25rem;
+}
+
+/* Base tag styling for categories */
+.tag {
+  display: inline-block;
+  padding: 0.375rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* Multi-parameter tag in green */
+.tag-multi {
+  background: #28a745;
+  color: white;
+}
+
+/* Simple scoring tag in blue */
+.tag-simple {
+  background: #17a2b8;
+  color: white;
+}
+
+/* Flex container for scoring metadata */
+.scoring-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Maximum points display */
+.max-points {
+  color: var(--wiki-primary);
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+/* Vertical list of scoring parameters */
+.params-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Individual parameter container */
+.param-item {
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid var(--wiki-primary);
+}
+
+[data-theme="dark"] .param-item {
+  background: #1f1f1f;
+}
+
+/* Parameter label and value row */
+.param-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.375rem;
+}
+
+/* Parameter name label */
+.param-label {
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+/* Parameter point value badge */
+.param-value {
+  background: var(--wiki-primary);
+  color: white;
+  padding: 0.25rem 0.625rem;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+/* Additional parameter description */
+.param-note {
+  color: #6b7280;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+[data-theme="dark"] .param-note {
+  color: #9ca3af;
+}
+
+/* Informational message box */
+.info-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: #eff6ff;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: #1e40af;
+}
+
+[data-theme="dark"] .info-note {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.info-note i {
+  font-size: 0.9375em;
+}
+
+/* Responsive grid for point items */
+.points-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+/* Individual point display card */
+.point-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 2px solid var(--wiki-border);
+}
+
+[data-theme="dark"] .point-item {
+  background: #1f1f1f;
+}
+
+/* Point category label */
+.point-label {
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+/* Numeric point value */
+.point-value {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--wiki-primary)
+}
+
+/* Submission count display */
+.submissions-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 6px;
+  margin-top: 1.25rem;
+  font-size: 0.9375rem;
+  border: 2px solid var(--wiki-border);
+}
+
+[data-theme="dark"] .submissions-info {
+  background: #1f1f1f;
+}
+
+.submissions-info span {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Highlighted submission count */
+.submissions-info strong {
+  color: var(--wiki-primary);
+  font-size: 1.25rem;
+}
+
+/* Adjustments for screens 640px and below */
+@media (max-width: 640px) {
+  .scoring-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .points-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Flex container for organizer chips */
+.organizers-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Vertical grid for organizer management */
+.organizers-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Individual organizer card in management modal */
+.organizer-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: var(--wiki-hover-bg);
+  border: 1px solid var(--wiki-border);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+/* Organizer card hover with subtle highlight */
+.organizer-card:hover {
+  background-color: rgba(0, 102, 153, 0.05);
+  border-color: var(--wiki-primary);
+}
+
+[data-theme="dark"] .organizer-card {
+  background-color: #2a2a2a;
+  border-color: #444;
+}
+
+[data-theme="dark"] .organizer-card:hover {
+  background-color: rgba(93, 184, 230, 0.1);
+}
+
+/* Informational text about organizers */
+.organizer-info-text {
+  color: var(--wiki-text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 0.75rem;
+  background-color: rgba(40, 167, 69, 0.05);
+  border-radius: 4px;
+}
+
+[data-theme="dark"] .organizer-info-text {
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* Flex wrapper for organizer chips */
+.organizers-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Individual organizer chip/badge */
+.organizer-chip {
+  display: flex;
+  align-items: center;
+  padding: 0.50rem 1rem;
+  background-color: var(--wiki-primary);
+  color: white;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Chip hover with lift effect */
+.organizer-chip:hover {
+  background-color: var(--wiki-primary);
+  transform: translateY(-2px);
+}
+
+[data-theme="dark"] .organizer-chip {
+  background-color: var(--wiki-primary);
+}
+
+[data-theme="dark"] .organizer-chip:hover {
+  background-color: var(--wiki-primary);
+}
+
+/* Mobile adjustments for organizers section */
+@media (max-width: 768px) {
+  .organizers-flex {
+    gap: 0.5rem;
+  }
+
+  .organizer-chip {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .organizer-info-text {
+    font-size: 0.85rem;
+    padding: 0.5rem;
+  }
 }
 </style>

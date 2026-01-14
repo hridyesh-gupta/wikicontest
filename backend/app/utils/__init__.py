@@ -15,6 +15,7 @@ They catch network / parsing errors and return `None` instead of crashing.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlparse, unquote, parse_qs
@@ -40,6 +41,7 @@ __all__ = [
     "extract_category_name_from_url",
     "check_article_has_category",
     "append_categories_to_article",
+    "get_article_reference_count",
 ]
 
 
@@ -57,7 +59,8 @@ MEDIAWIKI_API_TIMEOUT = 30
 # ACCESS CONTROL HELPERS
 # ------------------------------------------------------------------------
 
-def validate_contest_submission_access(contest_id, user, Contest):
+def validate_contest_submission_access(contest_id, user, Contest):  # pylint: disable=invalid-name
+    # pylint: disable=invalid-name
     """
     Check if a user is allowed to view or manage submissions for a contest.
 
@@ -94,7 +97,7 @@ def validate_contest_submission_access(contest_id, user, Contest):
     try:
         from app.models.user import User  # local import to avoid circular deps
     except Exception:  # pylint: disable=broad-exception-caught
-        User = None  # type: ignore
+        User = None  # type: ignore  # pylint: disable=invalid-name
 
     if User is not None and hasattr(user, "is_jury_member"):
         try:
@@ -154,7 +157,7 @@ def extract_page_title_from_url(article_url: str) -> Optional[str]:
     return None
 
 
-def build_mediawiki_revisions_api_params(page_title: str) -> Dict[str, Any]:
+def build_mediawiki_revisions_api_params(page_title: str) -> Dict[str, Any]:  # pylint: disable=invalid-name
     """
     Build a standard parameter set for MediaWiki `revisions` queries.
 
@@ -439,7 +442,8 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
     """
     Check if an article begins with the specified template.
 
-    This normalizes whitespace and handles minor formatting differences.
+    This normalizes whitespace, handles HTML comments, noinclude tags,
+    and other formatting differences that might appear before the template.
 
     Args:
         article_url: Full URL to the wiki article.
@@ -468,6 +472,20 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
     # Strip leading whitespace and normalize line breaks
     normalized_content = wikitext.lstrip()
 
+    # Remove HTML comments that might appear before the template
+    # Pattern: <!-- ... --> (can span multiple lines)
+    import re
+    # Remove single-line and multi-line HTML comments
+    normalized_content = re.sub(r'<!--.*?-->', '', normalized_content, flags=re.DOTALL)
+    # Strip whitespace again after removing comments
+    normalized_content = normalized_content.lstrip()
+
+    # Remove <noinclude> tags that might wrap the template
+    # Pattern: <noinclude>...</noinclude> (can contain the template)
+    # We'll check both inside and outside noinclude tags
+    content_without_noinclude = re.sub(r'<noinclude>.*?</noinclude>', '', normalized_content, flags=re.DOTALL)
+    content_without_noinclude = content_without_noinclude.lstrip()
+
     # Build possible template invocations to check
     # Handle variations: {{TemplateName}}, {{Template_Name}}, {{ TemplateName }}
     template_variations = [
@@ -476,33 +494,40 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
         f"{{{{{template_name.replace('_', ' ')}}}}}",
     ]
 
-    # Also check for template with parameters: {{TemplateName|...}}
-    # Check if article starts with any variation of the template
-    for variation in template_variations:
-        if normalized_content.startswith(variation):
-            result['has_template'] = True
-            return result
+    # Helper function to check if content starts with template
+    def check_template_at_start(content: str) -> bool:
+        """Check if content starts with any variation of the template"""
+        # Check exact template matches (no parameters)
+        for variation in template_variations:
+            if content.startswith(variation):
+                return True
 
-    # Check for template with parameters (starts with {{TemplateName| or {{TemplateName\n)
-    template_start_patterns = [
-        f"{{{{{template_name}|",
-        f"{{{{{template_name}\n",
-        f"{{{{{template_name}\r",
-        f"{{{{{template_name.replace(' ', '_')}|",
-        f"{{{{{template_name.replace('_', ' ')}|",
-    ]
+        # Check for template with parameters (starts with {{TemplateName| or {{TemplateName\n)
+        template_start_patterns = [
+            f"{{{{{template_name}|",
+            f"{{{{{template_name}\n",
+            f"{{{{{template_name}\r",
+            f"{{{{{template_name.replace(' ', '_')}|",
+            f"{{{{{template_name.replace('_', ' ')}|",
+        ]
 
-    for pattern in template_start_patterns:
-        if normalized_content.startswith(pattern):
-            result['has_template'] = True
-            return result
+        for pattern in template_start_patterns:
+            if content.startswith(pattern):
+                return True
 
-    # Also handle case-insensitive matching for the template name
-    lower_content = normalized_content.lower()
-    lower_template = template_name.lower()
+        # Also handle case-insensitive matching for the template name
+        lower_content = content.lower()
+        lower_template = template_name.lower()
 
-    if lower_content.startswith(f"{{{{{lower_template}}}}}") or \
-       lower_content.startswith(f"{{{{{lower_template}|"):
+        if lower_content.startswith(f"{{{{{lower_template}}}}}") or \
+           lower_content.startswith(f"{{{{{lower_template}|"):
+            return True
+
+        return False
+
+    # Check both with and without noinclude tags removed
+    # (template might be inside or outside noinclude tags)
+    if check_template_at_start(normalized_content) or check_template_at_start(content_without_noinclude):
         result['has_template'] = True
         return result
 
@@ -823,21 +848,125 @@ def prepend_template_to_article(
         return result
 
 
-def get_article_reference_count(article_url):
+def _count_footnotes_from_content(article_content: str) -> int:
     """
-    Get the number of references in a Wikipedia article using MediaWiki API
+    Count footnote references (<ref> tags) in article content.
 
     Args:
-        article_url: URL to the article
+        article_content: Raw article content from MediaWiki API
 
     Returns:
-        int: Number of references, or None if fetch fails
+        Integer count of <ref> tags found
     """
-    import requests
-    from urllib.parse import urlparse
+    if not article_content:
+        return 0
+    ref_pattern = r'<ref\b'
+    ref_matches = re.findall(ref_pattern, article_content, re.IGNORECASE)
+    return len(ref_matches)
 
+
+def _extract_article_content_from_revision(latest_rev: dict) -> str:  # pylint: disable=invalid-name
+    """
+    Extract article content from MediaWiki revision data.
+
+    Args:
+        latest_rev: Revision data from MediaWiki API
+
+    Returns:
+        Article content string, or empty string if not found
+    """
+    # Try to get content from slots.main.*
+    slots = latest_rev.get("slots", {})
+    if slots:
+        main_slot = slots.get("main", {})
+        article_content = main_slot.get("*", "") or main_slot.get("content", "")
+        if article_content:
+            return article_content
+
+    # Fallback to direct content access
+    return latest_rev.get("*", "") or latest_rev.get("content", "")
+
+
+def _fetch_footnotes_count(api_url: str, page_title: str, headers: dict) -> int:
+    """
+    Fetch and count footnotes from article content.
+
+    Args:
+        api_url: MediaWiki API URL
+        page_title: Article page title
+        headers: HTTP headers for API request
+
+    Returns:
+        Integer count of footnotes, or 0 if fetch fails
+    """
     try:
-        # Extract page title from URL
+        rev_params = {
+            "action": "query",
+            "titles": page_title,
+            "format": "json",
+            "formatversion": "2",
+            "prop": "revisions",
+            "rvprop": "ids|content",
+            "rvlimit": "1",
+            "rvdir": "older",
+            "redirects": "true",
+            "converttitles": "true",
+            "rvslots": "*",
+        }
+
+        rev_response = requests.get(
+            api_url, params=rev_params, headers=headers, timeout=10
+        )
+
+        if rev_response.status_code != 200:
+            return 0
+
+        rev_data = rev_response.json()
+        if "error" in rev_data:
+            return 0
+
+        pages = rev_data.get("query", {}).get("pages", [])
+        if not pages:
+            return 0
+
+        page_data = pages[0]
+        if page_data.get("missing", False):
+            return 0
+
+        revisions = page_data.get("revisions", [])
+        if not revisions:
+            return 0
+
+        latest_rev = revisions[0]
+        article_content = _extract_article_content_from_revision(latest_rev)
+        return _count_footnotes_from_content(article_content)
+
+    except Exception:  # pylint: disable=broad-exception-caught
+        # If footnote counting fails, continue with external links only
+        # This ensures we still return a count even if content fetch fails
+        return 0
+
+
+def get_article_reference_count(article_url: str) -> Optional[int]:
+    """
+    Get the total number of references in a MediaWiki article.
+
+    Counts both:
+    1. Footnotes (<ref> tags) - by parsing article content
+    2. External links (URLs) - using MediaWiki extlinks API
+
+    Uses the latest revision to ensure accuracy. Handles pagination
+    automatically for articles with >500 external links.
+
+    Args:
+        article_url: Full URL to the article
+
+    Returns:
+        Integer count of total references (footnotes + external links) if successful,
+        None if fetch fails.
+    """
+    try:
+        # Extract page title from URL using shared utility
         page_title = extract_page_title_from_url(article_url)
         if not page_title:
             return None
@@ -846,43 +975,77 @@ def get_article_reference_count(article_url):
         url_obj = urlparse(article_url)
         base_url = f"{url_obj.scheme}://{url_obj.netloc}"
         api_url = f"{base_url}/w/api.php"
-
-        # MediaWiki API parameters to get references
-        # We use prop=extlinks to count external links (references)
-        api_params = {
-            "action": "query",
-            "titles": page_title,
-            "format": "json",
-            "formatversion": "2",
-            "prop": "extlinks",
-            "ellimit": "max",  # Get all external links
-            "redirects": "true",
-        }
-
-        # Make API request
         headers = get_mediawiki_headers()
-        response = requests.get(
-            api_url, params=api_params, headers=headers, timeout=10
-        )
 
-        if response.status_code == 200:
+        # Step 1: Get article content to count footnotes (<ref> tags)
+        footnotes_count = _fetch_footnotes_count(api_url, page_title, headers)
+
+        # Step 2: Count external links using extlinks API
+        external_links_count = 0
+        elcontinue = None
+
+        # Loop to handle pagination (MediaWiki API returns max 500 links per request)
+        while True:
+            # Build API parameters for external links query
+            # Use prop=extlinks to get all external URLs (not interwikis)
+            api_params = {
+                "action": "query",
+                "titles": page_title,
+                "format": "json",
+                "formatversion": "2",
+                "prop": "extlinks",
+                "ellimit": "500",  # Maximum allowed per request
+                "redirects": "true",
+                "converttitles": "true",
+            }
+
+            # Add continuation token if we're paginating
+            if elcontinue:
+                api_params["elcontinue"] = elcontinue
+
+            # Make API request using shared headers
+            response = requests.get(
+                api_url, params=api_params, headers=headers, timeout=10
+            )
+
+            if response.status_code != 200:
+                # Request failed, return None
+                return None
+
             api_data = response.json()
+
+            # Check for API errors
+            if "error" in api_data:
+                return None
 
             # Extract pages from response
             pages = api_data.get("query", {}).get("pages", [])
-            if pages and len(pages) > 0:
-                page_data = pages[0]
+            if not pages or len(pages) == 0:
+                return None
 
-                # Check if page exists (not a missing/deleted page)
-                if not page_data.get("missing", False):
-                    # Count external links (references)
-                    # External links are typically used for citations/references
-                    extlinks = page_data.get("extlinks", [])
-                    return len(extlinks)
+            page_data = pages[0]
 
-        return None
+            # Check if page exists (not a missing/deleted page)
+            if page_data.get("missing", False):
+                return None
 
-    except Exception as error:
+            # Count external links in this batch
+            extlinks = page_data.get("extlinks", [])
+            external_links_count += len(extlinks)
+
+            # Check if there are more links to fetch (pagination)
+            continue_info = api_data.get("continue", {})
+            elcontinue = continue_info.get("elcontinue")
+
+            # If no continuation token, we've fetched all links
+            if not elcontinue:
+                break
+
+        # Return total count: footnotes + external links
+        total_count = footnotes_count + external_links_count
+        return total_count
+
+    except Exception as error:  # pylint: disable=broad-exception-caught
         # Log error but don't fail
         # This ensures the application continues even if reference counting fails
         try:
@@ -890,7 +1053,7 @@ def get_article_reference_count(article_url):
             current_app.logger.warning(
                 f"Failed to fetch reference count: {str(error)}"
             )
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             # Logging itself failed, silently continue
             pass
         return None

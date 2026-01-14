@@ -47,7 +47,8 @@ from app.utils import (
     build_mediawiki_revisions_api_params,
     get_mediawiki_headers,
     get_latest_revision_author,
-    MEDIAWIKI_API_TIMEOUT
+    MEDIAWIKI_API_TIMEOUT,
+    get_article_reference_count
 )
 
 # ---------------------------------------------------------------------------
@@ -223,8 +224,9 @@ def check_cookie():
                 f'🔐 Cookie check - JWT user_id: {user_id} (type: {type(user_id)})'
             )
             # Also print to console for immediate visibility
-            print(f'🔐 [COOKIE CHECK] JWT user_id: {user_id}')
-        except Exception:
+            print(f' [COOKIE CHECK] JWT user_id: {user_id}')
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Logging failures should not crash the application
             pass
 
         # --- Query User from Database ---
@@ -239,8 +241,9 @@ def check_cookie():
             try:
                 error_msg = f'Cookie check - User not found in database for ID: {user_id}'
                 current_app.logger.error(error_msg)
-                print(f'❌ [COOKIE CHECK] {error_msg}')
-            except Exception:
+                print(f' [COOKIE CHECK] {error_msg}')
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Logging failures should not crash the application
                 pass
             return jsonify({'error': 'User not found'}), 401
 
@@ -267,10 +270,11 @@ def check_cookie():
                 if db_role != 'superadmin':
                     print(f'❌ [ERROR] Expected superadmin but got: {db_role}')
                 else:
-                    print(f'✅ [SUCCESS] Role is correct: superadmin')
-        except Exception as e:
-            current_app.logger.error(f'Logging error: {str(e)}')
-            print(f'❌ [ERROR] Logging failed: {str(e)}')
+                    print(' [SUCCESS] Role is correct: superadmin')
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            # Logging failures should not crash the application
+            current_app.logger.error(f'Logging error: {str(error)}')
+            print(f' [ERROR] Logging failed: {str(error)}')
 
         # --- Double-check by Username ---
         # Also verify by username as a double-check (in case there's any ID mismatch)
@@ -293,7 +297,8 @@ def check_cookie():
                         f'Username query returned: {verify_role}. Using username query result.'
                     )
                     db_role = verify_role
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
+                # Logging failures should not crash the application
                 pass
 
         # Normalize role: ensure it's a string, trimmed, and lowercase
@@ -326,10 +331,11 @@ def check_cookie():
                 if response_data.get("role") != 'superadmin':
                     print(f'❌ [ERROR] Role should be superadmin but is: {response_data.get("role")}')
                 else:
-                    print(f'✅ [SUCCESS] Role is correctly set to superadmin in response')
-        except Exception as e:
-            current_app.logger.error(f'Logging error: {str(e)}')
-            print(f'❌ [ERROR] Final logging failed: {str(e)}')
+                    print(' [SUCCESS] Role is correctly set to superadmin in response')
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            # Logging failures should not crash the application
+            current_app.logger.error(f'Logging error: {str(error)}')
+            print(f' [ERROR] Final logging failed: {str(error)}')
 
         return jsonify(response_data), 200
 
@@ -387,6 +393,11 @@ def debug_user_role(username):
             'role_lowercase': str(result[3]).lower() if result[3] else 'user'
         }
 
+        print(
+            f'🔍 [DEBUG] Found user - ID: {user_data["id"]}, '
+            f'Username: {user_data["username"]}, Role: {user_data["role"]}'
+        )
+
         # Also check by ID to compare
         id_result = db.session.execute(
             sql_text('SELECT id, username, email, role FROM users WHERE id = :user_id'),
@@ -406,11 +417,12 @@ def debug_user_role(username):
             if user_data['role'] != 'superadmin':
                 print(f'❌ [ERROR] Adityakumar0545 should have superadmin but has: {user_data["role"]}')
             else:
-                print(f'✅ [SUCCESS] Adityakumar0545 has correct superadmin role')
+                print(' [SUCCESS] Adityakumar0545 has correct superadmin role')
 
         return jsonify(user_data), 200
 
-    except Exception as error:
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        # Catch all exceptions to prevent application crash
         error_msg = f'Debug user role error: {str(error)}'
         current_app.logger.error(error_msg)
         print(f'❌ [ERROR] {error_msg}')
@@ -701,6 +713,11 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
             article_created_at = None
             last_revision_date = None
 
+        # Fetch reference count using shared utility function
+        # This counts both footnotes (<ref> tags) and external links (URLs)
+        # Uses the latest revision to ensure accuracy
+        reference_count = get_article_reference_count(article_url)
+
         # Return comprehensive article information
         return jsonify({
             'article_title': article_title,
@@ -710,6 +727,7 @@ def mediawiki_article_info():  # pylint: disable=too-many-return-statements
             'article_created_at': article_created_at,
             'last_revision_date': last_revision_date,
             'word_count': word_count,
+            'reference_count': reference_count,  # Total references: footnotes + external links
             'page_id': page_id,
             'base_url': base_url
         }), 200
@@ -961,4 +979,3 @@ if __name__ == '__main__':
         host='0.0.0.0',    # Allow connections from any IP
         port=5000          # Default Flask development port
     )
-

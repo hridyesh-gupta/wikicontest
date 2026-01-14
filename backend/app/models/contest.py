@@ -161,10 +161,15 @@ class Contest(BaseModel):
         self.min_byte_count = kwargs.get("min_byte_count", 0)
         self.min_reference_count = kwargs.get("min_reference_count", 0)
 
+        # Set template link (optional)
+        self.template_link = kwargs.get("template_link")
+
         # Set complex fields using setter methods (handle JSON/list conversion)
         self.set_categories(kwargs.get("categories", []))
         self.set_rules(kwargs.get("rules", {}))
         self.set_jury_members(kwargs.get("jury_members", []))
+        # Set organizers (creator is automatically added by set_organizers)
+        self.set_organizers(kwargs.get("organizers", []), creator_username=created_by)
 
     def set_rules(self, rules_dict):
         """
@@ -296,6 +301,42 @@ class Contest(BaseModel):
             return (
                 False,
                 f"Article byte count ({byte_count}) is below the minimum required ({self.min_byte_count} bytes)",
+            )
+
+        # Validation passed
+        return True, None
+
+    def validate_reference_count(self, reference_count):
+        """
+        Validate if article reference count meets the contest's minimum requirement.
+        
+        Reference count includes both footnotes (<ref> tags) and external links (URLs)
+        from the article's latest revision.
+
+        Args:
+            reference_count: Article reference count to validate (can be None)
+
+        Returns:
+            tuple: (is_valid: bool, error_message: str or None)
+                  Returns (True, None) if valid, (False, error_message) if invalid
+        """
+        # If no minimum requirement is set (min_reference_count = 0), always pass
+        if self.min_reference_count == 0:
+            return True, None
+
+        # Handle case where MediaWiki API failed to fetch reference count
+        if reference_count is None:
+            return (
+                False,
+                "Article reference count could not be determined. Please ensure the article exists and try again.",
+            )
+
+        # Validate against minimum requirement
+        if reference_count < self.min_reference_count:
+            return (
+                False,
+                f"Article reference count ({reference_count}) is below the "
+                f"minimum required ({self.min_reference_count} references)",
             )
 
         # Validation passed
@@ -540,11 +581,11 @@ class Contest(BaseModel):
         """
         if isinstance(organizers_list, list):
             # Remove duplicates and empty strings
-            unique_organizers = list(set([
+            unique_organizers = list({
                 username.strip()
                 for username in organizers_list
                 if username and username.strip()
-            ]))
+            })
 
             # Ensure creator is always in the organizers list
             if creator_username:
@@ -690,6 +731,7 @@ class Contest(BaseModel):
             'min_byte_count': self.min_byte_count,
             'categories': self.get_categories(),
             'jury_members': self.get_jury_members(),
+            'template_link': self.template_link,  # Template link for contest (optional)
             # Format datetime as ISO string with 'Z' suffix to indicate UTC
             # This ensures JavaScript interprets it as UTC, not local time
             "created_at": (
