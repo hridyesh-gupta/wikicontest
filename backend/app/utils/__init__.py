@@ -439,7 +439,8 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
     """
     Check if an article begins with the specified template.
 
-    This normalizes whitespace and handles minor formatting differences.
+    This normalizes whitespace, handles HTML comments, noinclude tags,
+    and other formatting differences that might appear before the template.
 
     Args:
         article_url: Full URL to the wiki article.
@@ -468,6 +469,20 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
     # Strip leading whitespace and normalize line breaks
     normalized_content = wikitext.lstrip()
 
+    # Remove HTML comments that might appear before the template
+    # Pattern: <!-- ... --> (can span multiple lines)
+    import re
+    # Remove single-line and multi-line HTML comments
+    normalized_content = re.sub(r'<!--.*?-->', '', normalized_content, flags=re.DOTALL)
+    # Strip whitespace again after removing comments
+    normalized_content = normalized_content.lstrip()
+
+    # Remove <noinclude> tags that might wrap the template
+    # Pattern: <noinclude>...</noinclude> (can contain the template)
+    # We'll check both inside and outside noinclude tags
+    content_without_noinclude = re.sub(r'<noinclude>.*?</noinclude>', '', normalized_content, flags=re.DOTALL)
+    content_without_noinclude = content_without_noinclude.lstrip()
+
     # Build possible template invocations to check
     # Handle variations: {{TemplateName}}, {{Template_Name}}, {{ TemplateName }}
     template_variations = [
@@ -476,33 +491,40 @@ def check_article_has_template(article_url: str, template_name: str) -> Dict[str
         f"{{{{{template_name.replace('_', ' ')}}}}}",
     ]
 
-    # Also check for template with parameters: {{TemplateName|...}}
-    # Check if article starts with any variation of the template
-    for variation in template_variations:
-        if normalized_content.startswith(variation):
-            result['has_template'] = True
-            return result
+    # Helper function to check if content starts with template
+    def check_template_at_start(content: str) -> bool:
+        """Check if content starts with any variation of the template"""
+        # Check exact template matches (no parameters)
+        for variation in template_variations:
+            if content.startswith(variation):
+                return True
 
-    # Check for template with parameters (starts with {{TemplateName| or {{TemplateName\n)
-    template_start_patterns = [
-        f"{{{{{template_name}|",
-        f"{{{{{template_name}\n",
-        f"{{{{{template_name}\r",
-        f"{{{{{template_name.replace(' ', '_')}|",
-        f"{{{{{template_name.replace('_', ' ')}|",
-    ]
+        # Check for template with parameters (starts with {{TemplateName| or {{TemplateName\n)
+        template_start_patterns = [
+            f"{{{{{template_name}|",
+            f"{{{{{template_name}\n",
+            f"{{{{{template_name}\r",
+            f"{{{{{template_name.replace(' ', '_')}|",
+            f"{{{{{template_name.replace('_', ' ')}|",
+        ]
 
-    for pattern in template_start_patterns:
-        if normalized_content.startswith(pattern):
-            result['has_template'] = True
-            return result
+        for pattern in template_start_patterns:
+            if content.startswith(pattern):
+                return True
 
-    # Also handle case-insensitive matching for the template name
-    lower_content = normalized_content.lower()
-    lower_template = template_name.lower()
+        # Also handle case-insensitive matching for the template name
+        lower_content = content.lower()
+        lower_template = template_name.lower()
 
-    if lower_content.startswith(f"{{{{{lower_template}}}}}") or \
-       lower_content.startswith(f"{{{{{lower_template}|"):
+        if lower_content.startswith(f"{{{{{lower_template}}}}}") or \
+           lower_content.startswith(f"{{{{{lower_template}|"):
+            return True
+
+        return False
+
+    # Check both with and without noinclude tags removed
+    # (template might be inside or outside noinclude tags)
+    if check_template_at_start(normalized_content) or check_template_at_start(content_without_noinclude):
         result['has_template'] = True
         return result
 

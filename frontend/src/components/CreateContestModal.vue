@@ -811,6 +811,27 @@ export default {
           return
         }
       }
+
+      // Validate template link if provided
+      if (formData.template_link && formData.template_link.trim()) {
+        const templateLink = formData.template_link.trim()
+        // Basic URL format validation
+        if (!templateLink.startsWith('http://') && !templateLink.startsWith('https://')) {
+          showAlert('Template link must be a valid HTTP/HTTPS URL', 'warning')
+          return
+        }
+        // Check if URL appears to point to a Template namespace page
+        // This is a basic check - backend will do comprehensive validation
+        const urlLower = templateLink.toLowerCase()
+        if (!urlLower.includes('template:') && !urlLower.includes('/template/')) {
+          showAlert(
+            'Template link should point to a Template namespace page (e.g., Template:YourTemplate)',
+            'warning'
+          )
+          return
+        }
+      }
+
       // Validate multi-parameter scoring weights
       if (enableMultiParameterScoring.value && totalWeight.value !== 100) {
         showAlert('Parameter weights must sum to 100%', 'warning')

@@ -161,10 +161,15 @@ class Contest(BaseModel):
         self.min_byte_count = kwargs.get("min_byte_count", 0)
         self.min_reference_count = kwargs.get("min_reference_count", 0)
 
+        # Set template link (optional)
+        self.template_link = kwargs.get("template_link")
+
         # Set complex fields using setter methods (handle JSON/list conversion)
         self.set_categories(kwargs.get("categories", []))
         self.set_rules(kwargs.get("rules", {}))
         self.set_jury_members(kwargs.get("jury_members", []))
+        # Set organizers (creator is automatically added by set_organizers)
+        self.set_organizers(kwargs.get("organizers", []), creator_username=created_by)
 
     def set_rules(self, rules_dict):
         """
@@ -726,6 +731,7 @@ class Contest(BaseModel):
             'min_byte_count': self.min_byte_count,
             'categories': self.get_categories(),
             'jury_members': self.get_jury_members(),
+            'template_link': self.template_link,  # Template link for contest (optional)
             # Format datetime as ISO string with 'Z' suffix to indicate UTC
             # This ensures JavaScript interprets it as UTC, not local time
             "created_at": (
