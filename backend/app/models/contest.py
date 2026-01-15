@@ -732,6 +732,7 @@ class Contest(BaseModel):
             'min_reference_count': self.min_reference_count,  # Minimum reference count requirement
             'categories': self.get_categories(),
             'jury_members': self.get_jury_members(),
+            'organizers': self.get_organizers(),
             'template_link': self.template_link,  # Template link for contest (optional)
             # Format datetime as ISO string with 'Z' suffix to indicate UTC
             # This ensures JavaScript interprets it as UTC, not local time
