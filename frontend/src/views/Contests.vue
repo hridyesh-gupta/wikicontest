@@ -33,29 +33,19 @@
     <!-- Contest Category Tabs -->
     <ul class="nav nav-tabs mb-4" id="contestTabs">
       <li class="nav-item">
-        <button
-          class="nav-link"
-          :class="{ active: activeCategory === 'current' }"
-          @click="setActiveCategory('current')"
-        >
+        <button class="nav-link" :class="{ active: activeCategory === 'current' }"
+          @click="setActiveCategory('current')">
           Current
         </button>
       </li>
       <li class="nav-item">
-        <button
-          class="nav-link"
-          :class="{ active: activeCategory === 'upcoming' }"
-          @click="setActiveCategory('upcoming')"
-        >
+        <button class="nav-link" :class="{ active: activeCategory === 'upcoming' }"
+          @click="setActiveCategory('upcoming')">
           Upcoming
         </button>
       </li>
       <li class="nav-item">
-        <button
-          class="nav-link"
-          :class="{ active: activeCategory === 'past' }"
-          @click="setActiveCategory('past')"
-        >
+        <button class="nav-link" :class="{ active: activeCategory === 'past' }" @click="setActiveCategory('past')">
           Past
         </button>
       </li>
@@ -77,20 +67,12 @@
       </div>
       <!-- Contest Cards -->
       <div v-else class="contest-list">
-        <div
-          v-for="contest in currentContests"
-          :key="contest.id"
-          class="contest-item"
-          @click="viewContest(contest)"
-        >
+        <div v-for="contest in currentContests" :key="contest.id" class="contest-item" @click="viewContest(contest)">
           <div class="contest-card">
             <!-- Contest Header: Title and Creation Timestamp -->
             <div class="contest-header">
               <div class="contest-title-section">
-                <span
-                  class="contest-title-link"
-                  @click.stop="viewContest(contest)"
-                >
+                <span class="contest-title-link" @click.stop="viewContest(contest)">
                   {{ contest.name }}
                 </span>
               </div>
@@ -102,10 +84,7 @@
             <!-- Contest Metadata Tags -->
             <div class="contest-tags">
               <!-- Status Badge -->
-              <span
-                class="contest-tag status-tag"
-                :class="getStatusClass(contest.status)"
-              >
+              <span class="contest-tag status-tag" :class="getStatusClass(contest.status)">
                 <i :class="getStatusIcon(contest.status)"></i>
                 {{ getStatusLabel(contest.status) }}
               </span>
@@ -128,20 +107,13 @@
                 </span>
                 <div class="organizers-avatars">
                   <!-- Show first 3 organizers -->
-                  <div
-                    v-for="(organizer, index) in getOrganizers(contest)"
-                    :key="index"
-                    class="organizer-avatar"
-                    :title="organizer"
-                  >
+                  <div v-for="(organizer, index) in getOrganizers(contest)" :key="index" class="organizer-avatar"
+                    :title="organizer">
                     {{ getInitials(organizer) }}
                   </div>
                   <!-- Show count of remaining organizers if more than 3 -->
-                  <div
-                    v-if="getOrganizers(contest).length > 3"
-                    class="organizer-avatar organizer-more"
-                    :title="`${getOrganizers(contest).length - 3} more organizers`"
-                  >
+                  <div v-if="getOrganizers(contest).length > 3" class="organizer-avatar organizer-more"
+                    :title="`${getOrganizers(contest).length - 3} more organizers`">
                     +{{ getOrganizers(contest).length - 3 }}
                   </div>
                 </div>
@@ -458,8 +430,24 @@ export default {
     }
 
     // Refresh contest list after new contest is created
-    const handleContestCreated = () => {
-      // Store automatically reloads contests
+    // Refresh contest list after new contest is created
+    const handleContestCreated = async () => {
+      console.log('[CONTESTS] Contest created, reloading list...')
+
+      //  Reload contests from backend
+      loading.value = true
+      try {
+        await store.loadContests()
+        console.log('[CONTESTS] Contests reloaded successfully')
+
+        //  Switch to 'current' tab to show the new contest
+        activeCategory.value = 'current'
+      } catch (error) {
+        console.error('[CONTESTS] Failed to reload contests:', error)
+        showAlert('Contest created but failed to refresh list. Please refresh the page.', 'warning')
+      } finally {
+        loading.value = false
+      }
     }
 
     // Open article submission modal for specific contest

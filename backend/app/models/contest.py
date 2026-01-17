@@ -36,7 +36,6 @@ class Contest(BaseModel, ContestMixin):
 
     __tablename__ = "contests"
 
-
     # ------------------------------------------------------------------------
     # Database Columns - Core Fields
     # ------------------------------------------------------------------------
@@ -58,7 +57,6 @@ class Contest(BaseModel, ContestMixin):
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
 
-
     # ------------------------------------------------------------------------
     # Database Columns - Scoring & Rules
     # ------------------------------------------------------------------------
@@ -76,7 +74,6 @@ class Contest(BaseModel, ContestMixin):
     # Submission type restriction: 'new', 'expansion', or 'both'
     allowed_submission_type = db.Column(db.String(20), default="both", nullable=False)
 
-
     # ------------------------------------------------------------------------
     # Database Columns - Article Requirements
     # ------------------------------------------------------------------------
@@ -91,7 +88,6 @@ class Contest(BaseModel, ContestMixin):
     # Required MediaWiki categories (stored as JSON array of URLs)
     # Articles must belong to at least one of these categories
     categories = db.Column(db.Text, nullable=False, default="[]")
-
 
     # ------------------------------------------------------------------------
     # Database Columns - People Management
@@ -108,14 +104,12 @@ class Contest(BaseModel, ContestMixin):
     # Creator is always included as an organizer
     organizers = db.Column(db.Text, nullable=True)
 
-
     # ------------------------------------------------------------------------
     # Database Columns - Metadata
     # ------------------------------------------------------------------------
 
     # Timestamp when contest was created (UTC)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
 
     # ------------------------------------------------------------------------
     # Relationships
@@ -126,7 +120,6 @@ class Contest(BaseModel, ContestMixin):
     submissions = db.relationship(
         "Submission", back_populates="contest", lazy="dynamic"
     )
-
 
     # ------------------------------------------------------------------------
     # INITIALIZATION
@@ -175,7 +168,6 @@ class Contest(BaseModel, ContestMixin):
     # Note: set_rules, get_rules, set_jury_members, get_jury_members,
     # set_categories, and get_categories are inherited from ContestMixin
 
-
     # ------------------------------------------------------------------------
     # ARTICLE VALIDATION
     # ------------------------------------------------------------------------
@@ -211,7 +203,7 @@ class Contest(BaseModel, ContestMixin):
     def validate_reference_count(self, reference_count):
         """
         Validate if article reference count meets the contest's minimum requirement.
-        
+
         Reference count includes both footnotes (<ref> tags) and external links (URLs)
         from the article's latest revision.
 
@@ -263,7 +255,6 @@ class Contest(BaseModel, ContestMixin):
         today = date.today()
         return self.start_date <= today <= self.end_date
 
-
     def is_upcoming(self):
         """
         Check if contest is upcoming
@@ -279,7 +270,6 @@ class Contest(BaseModel, ContestMixin):
         today = date.today()
         return self.start_date > today
 
-
     def is_past(self):
         """
         Check if contest is past
@@ -294,7 +284,6 @@ class Contest(BaseModel, ContestMixin):
         # Check if end date has passed
         today = date.today()
         return self.end_date < today
-
 
     def get_status(self):
         """
@@ -313,7 +302,6 @@ class Contest(BaseModel, ContestMixin):
         # Fallback for contests without proper dates
         return "unknown"
 
-
     # ------------------------------------------------------------------------
     # STATISTICS & QUERIES
     # ------------------------------------------------------------------------
@@ -327,7 +315,6 @@ class Contest(BaseModel, ContestMixin):
         """
         # Count submissions using the dynamic relationship query
         return self.submissions.count()
-
 
     def get_leaderboard(self):
         """
@@ -363,7 +350,6 @@ class Contest(BaseModel, ContestMixin):
             }
             for row in leaderboard_query
         ]
-
 
     # ------------------------------------------------------------------------
     # SCORING PARAMETERS (Multi-Parameter Scoring System)
@@ -407,7 +393,6 @@ class Contest(BaseModel, ContestMixin):
 
     # Note: get_scoring_parameters is inherited from ContestMixin
 
-
     def is_multi_parameter_scoring_enabled(self):
         """
         Check if multi-parameter scoring is enabled for this contest
@@ -419,7 +404,6 @@ class Contest(BaseModel, ContestMixin):
         if not isinstance(params, dict):
             return False
         return params.get("enabled", False)
-
 
     def calculate_weighted_score(self, parameter_scores):
         """
@@ -457,14 +441,12 @@ class Contest(BaseModel, ContestMixin):
         # Clamp score between configured min and max bounds
         return max(min(final_score, max_score), min_score)
 
-
     # ------------------------------------------------------------------------
     # ORGANIZERS MANAGEMENT (Comma-Separated Storage)
     # ------------------------------------------------------------------------
 
     # Note: set_organizers and get_organizers are inherited from ContestMixin
     # The mixin version already handles creator_username parameter correctly
-
 
     def add_organizer(self, username):
         """
@@ -490,7 +472,6 @@ class Contest(BaseModel, ContestMixin):
         self.set_organizers(current_organizers, self.created_by)
 
         return True, None
-
 
     def remove_organizer(self, username):
         """
@@ -525,7 +506,6 @@ class Contest(BaseModel, ContestMixin):
 
         return True, None
 
-
     def is_organizer(self, username):
         """
         Check if a user is an organizer for this contest.
@@ -542,47 +522,46 @@ class Contest(BaseModel, ContestMixin):
         username = username.strip()
         return username in self.get_organizers()
 
-
     # ------------------------------------------------------------------------
     # SERIALIZATION
     # ------------------------------------------------------------------------
 
     def to_dict(self):
-        """
-        Convert contest instance to dictionary for JSON serialization
+        """Convert contest instance to dictionary for JSON serialization"""
+        #  Get scoring parameters with proper fallback
+        scoring_params = self.get_scoring_parameters()
 
-        Returns:
-            dict: Contest data
-        """
+        #  Ensure it's never None for frontend
+        if scoring_params is None:
+            scoring_params = {"enabled": False}
+
         return {
-            'id': self.id,
-            'name': self.name,
-            'project_name': self.project_name,
-            'created_by': self.created_by,
-            'description': self.description,
-            'start_date': self.start_date.isoformat() if self.start_date else None,
-            'end_date': self.end_date.isoformat() if self.end_date else None,
-            'rules': self.get_rules(),
-            'marks_setting_accepted': self.marks_setting_accepted,
-            'marks_setting_rejected': self.marks_setting_rejected,
-            'allowed_submission_type': self.allowed_submission_type,
-            'min_byte_count': self.min_byte_count,
-            'min_reference_count': self.min_reference_count,  # Minimum reference count requirement
-            'categories': self.get_categories(),
-            'jury_members': self.get_jury_members(),
-            'organizers': self.get_organizers(),
-            'template_link': self.template_link,  # Template link for contest (optional)
-            # Format datetime as ISO string with 'Z' suffix to indicate UTC
-            # This ensures JavaScript interprets it as UTC, not local time
+            "id": self.id,
+            "name": self.name,
+            "project_name": self.project_name,
+            "created_by": self.created_by,
+            "description": self.description,
+            "start_date": self.start_date.isoformat() if self.start_date else None,
+            "end_date": self.end_date.isoformat() if self.end_date else None,
+            "rules": self.get_rules(),
+            "marks_setting_accepted": self.marks_setting_accepted,
+            "marks_setting_rejected": self.marks_setting_rejected,
+            "allowed_submission_type": self.allowed_submission_type,
+            "min_byte_count": self.min_byte_count,
+            "min_reference_count": self.min_reference_count,
+            "categories": self.get_categories(),
+            "jury_members": self.get_jury_members(),
+            "organizers": self.get_organizers(),
+            "template_link": self.template_link,
             "created_at": (
                 (self.created_at.isoformat() + "Z") if self.created_at else None
             ),
-
+            #  CRITICAL FIX: Explicitly add scoring_parameters
+            "scoring_parameters": scoring_params,
             # Computed fields
             "submission_count": self.get_submission_count(),
             "status": self.get_status(),
         }
-
 
     def __repr__(self):
         """String representation of Contest instance"""
