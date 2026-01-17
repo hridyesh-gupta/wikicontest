@@ -85,7 +85,9 @@ export function useStore() {
           email: response.email || '',
           // Store role from backend so we can detect admin / superadmin in UI.
           // Use normalized role to ensure consistency
-          role: normalizedRole
+          role: normalizedRole,
+          // Include trusted member status to check if user can create contests
+          is_trusted_member: response.is_trusted_member || false
         }
 
         console.log(' Setting current user:', newUser)
@@ -132,12 +134,23 @@ export function useStore() {
       // Set user state immediately after successful login
       // The backend sets the JWT cookie, but we also set state here
       // so the UI updates immediately
+
+      // Normalize role: convert to string, lowercase, and default to 'user' if missing/null/undefined
+      // This ensures consistency with checkAuth function
+      let normalizedRole = 'user'
+      if (response.role) {
+        normalizedRole = String(response.role).toLowerCase().trim()
+      }
+
       state.currentUser = {
         id: response.userId,
         username: response.username,
         email,
         // Include role from login response so admin/superadmin can be used in UI.
-        role: response.role || 'user'
+        // Use normalized role to ensure consistency across the app
+        role: normalizedRole,
+        // Include trusted member status
+        is_trusted_member: response.is_trusted_member || false
       }
 
       // Verify the state was set correctly
@@ -215,6 +228,16 @@ export function useStore() {
     }
   }
 
+  // Request contest creation (for non-privileged users)
+  const requestContest = async (contestData) => {
+    try {
+      const response = await api.post('/contest/requests', contestData)
+      return { success: true, data: response }
+    } catch (error) {
+      return { success: false, error: error.message }
+    }
+  }
+
   // Get contests by category
   const getContestsByCategory = (category) => {
     return state.contests[category] || []
@@ -280,6 +303,7 @@ export function useStore() {
     logout,
     loadContests,
     createContest,
+    requestContest,
     getContestsByCategory,
     isLoading,
     toggleTheme,

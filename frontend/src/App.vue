@@ -70,6 +70,12 @@ id="userDropdown"
                         <i class="fas fa-user me-2"></i>Profile
                       </router-link>
                     </li>
+                    <!-- Trusted Members link - only visible to superadmins -->
+                    <li v-if="isSuperadmin">
+                      <router-link class="dropdown-item" to="/trusted-members">
+                        <i class="fas fa-users-shield me-2"></i>Trusted Members
+                      </router-link>
+                    </li>
                     <!-- Jury Dashboard link - only visible to jury members -->
                     <li v-if="isJury">
                       <router-link class="dropdown-item" to="/jurydashboard">
@@ -104,7 +110,7 @@ id="userDropdown"
 </template>
 
 <script>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useStore } from './store'
 import { useRouter } from 'vue-router'
 import AlertContainer from './components/AlertContainer.vue'
@@ -124,6 +130,12 @@ export default {
     const isAuthenticated = store.isAuthenticated
     const currentUser = store.currentUser
     const theme = store.theme
+
+    // Check if user is superadmin
+    const isSuperadmin = computed(() => {
+      const role = currentUser.value?.role || store.currentUser?.role || ''
+      return String(role).toLowerCase() === 'superadmin'
+    })
 
     // Toggle between light and dark theme
     const toggleTheme = () => {
@@ -204,7 +216,8 @@ export default {
       toggleTheme,
       handleLogout,
       getApiBaseUrl,
-      isJury
+      isJury,
+      isSuperadmin
     }
   }
 }

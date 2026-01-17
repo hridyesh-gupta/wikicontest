@@ -3,8 +3,30 @@
     <!-- Page Header with Create Button -->
     <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-4">
       <h2 class="mb-3 mb-sm-0">Contests</h2>
-      <button v-if="isAuthenticated" class="btn btn-primary" @click="showCreateContestModal">
+      <!-- Show Create Contest button for superadmin users (they can create contests directly) -->
+      <button
+        v-if="isAuthenticated && isSuperadmin"
+        class="btn btn-primary"
+        @click="showCreateContestModal"
+      >
         <i class="fas fa-plus me-2"></i>Create Contest
+      </button>
+      <!-- Show Create Contest button for trusted members (non-superadmin privileged users) -->
+      <button
+        v-else-if="isAuthenticated && canCreateContests"
+        class="btn btn-primary"
+        @click="showCreateContestModal"
+      >
+        <i class="fas fa-plus me-2"></i>Create Contest
+      </button>
+      <!-- Show Request Contest Creator Rights button for regular users (non-privileged) -->
+      <!-- CRITICAL: Superadmins and trusted members should NEVER see this button -->
+      <button
+        v-else-if="isAuthenticated && !canCreateContests && !isSuperadmin"
+        class="btn btn-secondary"
+        @click="showRequestTrustedMemberModal"
+      >
+        <i class="fas fa-user-plus me-2"></i>Request Contest Creator Rights
       </button>
     </div>
 
@@ -109,10 +131,27 @@
     </div>
 
     <!-- Modals -->
-    <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
-      @submitted="handleArticleSubmitted" />
+    <SubmitArticleModal
+      v-if="submittingToContestId"
+      :contest-id="submittingToContestId"
+      @submitted="handleArticleSubmitted"
+    />
 
-    <CreateContestModal ref="createContestModal" @created="handleContestCreated" />
+    <CreateContestModal
+      ref="createContestModal"
+      @created="handleContestCreated"
+    />
+
+    <RequestContestModal
+      ref="requestContestModal"
+      @requested="handleContestRequested"
+    />
+
+    <RequestTrustedMemberModal
+      :show="showRequestTrustedMemberForm"
+      @requested="handleTrustedMemberRequested"
+      @close="showRequestTrustedMemberForm = false"
+    />
   </div>
 </template>
 
@@ -124,12 +163,16 @@ import { showAlert } from '../utils/alerts'
 import { slugify } from '../utils/slugify'
 import CreateContestModal from '../components/CreateContestModal.vue'
 import SubmitArticleModal from '../components/SubmitArticleModal.vue'
+import RequestContestModal from '../components/RequestContestModal.vue'
+import RequestTrustedMemberModal from '../components/RequestTrustedMemberModal.vue'
 
 export default {
   name: 'Contests',
   components: {
     CreateContestModal,
-    SubmitArticleModal
+    SubmitArticleModal,
+    RequestContestModal,
+    RequestTrustedMemberModal
   },
   setup() {
     const router = useRouter()
@@ -138,6 +181,7 @@ export default {
     const loading = ref(false)
     const submittingToContestId = ref(null)
     const createContestModal = ref(null)
+    const showRequestTrustedMemberForm = ref(false)
 
     // Get contests for currently selected category
     const currentContests = computed(() => {
@@ -145,6 +189,53 @@ export default {
     })
 
     const isAuthenticated = computed(() => store.isAuthenticated)
+
+    // Check if user is superadmin (explicit check for button visibility)
+    // Access currentUser.value since it's a computed property
+    const isSuperadmin = computed(() => {
+      const user = store.currentUser.value
+      if (!user) {
+        console.log('[isSuperadmin] No current user')
+        return false
+      }
+      const userRole = String(user.role || '').toLowerCase().trim()
+      const isSuper = userRole === 'superadmin'
+      console.log('[isSuperadmin] User:', user.username, 'Role:', userRole, 'Is superadmin:', isSuper)
+      return isSuper
+    })
+
+    // Check if user can create contests (superadmin or trusted member)
+    // Access currentUser.value since it's a computed property
+    const canCreateContests = computed(() => {
+      const user = store.currentUser.value
+      if (!user) {
+        console.log('[canCreateContests] No current user')
+        return false
+      }
+
+      // Debug logging to help identify issues
+      console.log('[canCreateContests] Checking user:', {
+        username: user.username,
+        role: user.role,
+        roleType: typeof user.role,
+        is_trusted_member: user.is_trusted_member
+      })
+
+      // Superadmins can always create contests
+      // Use case-insensitive comparison to handle any role format variations
+      const userRole = String(user.role || '').toLowerCase().trim()
+      console.log('[canCreateContests] Normalized role:', userRole, 'Comparison:', userRole === 'superadmin')
+
+      if (userRole === 'superadmin') {
+        console.log('[canCreateContests] User is superadmin - can create contests')
+        return true
+      }
+
+      // Trusted members can create contests
+      const isTrusted = user.is_trusted_member === true
+      console.log('[canCreateContests] User is trusted member:', isTrusted)
+      return isTrusted
+    })
 
     // Combine creator and organizers array into single list
     const getOrganizers = (contest) => {
@@ -313,6 +404,31 @@ export default {
       }
     }
 
+    // Open modal to request contest creation
+    const showRequestContestModal = () => {
+      if (!store.isAuthenticated) {
+        showAlert('Please login to request contest creation', 'warning')
+        return
+      }
+
+      const modalElement = document.getElementById('requestContestModal')
+      if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement)
+        modal.show()
+      }
+    }
+
+    // Open fullscreen form to request contest creator rights (trusted member status)
+    const showRequestTrustedMemberModal = () => {
+      if (!store.isAuthenticated) {
+        showAlert('Please login to request contest creator rights', 'warning')
+        return
+      }
+
+      // Show the fullscreen form
+      showRequestTrustedMemberForm.value = true
+    }
+
     // Refresh contest list after new contest is created
     // Refresh contest list after new contest is created
     const handleContestCreated = async () => {
@@ -357,6 +473,24 @@ export default {
       store.loadContests()
     }
 
+    // Refresh after contest request is submitted
+    const handleContestRequested = () => {
+      showAlert('Contest creation request submitted successfully. A superadmin will review your request.', 'success')
+    }
+
+    // Refresh user data after trusted member request is submitted
+    // This ensures the button updates if user was auto-approved
+    const handleTrustedMemberRequested = async () => {
+      // Refresh user authentication to get updated trusted member status
+      try {
+        await store.checkAuth()
+        showAlert('Request submitted successfully. If you have 300+ edits, you may have been automatically approved!', 'success')
+      } catch (error) {
+        console.error('Error refreshing user data:', error)
+        showAlert('Request submitted successfully. A superadmin will review your request.', 'success')
+      }
+    }
+
     // Load contests on component mount
     onMounted(async () => {
       loading.value = true
@@ -374,8 +508,11 @@ export default {
       currentContests,
       loading,
       isAuthenticated,
+      isSuperadmin,
+      canCreateContests,
       submittingToContestId,
       createContestModal,
+      showRequestTrustedMemberForm,
       setActiveCategory,
       truncateText,
       formatDate,
@@ -388,9 +525,13 @@ export default {
       getAvatarColor,
       viewContest,
       showCreateContestModal,
+      showRequestContestModal,
+      showRequestTrustedMemberModal,
       handleContestCreated,
       handleSubmitArticle,
-      handleArticleSubmitted
+      handleArticleSubmitted,
+      handleContestRequested,
+      handleTrustedMemberRequested
     }
   }
 }

@@ -56,6 +56,40 @@
               </span>
             </span>
           </div>
+
+          <!-- Trusted Member Status -->
+          <div class="info-item" v-if="!isSuperadmin">
+            <i class="fas fa-users-shield"></i>
+            <span>
+              <strong>Trusted Member</strong> :
+              <span v-if="isTrustedMember" class="badge bg-success">Yes</span>
+              <span v-else-if="hasRequested" class="badge bg-warning">Request Pending</span>
+              <span v-else class="badge bg-secondary">No</span>
+            </span>
+          </div>
+
+          <!-- Request Trusted Member Button -->
+          <div v-if="!isSuperadmin && !isTrustedMember && !hasRequested" class="info-item">
+            <button
+              class="btn btn-primary w-100"
+              @click="requestTrustedMember"
+              :disabled="processing"
+            >
+              <i class="fas fa-user-plus me-2"></i>Request Trusted Member Status
+            </button>
+          </div>
+
+          <!-- Info message for trusted members -->
+          <div v-if="isTrustedMember && !isSuperadmin" class="alert alert-success mt-3">
+            <i class="fas fa-check-circle me-2"></i>
+            You are a trusted member and can create contests.
+          </div>
+
+          <!-- Info message for pending requests -->
+          <div v-if="hasRequested && !isTrustedMember" class="alert alert-warning mt-3">
+            <i class="fas fa-clock me-2"></i>
+            Your trusted member request is pending. A superadmin will review it.
+          </div>
         </div>
 
       </div>
@@ -73,9 +107,11 @@
 
 
 <script>
-import { computed, onMounted, watch, onActivated } from 'vue'
+import { computed, onMounted, watch, onActivated, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useStore } from '../store'
+import api from '../services/api'
+import { showAlert } from '../utils/alerts'
 
 export default {
   name: 'Profile',
@@ -214,13 +250,57 @@ export default {
              'N/A'
     })
 
+    // Check if user is superadmin
+    const isSuperadmin = computed(() => {
+      const role = currentUser.value?.role || store.currentUser?.role || ''
+      return String(role).toLowerCase() === 'superadmin'
+    })
+
+    // Check if user is trusted member
+    const isTrustedMember = computed(() => {
+      return currentUser.value?.is_trusted_member ||
+             store.currentUser?.is_trusted_member ||
+             false
+    })
+
+    // Check if user has requested trusted member status
+    const hasRequested = computed(() => {
+      return currentUser.value?.trusted_member_request ||
+             store.currentUser?.trusted_member_request ||
+             false
+    })
+
+    // Request trusted member status
+    const processing = ref(false)
+    const requestTrustedMember = async () => {
+      if (processing.value) return
+
+      try {
+        processing.value = true
+        await api.post('/user/trusted-members/request')
+        showAlert('Trusted member request submitted successfully. A superadmin will review your request.', 'success')
+        // Refresh user data to update the UI
+        await store.checkAuth()
+      } catch (error) {
+        console.error('Error requesting trusted member:', error)
+        showAlert(error.response?.data?.error || 'Failed to submit request', 'error')
+      } finally {
+        processing.value = false
+      }
+    }
+
     return {
       currentUser,
       formattedRole,
       userRole,
       displayUsername,
       displayEmail,
-      displayUserId
+      displayUserId,
+      isSuperadmin,
+      isTrustedMember,
+      hasRequested,
+      processing,
+      requestTrustedMember
     }
   }
 }

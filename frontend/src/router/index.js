@@ -13,6 +13,7 @@ import Contests from '../views/Contests.vue'
 import ContestView from '../views/ContestView.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Profile from '../views/Profile.vue'
+import TrustedMembers from '../views/TrustedMembers.vue'
 import JuryDashboard from '../components/JuryDashboard.vue'
 import ContestLeaderboard from '../components/ContestLeaderboard.vue'
 
@@ -54,6 +55,12 @@ const routes = [
     path: '/profile',
     name: 'Profile',
     component: Profile,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/trusted-members',
+    name: 'TrustedMembers',
+    component: TrustedMembers,
     meta: { requiresAuth: true }
   },
   {
