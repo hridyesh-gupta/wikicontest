@@ -248,8 +248,9 @@ def check_cookie():
         # --- Query User from Database ---
         # CRITICAL: Query directly from database using raw SQL to bypass ALL ORM caching
         # This ensures we get the absolute latest role from the database
+        # Include is_trusted_member to check if user can create contests
         direct_query = db.session.execute(
-            sql_text('SELECT id, username, email, role FROM users WHERE id = :user_id'),
+            sql_text('SELECT id, username, email, role, is_trusted_member FROM users WHERE id = :user_id'),
             {'user_id': int(user_id)}
         ).fetchone()
 
@@ -268,6 +269,7 @@ def check_cookie():
         db_username = direct_query[1]
         db_email = direct_query[2]
         db_role = direct_query[3]
+        db_is_trusted_member = direct_query[4] if len(direct_query) > 4 else False
 
         # Log what we got from the database - CRITICAL DEBUG INFO
         try:
@@ -294,7 +296,7 @@ def check_cookie():
         # --- Double-check by Username ---
         # Also verify by username as a double-check (in case there's any ID mismatch)
         username_verify = db.session.execute(
-            sql_text('SELECT id, username, email, role FROM users WHERE username = :username'),
+            sql_text('SELECT id, username, email, role, is_trusted_member FROM users WHERE username = :username'),
             {'username': db_username}
         ).fetchone()
 
@@ -320,12 +322,18 @@ def check_cookie():
         role_value = str(db_role).strip().lower() if db_role else 'user'
 
         # Build response using data directly from database (no ORM objects)
+        # Include trusted member status for frontend permission checks
+        # Superadmins are automatically trusted, so check both role and is_trusted_member
+        is_trusted = bool(db_is_trusted_member) or role_value == 'superadmin'
+
         response_data = {
             'userId': db_user_id,
             'username': db_username,
             'email': db_email,
             # Use role directly from database query - most reliable source
-            'role': role_value
+            'role': role_value,
+            # Include trusted member status so frontend can check if user can create contests
+            'is_trusted_member': is_trusted
         }
 
         # Log the final response being sent - CRITICAL DEBUG INFO

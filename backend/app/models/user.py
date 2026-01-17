@@ -58,6 +58,20 @@ class User(BaseModel):
     oauth_token = db.Column(db.String(255), nullable=True)
     oauth_token_secret = db.Column(db.String(255), nullable=True)
 
+    # Trusted member status - allows user to create contests
+    # Only trusted members (and superadmins) can create contests
+    # Regular users can still submit and participate in contests
+    is_trusted_member = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Track if user has requested trusted member status
+    # Superadmins can view all requests and approve/reject them
+    trusted_member_request = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Reason provided by user when requesting trusted member status
+    # This is required when user has less than 300 edits
+    # Superadmins can view this reason when reviewing requests
+    trusted_member_request_reason = db.Column(db.Text, nullable=True)
+
     # Account creation timestamp (UTC)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
@@ -191,6 +205,27 @@ class User(BaseModel):
 
 
     # ------------------------------------------------------------------------
+    # TRUSTED MEMBER CHECKS
+    # ------------------------------------------------------------------------
+
+    def can_create_contests(self):
+        """
+        Check if user can create contests
+
+        Only trusted members and superadmins can create contests.
+        Regular users can still submit and participate in contests.
+
+        Returns:
+            bool: True if user can create contests, False otherwise
+        """
+        # Superadmins are automatically allowed to create contests
+        if self.is_superadmin():
+            return True
+        # Check trusted member status (use getattr for safety during migration)
+        return bool(getattr(self, 'is_trusted_member', False))
+
+
+    # ------------------------------------------------------------------------
     # CONTEST-SPECIFIC PERMISSION CHECKS
     # ------------------------------------------------------------------------
 
@@ -317,6 +352,10 @@ class User(BaseModel):
             "email": self.email,
             "role": self.role,
             "score": self.score,
+            # Trusted member status (use getattr for safety during migration)
+            "is_trusted_member": bool(getattr(self, 'is_trusted_member', False)),
+            "trusted_member_request": bool(getattr(self, 'trusted_member_request', False)),
+            "trusted_member_request_reason": getattr(self, 'trusted_member_request_reason', None),
             # Convert datetime to ISO format string
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

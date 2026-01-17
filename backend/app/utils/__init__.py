@@ -43,6 +43,7 @@ __all__ = [
     "check_article_has_category",
     "append_categories_to_article",
     "get_article_reference_count",
+    "get_mediawiki_user_edit_count",
 ]
 
 
@@ -1052,6 +1053,99 @@ def get_article_reference_count(article_url: str) -> Optional[int]:
             from flask import current_app
             current_app.logger.warning(
                 f"Failed to fetch reference count: {str(error)}"
+            )
+        except Exception:  # pylint: disable=broad-exception-caught
+            # Logging itself failed, silently continue
+            pass
+        return None
+
+
+# ---------------------------------------------------------------------------
+# MediaWiki User Information Utilities
+# ---------------------------------------------------------------------------
+
+def get_mediawiki_user_edit_count(
+    username: str, mw_uri: str = "https://meta.wikimedia.org/w/index.php"
+) -> Optional[int]:
+    """
+    Get the edit count for a MediaWiki user.
+
+    Fetches user information from MediaWiki API and returns their edit count.
+    This is used to check if a user meets the minimum edit count requirement
+    for automatic trusted member status (>= 300 edits).
+
+    Args:
+        username: MediaWiki username to check
+        mw_uri: MediaWiki base URI (defaults to meta.wikimedia.org)
+
+    Returns:
+        Integer edit count if successful, None if fetch fails or user not found.
+    """
+    try:
+        # Build API URL from MediaWiki URI
+        # Convert from index.php format to api.php format
+        if mw_uri.endswith('/index.php'):
+            api_url = mw_uri.replace('/index.php', '/w/api.php')
+        elif mw_uri.endswith('/'):
+            api_url = f"{mw_uri}w/api.php"
+        else:
+            api_url = f"{mw_uri}/w/api.php"
+
+        # Build API parameters to get user info
+        # Use users query to get edit count
+        api_params = {
+            'action': 'query',
+            'list': 'users',
+            'ususers': username,
+            'usprop': 'editcount',  # Get edit count
+            'format': 'json',
+            'formatversion': '2'
+        }
+
+        headers = get_mediawiki_headers()
+
+        # Make request to MediaWiki API
+        response = requests.get(
+            api_url,
+            params=api_params,
+            headers=headers,
+            timeout=MEDIAWIKI_API_TIMEOUT
+        )
+
+        if response.status_code != 200:
+            return None
+
+        data = response.json()
+
+        # Check for API errors
+        if 'error' in data:
+            return None
+
+        # Extract edit count from response
+        users = data.get('query', {}).get('users', [])
+        if not users or len(users) == 0:
+            return None
+
+        user_data = users[0]
+
+        # Check if user was found (missing field indicates user doesn't exist)
+        if user_data.get('missing'):
+            return None
+
+        # Get edit count
+        edit_count = user_data.get('editcount')
+        if edit_count is None:
+            return None
+
+        return int(edit_count)
+
+    except Exception as error:  # pylint: disable=broad-exception-caught
+        # Log error but don't fail
+        # This ensures the application continues even if edit count fetch fails
+        try:
+            from flask import current_app
+            current_app.logger.warning(
+                f"Failed to fetch edit count for user {username}: {str(error)}"
             )
         except Exception:  # pylint: disable=broad-exception-caught
             # Logging itself failed, silently continue
