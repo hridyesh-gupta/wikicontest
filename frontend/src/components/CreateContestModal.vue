@@ -6,7 +6,7 @@
         <!-- Modal header with Wikipedia primary color -->
         <div class="modal-header">
           <h5 class="modal-title">Create New Contest</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" :disabled="loading"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
@@ -14,32 +14,36 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="contestName" class="form-label">Contest Name *</label>
-                <input type="text" class="form-control" id="contestName" v-model="formData.name" required />
+                <input type="text" class="form-control" id="contestName" v-model="formData.name" required
+                  :disabled="loading" />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="projectName" class="form-label">Project Name *</label>
-                <input type="text" class="form-control" id="projectName" v-model="formData.project_name" required />
+                <input type="text" class="form-control" id="projectName" v-model="formData.project_name" required
+                  :disabled="loading" />
               </div>
             </div>
 
             <!-- Contest description field -->
             <div class="mb-3">
               <label for="contestDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="contestDescription" rows="3" v-model="formData.description"></textarea>
+              <textarea class="form-control" id="contestDescription" rows="3" v-model="formData.description"
+                :disabled="loading"></textarea>
             </div>
 
             <!-- Contest rules - required field -->
             <div class="mb-3">
               <label for="contestRules" class="form-label">Contest Rules *</label>
               <textarea class="form-control" id="contestRules" rows="4"
-                placeholder="Write rules about how articles must be submitted." v-model="formData.rules_text"
-                required></textarea>
+                placeholder="Write rules about how articles must be submitted." v-model="formData.rules_text" required
+                :disabled="loading"></textarea>
             </div>
 
             <!-- Submission type selector: new, expansion, or both -->
             <div class="mb-3">
               <label for="allowedType" class="form-label">Allowed Submission Type</label>
-              <select id="allowedType" class="form-control" v-model="formData.allowed_submission_type">
+              <select id="allowedType" class="form-control" v-model="formData.allowed_submission_type"
+                :disabled="loading">
                 <option value="new">New Article Only</option>
                 <option value="expansion">Improved Article Only</option>
                 <option value="both">Both(New Article + Improved Article)</option>
@@ -50,11 +54,13 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="startDate" class="form-label">Start Date *</label>
-                <input type="date" class="form-control" id="startDate" v-model="formData.start_date" required />
+                <input type="date" class="form-control" id="startDate" v-model="formData.start_date" required
+                  :disabled="loading" />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="endDate" class="form-label">End Date *</label>
-                <input type="date" class="form-control" id="endDate" v-model="formData.end_date" required />
+                <input type="date" class="form-control" id="endDate" v-model="formData.end_date" required
+                  :disabled="loading" />
               </div>
             </div>
 
@@ -75,16 +81,18 @@
                   <!-- Simple Scoring Option -->
                   <div class="col-md-6">
                     <label :class="{ 'active': !enableMultiParameterScoring }">
-                      <input type="radio" name="scoringMode" :value="false" v-model="enableMultiParameterScoring" />
-                        <h6>Simple Scoring</h6>
+                      <input type="radio" name="scoringMode" :value="false" v-model="enableMultiParameterScoring"
+                        :disabled="loading" />
+                      <h6>Simple Scoring</h6>
                     </label>
                   </div>
 
                   <!-- Multi-Parameter Scoring Option -->
                   <div class="col-md-6">
                     <label :class="{ 'active': enableMultiParameterScoring }">
-                      <input type="radio" name="scoringMode" :value="true" v-model="enableMultiParameterScoring" />
-                      <div >
+                      <input type="radio" name="scoringMode" :value="true" v-model="enableMultiParameterScoring"
+                        :disabled="loading" />
+                      <div>
                         <h6>Multi-Parameter Scoring</h6>
                       </div>
                     </label>
@@ -102,7 +110,7 @@
                     <div class="col-md-6 mb-3">
                       <label for="marksAccepted" class="form-label">Points for Accepted Submissions *</label>
                       <input type="number" class="form-control" id="marksAccepted"
-                        v-model.number="formData.marks_setting_accepted" min="0" required />
+                        v-model.number="formData.marks_setting_accepted" min="0" required :disabled="loading" />
                       <small class="form-text text-muted">
                         Maximum points that can be awarded. Jury can assign points from 0 up to this value for accepted
                         submissions.
@@ -111,7 +119,7 @@
                     <div class="col-md-6 mb-3">
                       <label for="marksRejected" class="form-label">Points for Rejected Submissions *</label>
                       <input type="number" class="form-control" id="marksRejected"
-                        v-model.number="formData.marks_setting_rejected" min="0" required />
+                        v-model.number="formData.marks_setting_rejected" min="0" required :disabled="loading" />
                       <small class="form-text text-muted">
                         Fixed points awarded automatically for rejected submissions (usually 0 or negative).
                       </small>
@@ -132,14 +140,14 @@
                     <div class="col-md-6">
                       <label class="form-label">Maximum Score (Accepted Submissions) *</label>
                       <input type="number" class="form-control" v-model.number="maxScore" min="1" max="100"
-                        placeholder="0" required />
+                        placeholder="0" required :disabled="loading" />
                       <small class="text-muted">Final calculated score will be scaled to this value</small>
                     </div>
 
                     <div class="col-md-6">
                       <label class="form-label">Minimum Score (Rejected Submissions) *</label>
                       <input type="number" class="form-control" v-model.number="minScore" min="0" max="100"
-                        placeholder="0" required />
+                        placeholder="0" required :disabled="loading" />
                       <small class="text-muted">Score for rejected submissions</small>
                     </div>
                   </div>
@@ -158,22 +166,22 @@
                         <div class="row align-items-center">
                           <div class="col-md-3">
                             <input type="text" class="form-control" v-model="param.name" placeholder="Parameter name"
-                              required />
+                              required :disabled="loading" />
                           </div>
                           <div class="col-md-3">
                             <div class="input-group">
                               <input type="number" class="form-control" v-model.number="param.weight" min="0" max="100"
-                                placeholder="Weight" required />
+                                placeholder="Weight" required :disabled="loading" />
                               <span class="input-group-text">%</span>
                             </div>
                           </div>
                           <div class="col-md-5">
                             <input type="text" class="form-control" v-model="param.description"
-                              placeholder="Description (optional)" />
+                              placeholder="Description (optional)" :disabled="loading" />
                           </div>
                           <div class="col-md-1 text-end">
                             <button type="button" class="btn btn-sm btn-outline-danger" @click="removeParameter(index)"
-                              :disabled="scoringParameters.length <= 1">
+                              :disabled="scoringParameters.length <= 1 || loading">
                               <i class="fas fa-times"></i>
                             </button>
                           </div>
@@ -182,7 +190,8 @@
                       </div>
                     </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="addParameter">
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="addParameter"
+                      :disabled="loading">
                       <i class="fas fa-plus me-1"></i>Add Parameter
                     </button>
 
@@ -201,7 +210,8 @@
                   </div>
 
                   <!-- Reset to default parameters -->
-                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="loadDefaultParameters">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="loadDefaultParameters"
+                    :disabled="loading">
                     <i class="fas fa-redo me-1"></i>Load Default Parameters
                   </button>
                 </div>
@@ -227,7 +237,7 @@
               <!-- Organizer search input with autocomplete dropdown -->
               <div style="position: relative;">
                 <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
-                  placeholder="Type username to add additional organizers..." autocomplete="off" />
+                  placeholder="Type username to add additional organizers..." autocomplete="off" :disabled="loading" />
 
                 <!-- Autocomplete results dropdown -->
                 <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
@@ -277,7 +287,7 @@
               <!-- Jury search input with autocomplete dropdown -->
               <div style="position: relative;">
                 <input type="text" class="form-control" id="juryInput" v-model="jurySearchQuery" @input="searchJury"
-                  placeholder="Type username to search..." autocomplete="off" />
+                  placeholder="Type username to search..." autocomplete="off" :disabled="loading" />
                 <!-- Autocomplete results with self-selection warning -->
                 <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
                   class="jury-autocomplete position-absolute w-100 border rounded-bottom"
@@ -304,7 +314,7 @@
             <div class="mb-3">
               <label for="minByteCount" class="form-label">Minimum Byte Count *</label>
               <input type="number" class="form-control" id="minByteCount" v-model.number="formData.min_byte_count"
-                min="0" placeholder="e.g., 1000" required />
+                min="0" placeholder="e.g., 1000" required :disabled="loading" />
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
             </div>
 
@@ -312,7 +322,7 @@
             <div class="mb-3">
               <label for="minReferenceCount" class="form-label">Minimum Reference Count</label>
               <input type="number" class="form-control" id="minReferenceCount"
-                v-model.number="formData.min_reference_count" min="0" placeholder="e.g., 5" />
+                v-model.number="formData.min_reference_count" min="0" placeholder="e.g., 5" :disabled="loading" />
               <small class="form-text text-muted">
                 Articles must have at least this many references (external links). Leave as 0 for no requirement.
               </small>
@@ -329,15 +339,15 @@
                 <div class="input-group">
                   <input type="url" class="form-control" v-model="formData.categories[index]"
                     :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'"
-                    required />
+                    required :disabled="loading" />
                   <button v-if="formData.categories.length > 1" type="button" class="btn btn-outline-danger"
-                    @click="removeCategory(index)" title="Remove category">
+                    @click="removeCategory(index)" title="Remove category" :disabled="loading">
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
               </div>
 
-              <button type="button" class="btn btn-outline-primary btn-sm" @click="addCategory">
+              <button type="button" class="btn btn-outline-primary btn-sm" @click="addCategory" :disabled="loading">
                 <i class="fas fa-plus me-1"></i>Add Category
               </button>
 
@@ -353,7 +363,7 @@
                 <span class="badge bg-secondary ms-1">Optional</span>
               </label>
               <input type="url" class="form-control" id="templateLink" v-model="formData.template_link"
-                placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
+                placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" :disabled="loading" />
               <small class="form-text text-muted d-block mt-2">
                 <i class="fas fa-info-circle me-1"></i>
                 If set, this template will be automatically added to submitted articles that don't already have it.
@@ -366,8 +376,14 @@
 
         <!-- Modal footer with action buttons -->
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary" @click="handleSubmit">Create Contest</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" :disabled="loading">Cancel</button>
+          <button type="submit" class="btn btn-primary" @click="handleSubmit" :disabled="loading">
+            <span v-if="loading">
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              Creating...
+            </span>
+            <span v-else>Create Contest</span>
+          </button>
         </div>
       </div>
     </div>
@@ -694,6 +710,11 @@ export default {
 
     // Validate and submit contest creation form
     const handleSubmit = async () => {
+      // Prevent multiple submissions
+      if (loading.value) {
+        return
+      }
+
       // Basic validation
       if (!formData.name.trim()) {
         showAlert('Contest name is required', 'warning')
@@ -792,7 +813,9 @@ export default {
         }
       }
 
+      // Set loading state to prevent multiple submissions
       loading.value = true
+
       try {
         // Build scoring parameters payload
         let scoringParametersPayload = null
@@ -855,13 +878,17 @@ export default {
         if (result.success) {
           showAlert('Contest created successfully!', 'success')
           emit('created')
+
+          // Wait a bit for alert to show
           await new Promise(resolve => setTimeout(resolve, 100))
+
           // Close modal programmatically
           const modalElement = document.getElementById('createContestModal')
           const modal = bootstrap.Modal.getInstance(modalElement)
           if (modal) {
             modal.hide()
           }
+
           // Reset form
           resetForm()
         } else {
@@ -870,6 +897,7 @@ export default {
       } catch (error) {
         showAlert('Failed to create contest: ' + error.message, 'danger')
       } finally {
+        // Always reset loading state
         loading.value = false
       }
     }
