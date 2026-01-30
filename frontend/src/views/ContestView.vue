@@ -393,7 +393,7 @@
 
         <!-- Outreach Dashboard Tab -->
         <div v-if="contest.outreach_dashboard_url" class="tab-pane fade" id="outreach" role="tabpanel" aria-labelledby="outreach-tab">
-          <OutreachDashboardTab :base-url="contest.outreach_dashboard_url" />
+          <OutreachDashboardTab :base-url="contest.outreach_dashboard_url" :contest-id="contest.id" />
         </div>
       </div>
       
