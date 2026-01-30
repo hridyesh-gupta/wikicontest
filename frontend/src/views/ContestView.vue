@@ -408,7 +408,7 @@
           <OutreachDashboardTab :base-url="contest.outreach_dashboard_url" :contest-id="contest.id" />
         </div>
       </div>
-      
+
       <!-- Content when no Outreach Dashboard URL (no tabs) -->
       <div v-if="!contest.outreach_dashboard_url" class="row">
         <div :class="canViewSubmissions ? 'col-md-12' : 'col-md-12'">
@@ -2031,7 +2031,7 @@ export default {
         return
       }
       if (jurySearchTimeout) { clearTimeout(jurySearchTimeout) }
-      // Debounce to avoid excessive API calls 
+      // Debounce to avoid excessive API calls
       jurySearchTimeout = setTimeout(async () => {
         try {
           const response = await api.get(`/user/search?q=${encodeURIComponent(query)}&limit=10`)
@@ -2178,7 +2178,7 @@ export default {
 const showDownloadNotification = (filename, type) => {
   const icon = type === 'pdf' ? 'fa-file-pdf' : 'fa-file-csv'
   const color = type === 'pdf' ? '#dc3545' : '#28a745'
-  
+
   const toast = document.createElement('div')
   toast.innerHTML = `
     <i class="fas ${icon} me-2"></i>
@@ -2196,9 +2196,9 @@ const showDownloadNotification = (filename, type) => {
     z-index: 9999;
     animation: slideIn 0.3s ease;
   `
-  
+
   document.body.appendChild(toast)
-  
+
   setTimeout(() => {
     toast.style.animation = 'slideOut 0.3s ease'
     setTimeout(() => document.body.removeChild(toast), 300)
@@ -2207,15 +2207,15 @@ const showDownloadNotification = (filename, type) => {
 
 const generateAndDownload = async () => {
   if (!contest.value || generatingReport.value) return
-  
+
   generatingReport.value = true
-  
+
   try {
     // Generate report
     const csrfToken = getCsrfToken()
     const headers = { 'Content-Type': 'application/json' }
     if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken
-    
+
     const generateResponse = await fetch(
       `/api/report/contest/${contest.value.id}/generate`,
       {
@@ -2228,35 +2228,35 @@ const generateAndDownload = async () => {
         })
       }
     )
-    
+
     const generateData = await generateResponse.json()
-    
+
     if (!generateResponse.ok || !generateData.success) {
       throw new Error(generateData.error || 'Generation failed')
     }
-    
+
     // Download
     const reportId = generateData.report.id
     const downloadResponse = await fetch(
       `/api/report/report/${reportId}/download`,
       { credentials: 'include' }
     )
-    
+
     if (!downloadResponse.ok) throw new Error('Download failed')
-    
+
     const blob = await downloadResponse.blob()
     const url = window.URL.createObjectURL(blob)
-    
+
     // Better filename
     const timestamp = new Date().toISOString().split('T')[0]
     const sanitizedName = sanitizeFilename(contest.value.name)
     const filename = `${sanitizedName}_report_${timestamp}.${reportFormat.value}`
-    
+
     // For PDF: Open in new tab + download
     if (reportFormat.value === 'pdf') {
       window.open(url, '_blank')
     }
-    
+
     // Download file
     const link = document.createElement('a')
     link.href = url
@@ -2265,13 +2265,13 @@ const generateAndDownload = async () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
+
     // Cleanup
     setTimeout(() => window.URL.revokeObjectURL(url), 100)
-    
+
     // Show notification
     showDownloadNotification(filename, reportFormat.value)
-    
+
     // Close modal
     showReportModal.value = false
   } catch (error) {

@@ -12,7 +12,7 @@ from app.models.base_model import BaseModel
 class ContestReport(BaseModel):
     """
     Contest Report model representing generated reports for contests
-    
+
     Attributes:
         id: Primary key, auto-incrementing integer
         contest_id: Foreign key to contests table
@@ -55,7 +55,7 @@ class ContestReport(BaseModel):
     def __init__(self, contest_id, report_type, generated_by, report_metadata=None):
         """
         Initialize a new ContestReport instance
-        
+
         IMPORTANT: Don't manually set created_at/updated_at
         They are automatically handled by BaseModel
 
@@ -67,12 +67,12 @@ class ContestReport(BaseModel):
         """
         # Call parent __init__ to set created_at/updated_at
         super().__init__()
-        
+
         self.contest_id = contest_id
         self.report_type = report_type
         self.generated_by = generated_by
         self.status = 'pending'
-        
+
         # Store report_metadata as JSON string
         if report_metadata:
             import json
@@ -110,7 +110,7 @@ class ContestReport(BaseModel):
     def to_dict(self):
         """
         Convert report instance to dictionary for JSON serialization
-        
+
         NOTE: created_at and updated_at come from BaseModel
 
         Returns:
