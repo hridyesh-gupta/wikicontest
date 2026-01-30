@@ -2053,7 +2053,7 @@ export default {
       if (isCurrentUser(username)) {
         // Show confirmation dialog before adding
         const confirmed = window.confirm(
-          '⚠️ WARNING: Self-Selection as Jury Member\n\n' +
+          ' WARNING: Self-Selection as Jury Member\n\n' +
           'You are about to select yourself as a jury member.\n\n' +
           'It is strongly recommended to select other users as jury members to maintain fairness and objectivity.\n\n' +
           'Are you sure you want to proceed with selecting yourself?'
@@ -2275,7 +2275,7 @@ const generateAndDownload = async () => {
     // Close modal
     showReportModal.value = false
   } catch (error) {
-    console.error('❌ Error:', error)
+    console.error(' Error:', error)
     showAlert('Failed: ' + error.message, 'danger')
   } finally {
     generatingReport.value = false

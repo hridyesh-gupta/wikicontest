@@ -670,7 +670,7 @@ class CSVReportBuilder:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
-        print(f"✅ Comprehensive Report saved: {file_path}")
+        print(f" Comprehensive Report saved: {file_path}")
         
         return file_path
 

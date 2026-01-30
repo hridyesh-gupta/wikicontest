@@ -125,7 +125,7 @@ class ContestReport(BaseModel):
             'error_message': self.error_message if self.is_failed() else None,
             'report_metadata': self.get_metadata(),
             'generated_by': self.generated_by,
-            # ✅ These come from BaseModel - should work now
+            #  These come from BaseModel - should work now
             'created_at': self.created_at.isoformat() if hasattr(self, 'created_at') and self.created_at else None,
             'updated_at': self.updated_at.isoformat() if hasattr(self, 'updated_at') and self.updated_at else None,
         }
