@@ -81,7 +81,7 @@
         <h5 class="mb-0">
           <i class="fas fa-graduation-cap me-2"></i>Course Information
         </h5>
-        <button class="btn btn-sm btn-outline-primary" @click="loadData" :disabled="loading">
+        <button class="btn btn-sm btn-outline-primary" @click="loadCourseData" :disabled="loading">
           <i class="fas fa-sync-alt me-1" :class="{ 'fa-spin': loading }"></i>Refresh
         </button>
       </div>
