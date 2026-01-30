@@ -24,6 +24,17 @@
           <i class="fas fa-users me-2"></i>Users
         </button>
       </li>
+      <li class="nav-item" role="presentation">
+        <button 
+          class="nav-link" 
+          :class="{ active: activeSubTab === 'articles' }"
+          @click="handleArticlesTabClick"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-file-alt me-2"></i>Articles
+        </button>
+      </li>
     </ul>
 
     <!-- Tab Content -->
@@ -335,13 +346,118 @@
           <p>No users enrolled in this course.</p>
         </div>
       </div>
+
+      <!-- Articles Tab -->
+      <div 
+        v-show="activeSubTab === 'articles'"
+        class="tab-pane"
+        :class="{ 'active': activeSubTab === 'articles' }"
+        role="tabpanel"
+      >
+        <!-- Loading State -->
+        <div v-if="loadingArticles" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading course articles...</p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="articlesError" class="alert alert-danger">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Error loading course articles:</strong> {{ articlesError }}
+          <button class="btn btn-sm btn-outline-danger ms-3" @click="loadArticlesData">
+            <i class="fas fa-redo me-1"></i>Retry
+          </button>
+        </div>
+
+        <!-- Articles Data Display -->
+        <div v-else-if="articlesData && articlesData.length > 0" class="articles-data">
+          <!-- Header with Refresh Button -->
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="mb-0">
+              <i class="fas fa-file-alt me-2"></i>Course Articles ({{ articlesData.length }})
+            </h5>
+            <button class="btn btn-sm btn-outline-primary" @click="loadArticlesData" :disabled="loadingArticles">
+              <i class="fas fa-sync-alt me-1" :class="{ 'fa-spin': loadingArticles }"></i>Refresh
+            </button>
+          </div>
+
+          <!-- Articles Table -->
+          <div class="card">
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Wiki</th>
+                      <th>Namespace</th>
+                      <th>New Article</th>
+                      <th>Characters</th>
+                      <th>Views</th>
+                      <th>Avg Views</th>
+                      <th>Contributors</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="article in articlesData" :key="article.id">
+                      <td>
+                        <strong>{{ article.title || 'N/A' }}</strong>
+                      </td>
+                      <td>
+                        <span class="badge bg-info">{{ article.language || 'N/A' }}</span>
+                        <span class="badge bg-secondary ms-1">{{ article.project || 'N/A' }}</span>
+                      </td>
+                      <td>
+                        <span class="badge" :class="article.namespace === 0 ? 'bg-success' : 'bg-warning'">
+                          {{ article.namespace === 0 ? 'Mainspace' : `NS ${article.namespace}` }}
+                        </span>
+                      </td>
+                      <td>
+                        <span v-if="article.new_article" class="badge bg-success">New</span>
+                        <span v-else class="badge bg-secondary">Edit</span>
+                      </td>
+                      <td>{{ formatNumber(article.character_sum || 0) }}</td>
+                      <td>{{ formatNumber(article.view_count || 0) }}</td>
+                      <td>{{ article.average_views ? article.average_views.toFixed(2) : '0' }}</td>
+                      <td>
+                        <span class="badge bg-primary">{{ article.user_ids ? article.user_ids.length : 0 }}</span>
+                      </td>
+                      <td>
+                        <a 
+                          v-if="article.url" 
+                          :href="article.url" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="btn btn-sm btn-outline-primary"
+                          title="View Article"
+                        >
+                          <i class="fas fa-external-link-alt"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Articles State -->
+        <div v-else-if="articlesData && articlesData.length === 0" class="text-center py-5 text-muted">
+          <i class="fas fa-file-alt fa-3x mb-3"></i>
+          <p>No articles tracked in this course.</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
-import { fetchCourseData, fetchCourseUsers } from '../services/outreachDashboard'
+import { fetchCourseData, fetchCourseUsers, fetchCourseArticles } from '../services/outreachDashboard'
 
 export default {
   name: 'OutreachDashboardTab',
@@ -364,6 +480,10 @@ export default {
     const loadingUsers = ref(false)
     const usersError = ref(null)
     const usersData = ref(null)
+    
+    const loadingArticles = ref(false)
+    const articlesError = ref(null)
+    const articlesData = ref(null)
 
     const formatDate = (dateString) => {
       if (!dateString) return 'N/A'
@@ -446,6 +566,39 @@ export default {
       }
     }
 
+    const loadArticlesData = async () => {
+      if (!props.contestId) {
+        articlesError.value = 'Contest ID is required'
+        return
+      }
+
+      loadingArticles.value = true
+      articlesError.value = null
+
+      try {
+        const result = await fetchCourseArticles(props.contestId)
+        if (result.success) {
+          articlesData.value = result.data || []
+        } else {
+          articlesError.value = result.error || 'Failed to load course articles'
+          articlesData.value = null
+        }
+      } catch (err) {
+        articlesError.value = err.message || 'Unexpected error occurred'
+        articlesData.value = null
+      } finally {
+        loadingArticles.value = false
+      }
+    }
+
+    const handleArticlesTabClick = () => {
+      activeSubTab.value = 'articles'
+      // Load articles data when tab is clicked (only if not already loaded)
+      if (!articlesData.value && !loadingArticles.value) {
+        loadArticlesData()
+      }
+    }
+
     onMounted(() => {
       // Load course data on mount
       loadCourseData()
@@ -459,11 +612,16 @@ export default {
       loadingUsers,
       usersError,
       usersData,
+      loadingArticles,
+      articlesError,
+      articlesData,
       formatDate,
       formatNumber,
       loadCourseData,
       loadUsersData,
-      handleUsersTabClick
+      handleUsersTabClick,
+      loadArticlesData,
+      handleArticlesTabClick
     }
   }
 }
