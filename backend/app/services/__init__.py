@@ -7,6 +7,7 @@ from .outreach_dashboard import (
     validate_outreach_url,
     fetch_course_data,
     fetch_course_users,
+    fetch_course_articles,
     build_course_api_url
 )
 
@@ -15,5 +16,6 @@ __all__ = [
     'validate_outreach_url',
     'fetch_course_data',
     'fetch_course_users',
+    'fetch_course_articles',
     'build_course_api_url'
 ]

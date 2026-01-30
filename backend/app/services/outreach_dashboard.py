@@ -363,6 +363,99 @@ def fetch_course_users(base_url: str) -> Dict[str, Any]:
         }
 
 
+def fetch_course_articles(base_url: str) -> Dict[str, Any]:
+    """
+    Fetch course articles data from Outreach Dashboard API.
+    
+    Returns an array of article objects with contribution metrics, visibility stats,
+    and links to Wikimedia articles.
+    
+    Args:
+        base_url: Base URL of the course (without /articles.json)
+        
+    Returns:
+        Dictionary with keys:
+            - 'success': Boolean indicating if fetch was successful
+            - 'data': List of article objects if successful (None otherwise)
+            - 'error': Error message if failed (None if successful)
+            
+    Article objects include important fields:
+        - id: Unique identifier for the article revision or tracking entry
+        - mw_page_id: MediaWiki page ID on the wiki
+        - title: Article title
+        - language: Wiki language code
+        - project: Wikimedia project (e.g., "wikimedia", "wikipedia")
+        - namespace: Wiki namespace (0 for main articles)
+        - new_article: Boolean indicating if article was newly created
+        - tracked: Boolean indicating if article is monitored by dashboard
+        - user_ids: Array of user IDs who contributed to this article
+        - character_sum: Total characters added or changed
+        - view_count: Total page views during tracking period
+        - average_views: Average daily views
+        - url: Full URL to the article
+    """
+    if not base_url or not isinstance(base_url, str):
+        return {
+            'success': False,
+            'data': None,
+            'error': 'Base URL is required'
+        }
+    
+    base_url = base_url.strip()
+    
+    # Remove common suffixes that users might include
+    common_suffixes = ['/home', '/enroll', '/users.json', '/course.json', '/articles.json', '/students', '/articles', '/timeline']
+    for suffix in common_suffixes:
+        if base_url.endswith(suffix):
+            base_url = base_url[:-len(suffix)]
+            break
+    
+    base_url = base_url.rstrip('/')
+    
+    # Parse URL to get school and course_slug
+    parsed = parse_outreach_url(base_url)
+    if not parsed['valid']:
+        return {
+            'success': False,
+            'data': None,
+            'error': 'Invalid Outreach Dashboard URL format'
+        }
+    
+    # Build API URL using helper function
+    api_url = _build_api_url(parsed['school'], parsed['course_slug'], 'articles.json')
+    
+    # Make API request using base handler
+    result = _make_api_request(api_url)
+    
+    if not result['success']:
+        return result
+    
+    # Extract articles data from response
+    # Response structure: {'course': {'articles': [...]}}
+    data = result['data']
+    if 'course' in data and 'articles' in data['course']:
+        articles = data['course']['articles']
+        # Ensure it's a list (API may return empty array)
+        if isinstance(articles, list):
+            return {
+                'success': True,
+                'data': articles,
+                'error': None
+            }
+        else:
+            return {
+                'success': False,
+                'data': None,
+                'error': 'Invalid API response format: "articles" is not an array'
+            }
+    else:
+        return {
+            'success': False,
+            'data': None,
+            'error': 'Invalid API response format: missing "course.articles" key'
+        }
+
+
 def build_course_api_url(base_url: str) -> Optional[str]:
     """
     Build the full API URL from a base URL.
