@@ -1,24 +1,59 @@
 <template>
   <div class="outreach-dashboard-tab">
-    <!-- Loading State -->
-    <div v-if="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-      <p class="mt-3 text-muted">Loading Outreach Dashboard data...</p>
-    </div>
+    <!-- Nested Tabs for Course and Users -->
+    <ul class="nav nav-tabs mb-4" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button 
+          class="nav-link" 
+          :class="{ active: activeSubTab === 'course' }"
+          @click="activeSubTab = 'course'"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-graduation-cap me-2"></i>Course
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button 
+          class="nav-link" 
+          :class="{ active: activeSubTab === 'users' }"
+          @click="handleUsersTabClick"
+          type="button"
+          role="tab"
+        >
+          <i class="fas fa-users me-2"></i>Users
+        </button>
+      </li>
+    </ul>
 
-    <!-- Error State -->
-    <div v-else-if="error" class="alert alert-danger">
-      <i class="fas fa-exclamation-circle me-2"></i>
-      <strong>Error loading Outreach Dashboard data:</strong> {{ error }}
-      <button class="btn btn-sm btn-outline-danger ms-3" @click="loadData">
-        <i class="fas fa-redo me-1"></i>Retry
-      </button>
-    </div>
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Course Tab -->
+      <div 
+        v-show="activeSubTab === 'course'"
+        class="tab-pane"
+        :class="{ 'active': activeSubTab === 'course' }"
+        role="tabpanel"
+      >
+        <!-- Loading State -->
+        <div v-if="loading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading Outreach Dashboard data...</p>
+        </div>
 
-    <!-- Course Data Display -->
-    <div v-else-if="courseData" class="course-data">
+        <!-- Error State -->
+        <div v-else-if="error" class="alert alert-danger">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Error loading Outreach Dashboard data:</strong> {{ error }}
+          <button class="btn btn-sm btn-outline-danger ms-3" @click="loadCourseData">
+            <i class="fas fa-redo me-1"></i>Retry
+          </button>
+        </div>
+
+        <!-- Course Data Display -->
+        <div v-else-if="courseData" class="course-data">
       <!-- Header with Refresh Button -->
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h5 class="mb-0">
@@ -198,19 +233,115 @@
           </small>
         </div>
       </div>
-    </div>
+        </div>
 
-    <!-- No Data State -->
-    <div v-else class="text-center py-5 text-muted">
-      <i class="fas fa-info-circle fa-3x mb-3"></i>
-      <p>No course data available.</p>
+        <!-- No Data State -->
+        <div v-else class="text-center py-5 text-muted">
+          <i class="fas fa-info-circle fa-3x mb-3"></i>
+          <p>No course data available.</p>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div 
+        v-show="activeSubTab === 'users'"
+        class="tab-pane"
+        :class="{ 'active': activeSubTab === 'users' }"
+        role="tabpanel"
+      >
+        <!-- Loading State -->
+        <div v-if="loadingUsers" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading course users...</p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="usersError" class="alert alert-danger">
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Error loading course users:</strong> {{ usersError }}
+          <button class="btn btn-sm btn-outline-danger ms-3" @click="loadUsersData">
+            <i class="fas fa-redo me-1"></i>Retry
+          </button>
+        </div>
+
+        <!-- Users Data Display -->
+        <div v-else-if="usersData && usersData.length > 0" class="users-data">
+          <!-- Header with Refresh Button -->
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h5 class="mb-0">
+              <i class="fas fa-users me-2"></i>Course Participants ({{ usersData.length }})
+            </h5>
+            <button class="btn btn-sm btn-outline-primary" @click="loadUsersData" :disabled="loadingUsers">
+              <i class="fas fa-sync-alt me-1" :class="{ 'fa-spin': loadingUsers }"></i>Refresh
+            </button>
+          </div>
+
+          <!-- Users Table -->
+          <div class="card">
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Role</th>
+                      <th>Enrolled</th>
+                      <th>Mainspace</th>
+                      <th>Userspace</th>
+                      <th>Uploads</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="user in usersData" :key="user.id">
+                      <td>
+                        <strong>{{ user.username || 'N/A' }}</strong>
+                        <span v-if="user.admin" class="badge bg-warning ms-2">Admin</span>
+                      </td>
+                      <td>
+                        <span class="badge" :class="user.role === 1 ? 'bg-primary' : 'bg-secondary'">
+                          {{ user.role === 1 ? 'Instructor' : 'Student' }}
+                        </span>
+                      </td>
+                      <td>{{ formatDate(user.enrolled_at) }}</td>
+                      <td>{{ formatNumber(user.character_sum_ms || 0) }}</td>
+                      <td>{{ formatNumber(user.character_sum_us || 0) }}</td>
+                      <td>{{ user.total_uploads || 0 }}</td>
+                      <td>
+                        <a 
+                          v-if="user.contribution_url" 
+                          :href="user.contribution_url" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          class="btn btn-sm btn-outline-primary"
+                          title="View Contributions"
+                        >
+                          <i class="fas fa-external-link-alt"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- No Users State -->
+        <div v-else-if="usersData && usersData.length === 0" class="text-center py-5 text-muted">
+          <i class="fas fa-users fa-3x mb-3"></i>
+          <p>No users enrolled in this course.</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import { ref, onMounted } from 'vue'
-import { fetchCourseData } from '../services/outreachDashboard'
+import { fetchCourseData, fetchCourseUsers } from '../services/outreachDashboard'
 
 export default {
   name: 'OutreachDashboardTab',
@@ -218,12 +349,21 @@ export default {
     baseUrl: {
       type: String,
       required: true
+    },
+    contestId: {
+      type: Number,
+      required: true
     }
   },
   setup(props) {
+    const activeSubTab = ref('course')
     const loading = ref(false)
     const error = ref(null)
     const courseData = ref(null)
+    
+    const loadingUsers = ref(false)
+    const usersError = ref(null)
+    const usersData = ref(null)
 
     const formatDate = (dateString) => {
       if (!dateString) return 'N/A'
@@ -241,7 +381,14 @@ export default {
       }
     }
 
-    const loadData = async () => {
+    const formatNumber = (num) => {
+      if (num === 0) return '0'
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+      return num.toLocaleString()
+    }
+
+    const loadCourseData = async () => {
       if (!props.baseUrl) {
         error.value = 'No Outreach Dashboard URL provided'
         return
@@ -266,16 +413,57 @@ export default {
       }
     }
 
+    const loadUsersData = async () => {
+      if (!props.contestId) {
+        usersError.value = 'Contest ID is required'
+        return
+      }
+
+      loadingUsers.value = true
+      usersError.value = null
+
+      try {
+        const result = await fetchCourseUsers(props.contestId)
+        if (result.success) {
+          usersData.value = result.data || []
+        } else {
+          usersError.value = result.error || 'Failed to load course users'
+          usersData.value = null
+        }
+      } catch (err) {
+        usersError.value = err.message || 'Unexpected error occurred'
+        usersData.value = null
+      } finally {
+        loadingUsers.value = false
+      }
+    }
+
+    const handleUsersTabClick = () => {
+      activeSubTab.value = 'users'
+      // Load users data when tab is clicked (only if not already loaded)
+      if (!usersData.value && !loadingUsers.value) {
+        loadUsersData()
+      }
+    }
+
     onMounted(() => {
-      loadData()
+      // Load course data on mount
+      loadCourseData()
     })
 
     return {
+      activeSubTab,
       loading,
       error,
       courseData,
+      loadingUsers,
+      usersError,
+      usersData,
       formatDate,
-      loadData
+      formatNumber,
+      loadCourseData,
+      loadUsersData,
+      handleUsersTabClick
     }
   }
 }
