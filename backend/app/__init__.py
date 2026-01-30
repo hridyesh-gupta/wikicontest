@@ -92,11 +92,11 @@ def create_app():
         import secrets
         if not secret_key:
             secret_key = secrets.token_urlsafe(48)
-            print("⚠️  WARNING: SECRET_KEY not set in environment. Generated temporary key.")
+            print("  WARNING: SECRET_KEY not set in environment. Generated temporary key.")
             print("   Set SECRET_KEY in environment for production!")
         if not jwt_secret_key:
             jwt_secret_key = secrets.token_urlsafe(48)
-            print("⚠️  WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
+            print("  WARNING: JWT_SECRET_KEY not set in environment. Generated temporary key.")
             print("   Set JWT_SECRET_KEY in environment for production!")
     flask_app.config['SECRET_KEY'] = secret_key
     flask_app.config['JWT_SECRET_KEY'] = jwt_secret_key
@@ -286,9 +286,9 @@ def check_cookie():
             print(f'🔐 [COOKIE CHECK] {log_msg}')
             # Special check: If username is Adityakumar0545, verify role is superadmin
             if db_username == 'Adityakumar0545':
-                print(f'⚠️ [SPECIAL CHECK] User Adityakumar0545 - Role from DB: {db_role}')
+                print(f' [SPECIAL CHECK] User Adityakumar0545 - Role from DB: {db_role}')
                 if db_role != 'superadmin':
-                    print(f'❌ [ERROR] Expected superadmin but got: {db_role}')
+                    print(f' [ERROR] Expected superadmin but got: {db_role}')
                 else:
                     print(' [SUCCESS] Role is correct: superadmin')
         except Exception as error:  # pylint: disable=broad-exception-caught
@@ -352,9 +352,9 @@ def check_cookie():
             print(f'🔐 [FINAL RESPONSE] {log_msg}')
             # Special check for Adityakumar0545
             if response_data.get("username") == 'Adityakumar0545':
-                print(f'⚠️ [SPECIAL CHECK] Adityakumar0545 - Role in response: {response_data.get("role")}')
+                print(f' [SPECIAL CHECK] Adityakumar0545 - Role in response: {response_data.get("role")}')
                 if response_data.get("role") != 'superadmin':
-                    print(f'❌ [ERROR] Role should be superadmin but is: {response_data.get("role")}')
+                    print(f' [ERROR] Role should be superadmin but is: {response_data.get("role")}')
                 else:
                     print(' [SUCCESS] Role is correctly set to superadmin in response')
         except Exception as error:  # pylint: disable=broad-exception-caught
@@ -415,7 +415,7 @@ def debug_user_role(username):
         ).fetchone()
 
         if not result:
-            print(f'❌ [DEBUG] User not found: {username}')
+            print(f' [DEBUG] User not found: {username}')
             return jsonify({
                 'error': 'User not found',
                 'username': username
@@ -454,7 +454,7 @@ def debug_user_role(username):
         # Special check for Adityakumar0545
         if username == 'Adityakumar0545':
             if user_data['role'] != 'superadmin':
-                print(f'❌ [ERROR] Adityakumar0545 should have superadmin but has: {user_data["role"]}')
+                print(f' [ERROR] Adityakumar0545 should have superadmin but has: {user_data["role"]}')
             else:
                 print(' [SUCCESS] Adityakumar0545 has correct superadmin role')
 
@@ -464,7 +464,7 @@ def debug_user_role(username):
         # Catch all exceptions to prevent application crash
         error_msg = f'Debug user role error: {str(error)}'
         current_app.logger.error(error_msg)
-        print(f'❌ [ERROR] {error_msg}')
+        print(f' [ERROR] {error_msg}')
         return jsonify({
             'error': 'Failed to query user',
             'details': str(error)
@@ -1016,7 +1016,7 @@ if __name__ == '__main__':
     # Default to False for production safety
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     if debug_mode:
-        print("⚠️  WARNING: Debug mode is enabled. Disable in production!")
+        print("  WARNING: Debug mode is enabled. Disable in production!")
     app.run(
         debug=debug_mode,  # Controlled by FLASK_DEBUG environment variable
         host='0.0.0.0',    # Allow connections from any IP

@@ -60,7 +60,7 @@ def generate_report(contest_id):
         submission_count = Submission.query.filter_by(contest_id=contest_id).count()
 
         if submission_count == 0:
-            print(f"⚠️  Warning: No submissions to report on")
+            print(f" Warning: No submissions to report on")
             # Continue anyway - empty report is valid
 
         # Step 6: Create report record
@@ -75,7 +75,6 @@ def generate_report(contest_id):
             )
             db.session.add(report)
             db.session.commit()
-            print(f"   Report ID: {report.id}")
         except Exception as db_error:
             print(f"Database error creating report: {db_error}")
             traceback.print_exc()
@@ -93,14 +92,10 @@ def generate_report(contest_id):
 
         try:
             if report_type == 'csv':
-                print(f"   Creating CSV builder...")
                 builder = CSVReportBuilder(contest, report_metadata)
-                print(f"   Generating CSV...")
                 file_path = builder.generate()
             else:  # pdf
-                print(f"   Creating PDF builder...")
                 builder = PDFReportBuilder(contest, report_metadata)
-                print(f"   Generating PDF...")
                 file_path = builder.generate()
 
             # Verify file exists
@@ -145,7 +140,7 @@ def generate_report(contest_id):
                 report.error_message = str(e)
                 db.session.commit()
             except Exception as db_error:
-                print(f"⚠️  Failed to update report status: {db_error}")
+                print(f"Failed to update report status: {db_error}")
                 db.session.rollback()
 
         return jsonify({
@@ -207,7 +202,6 @@ def download_report(report_id):
 
         # Check if report is ready
         if report.status != 'completed':
-            print(f"⚠️  Report not ready: {report.status}")
             return jsonify({
                 'error': 'Report not ready',
                 'status': report.status,
@@ -216,16 +210,13 @@ def download_report(report_id):
 
         # Check if file exists
         if not report.file_path:
-            print(f"❌ No file path in database")
             return jsonify({'error': 'Report file path missing'}), 404
 
         if not os.path.exists(report.file_path):
-            print(f"❌ File not found: {report.file_path}")
             return jsonify({'error': 'Report file not found on disk'}), 404
 
         # Send file
         filename = f"contest_{report.contest_id}_report.{report.report_type}"
-        print(f"✅ Sending file: {filename} ({os.path.getsize(report.file_path)} bytes)")
 
         return send_file(
             report.file_path,
@@ -235,7 +226,7 @@ def download_report(report_id):
         )
 
     except Exception as e:
-        print(f"❌ Download error: {e}")
+        print(f" Download error: {e}")
         traceback.print_exc()
         return jsonify({'error': f'Failed to download report: {str(e)}'}), 500
 
@@ -262,7 +253,7 @@ def report_status(report_id):
         }), 200
 
     except Exception as e:
-        print(f"❌ Status check error: {e}")
+        print(f" Status check error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -272,7 +263,6 @@ def report_status(report_id):
 def preview_report(contest_id):
     """Preview report data without generating full file"""
     try:
-        print(f"\n👁️  Preview request for contest {contest_id}")
 
         current_user = request.current_user
         contest = Contest.query.get_or_404(contest_id)
@@ -289,9 +279,8 @@ def preview_report(contest_id):
         # Fetch preview data with error handling
         try:
             stats = get_submission_statistics(contest_id)
-            print(f"   ✅ Statistics loaded")
         except Exception as e:
-            print(f"   ❌ Statistics failed: {e}")
+            print(f"    Statistics failed: {e}")
             traceback.print_exc()
             return jsonify({
                 'error': 'Failed to fetch statistics',
@@ -300,9 +289,8 @@ def preview_report(contest_id):
 
         try:
             top_contributors = get_top_contributors(contest_id, limit=top_n)
-            print(f"   ✅ Top contributors loaded: {len(top_contributors)}")
         except Exception as e:
-            print(f"   ❌ Contributors failed: {e}")
+            print(f"    Contributors failed: {e}")
             traceback.print_exc()
             top_contributors = []
 
@@ -321,7 +309,7 @@ def preview_report(contest_id):
         }), 200
 
     except Exception as e:
-        print(f"❌ Preview error: {e}")
+        print(f" Preview error: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -332,7 +320,6 @@ def preview_report(contest_id):
 def delete_report(report_id):
     """Delete a generated report"""
     try:
-        print(f"\n🗑️  Delete request for report {report_id}")
 
         current_user = request.current_user
         report = ContestReport.query.get_or_404(report_id)
@@ -346,15 +333,12 @@ def delete_report(report_id):
         if report.file_path and os.path.exists(report.file_path):
             try:
                 os.remove(report.file_path)
-                print(f"✅ Deleted file: {report.file_path}")
             except Exception as e:
-                print(f"⚠️  File delete error: {e}")
+                print(f"  File delete error: {e}")
 
         # Delete database record
         db.session.delete(report)
         db.session.commit()
-
-        print(f"✅ Report {report_id} deleted successfully")
 
         return jsonify({
             'success': True,
@@ -362,7 +346,7 @@ def delete_report(report_id):
         }), 200
 
     except Exception as e:
-        print(f"❌ Delete error: {e}")
+        print(f" Delete error: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
@@ -382,21 +366,21 @@ def report_health():
         db.session.execute('SELECT 1')
         dependencies['database'] = True
     except Exception as e:
-        print(f"❌ Database check failed: {e}")
+        print(f" Database check failed: {e}")
 
     # Check reportlab
     try:
         import reportlab
         dependencies['reportlab'] = True
     except ImportError:
-        print("❌ reportlab not installed")
+        print(" reportlab not installed")
 
     # Check matplotlib
     try:
         import matplotlib
         dependencies['matplotlib'] = True
     except ImportError:
-        print("❌ matplotlib not installed")
+        print(" matplotlib not installed")
 
     # Check reports directory
     try:
@@ -412,7 +396,7 @@ def report_health():
         os.remove(test_file)
         dependencies['reports_directory'] = True
     except Exception as e:
-        print(f"❌ Reports directory check failed: {e}")
+        print(f" Reports directory check failed: {e}")
 
     all_ok = all(dependencies.values())
 
