@@ -1,0 +1,258 @@
+name: Deploy to Toolforge
+
+on:
+  push:
+    branches:
+      - main     # Trigger on main branch for production
+      - staging  # Trigger on staging branch for staging
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/staging'  # Only run on staging branch
+    environment:
+      name: staging
+      url: https://wikicontest-staging.toolforge.org
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Setup SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${SSH_HOST:-login.toolforge.org}" >> ~/.ssh/known_hosts
+
+      - name: Deploy to Staging
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          TARGET_DIR: ${{ secrets.TARGET_DIR }}
+          GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        run: |
+          SSH_HOST="${SSH_HOST:-login.toolforge.org}"
+          TARGET_DIR="${TARGET_DIR:-www/python/src/}"
+          GITHUB_REPO="${GITHUB_REPO:-https://github.com/indictechcom/wikicontest.git}"
+          echo "🚀 Deploying to $SSH_USER@$SSH_HOST in $TARGET_DIR"
+          ssh "$SSH_USER@$SSH_HOST" <<EOF
+          export TARGET_DIR="$TARGET_DIR"
+          export GITHUB_REPO="$GITHUB_REPO"
+          export BRANCH_NAME="$BRANCH_NAME"
+          set -e
+          echo "✅ Connected to remote host."
+
+          become wikicontest-staging bash -se
+            export TARGET_DIR="\${TARGET_DIR}"
+            export GITHUB_REPO="\${GITHUB_REPO}"
+            export BRANCH_NAME="\${BRANCH_NAME}"
+
+            echo "🧭 Switched to wikicontest-staging"
+            
+            # Clone or update repository
+            REPO_DIR="\$HOME/repo"
+            mkdir -p "\$REPO_DIR"
+            cd "\$REPO_DIR"
+            
+            echo "Checking out branch: \$BRANCH_NAME"
+            if [ -d .git ]; then
+              echo "🔄 Pulling latest changes..."
+              git fetch origin
+              git checkout "\$BRANCH_NAME" || git checkout -b "\$BRANCH_NAME" origin/"\$BRANCH_NAME"
+              git pull origin "\$BRANCH_NAME" || true
+            else
+              echo "⬇️ Cloning fresh copy..."
+              git clone --depth 1 -b "\$BRANCH_NAME" "\$GITHUB_REPO" . || git clone --depth 1 "\$GITHUB_REPO" .
+              git checkout "\$BRANCH_NAME" || true
+            fi
+            echo "Checked out branch: \$BRANCH_NAME"
+
+            # Create target directory
+            mkdir -p "\$TARGET_DIR"
+
+            # Copy backend files
+            echo "📦 Copying backend files..."
+            # Copy app directory structure
+            cp -r "\$REPO_DIR/backend/app" "\$TARGET_DIR/" || true
+            # Copy other backend files
+            cp "\$REPO_DIR/backend/main.py" "\$TARGET_DIR/" || true
+            cp "\$REPO_DIR/backend/requirements.txt" "\$TARGET_DIR/" || true
+            cp "\$REPO_DIR/backend/alembic.ini" "\$TARGET_DIR/" || true
+            # Copy alembic directory structure
+            cp -r "\$REPO_DIR/backend/alembic" "\$TARGET_DIR/" || true
+
+            # Copy frontend dist (built in GitHub Actions)
+            # Flask app expects frontend/dist at $HOME/www/python/frontend/dist
+            echo "📦 Copying frontend build..."
+            FRONTEND_DIR="\$(dirname "\$TARGET_DIR")/frontend"
+            mkdir -p "\$FRONTEND_DIR"
+            cp -r "\$REPO_DIR/frontend/dist" "\$FRONTEND_DIR/" || true
+
+            # Install/update Python dependencies
+            echo "📥 Installing Python dependencies..."
+            if [ -f "\$HOME/www/python/venv/bin/activate" ]; then
+              source "\$HOME/www/python/venv/bin/activate"
+              pip install --upgrade pip
+              pip install -r "\$TARGET_DIR/requirements.txt"
+            else
+              echo "⚠️ Virtual environment not found. Please create it manually."
+            fi
+
+            # Run Alembic migrations
+            echo "🔄 Running database migrations..."
+            cd "\$TARGET_DIR"
+            if [ -f "alembic.ini" ] && [ -d "alembic" ]; then
+              alembic upgrade head || echo "⚠️ Migration failed or no migrations to run"
+            else
+              echo "⚠️ Alembic not found, skipping migrations"
+            fi
+
+            # Restart webservice
+            echo "🔄 Restarting webservice..."
+            webservice --cpu=1000m --mem=2Gi python3.13 restart &&
+            echo "WikiContest staging correctly updated. Congratulations!"
+
+          EOF
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # Only run for main branch
+    environment:
+      name: production
+      url: https://wikicontest.toolforge.org
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Setup SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${SSH_HOST:-login.toolforge.org}" >> ~/.ssh/known_hosts
+
+      - name: Deploy to Production
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          TARGET_DIR: ${{ secrets.TARGET_DIR }}
+          GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
+        run: |
+          SSH_HOST="${SSH_HOST:-login.toolforge.org}"
+          TARGET_DIR="${TARGET_DIR:-www/python/src/}"
+          GITHUB_REPO="${GITHUB_REPO:-https://github.com/indictechcom/wikicontest.git}"
+          echo "🚀 Deploying to $SSH_USER@$SSH_HOST in $TARGET_DIR"
+          ssh "$SSH_USER@$SSH_HOST" <<EOF
+          export TARGET_DIR="$TARGET_DIR"
+          export GITHUB_REPO="$GITHUB_REPO"
+          set -e
+          echo "✅ Connected to remote host."
+
+          become wikicontest bash -se
+            export TARGET_DIR="\${TARGET_DIR}"
+            export GITHUB_REPO="\${GITHUB_REPO}"
+
+            echo "🧭 Switched to wikicontest"
+            
+            # Clone or update repository
+            REPO_DIR="\$HOME/repo"
+            mkdir -p "\$REPO_DIR"
+            cd "\$REPO_DIR"
+            
+            echo "Checking out main"
+            if [ -d .git ]; then
+              echo "🔄 Pulling latest changes..."
+              git fetch origin
+              git checkout main
+              git pull origin main
+            else
+              echo "⬇️ Cloning fresh copy..."
+              git clone --depth 1 -b main "\$GITHUB_REPO" .
+            fi
+            echo "Checked out main"
+
+            # Create target directory
+            mkdir -p "\$TARGET_DIR"
+
+            # Copy backend files
+            echo "📦 Copying backend files..."
+            # Copy app directory structure
+            cp -r "\$REPO_DIR/backend/app" "\$TARGET_DIR/" || true
+            # Copy other backend files
+            cp "\$REPO_DIR/backend/main.py" "\$TARGET_DIR/" || true
+            cp "\$REPO_DIR/backend/requirements.txt" "\$TARGET_DIR/" || true
+            cp "\$REPO_DIR/backend/alembic.ini" "\$TARGET_DIR/" || true
+            # Copy alembic directory structure
+            cp -r "\$REPO_DIR/backend/alembic" "\$TARGET_DIR/" || true
+
+            # Copy frontend dist (built in GitHub Actions)
+            # Flask app expects frontend/dist at $HOME/www/python/frontend/dist
+            echo "📦 Copying frontend build..."
+            FRONTEND_DIR="\$(dirname "\$TARGET_DIR")/frontend"
+            mkdir -p "\$FRONTEND_DIR"
+            cp -r "\$REPO_DIR/frontend/dist" "\$FRONTEND_DIR/" || true
+
+            # Install/update Python dependencies
+            echo "📥 Installing Python dependencies..."
+            if [ -f "\$HOME/www/python/venv/bin/activate" ]; then
+              source "\$HOME/www/python/venv/bin/activate"
+              pip install --upgrade pip
+              pip install -r "\$TARGET_DIR/requirements.txt"
+            else
+              echo "⚠️ Virtual environment not found. Please create it manually."
+            fi
+
+            # Run Alembic migrations
+            echo "🔄 Running database migrations..."
+            cd "\$TARGET_DIR"
+            if [ -f "alembic.ini" ] && [ -d "alembic" ]; then
+              alembic upgrade head || echo "⚠️ Migration failed or no migrations to run"
+            else
+              echo "⚠️ Alembic not found, skipping migrations"
+            fi
+
+            # Restart webservice
+            echo "🔄 Restarting webservice..."
+            webservice --cpu=1000m --mem=2Gi python3.13 restart &&
+            echo "WikiContest production correctly updated. Congratulations!"
+
+          EOF
+
