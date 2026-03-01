@@ -159,53 +159,84 @@
                       <span class="badge bg-secondary ms-2">Weights must total 100%</span>
                     </label>
 
-                    <div class="parameters-list">
-                      <!-- Each parameter -->
-                      <div v-for="(param, index) in scoringParameters" :key="index">
+                    <div class="parameters-wrapper">
 
-                        <div class="row align-items-center">
-                          <div class="col-md-3">
-                            <input type="text" class="form-control" v-model="param.name" placeholder="Parameter name"
-                              required :disabled="loading" />
-                          </div>
-                          <div class="col-md-3">
-                            <div class="input-group">
-                              <input type="number" class="form-control" v-model.number="param.weight" min="0" max="100"
-                                placeholder="Weight" required :disabled="loading" />
-                              <span class="input-group-text">%</span>
+                      <!-- Column Headers -->
+                      <div class="row align-items-center parameters-header px-1 mb-1">
+                        <div class="col-md-3">
+                          <span class="param-col-label">
+                            <i class="fas fa-tag me-1"></i>Parameter Name
+                          </span>
+                        </div>
+                        <div class="col-md-5">
+                          <span class="param-col-label">
+                            <i class="fas fa-align-left me-1"></i>Description
+                          </span>
+                        </div>
+                        <div class="col-md-3">
+                          <span class="param-col-label">
+                            <i class="fas fa-percent me-1"></i>Weightage
+                          </span>
+                        </div>
+                        
+                        <div class="col-md-1"></div>
+                      </div>
+
+                      <!-- Parameters List -->
+                      <div class="parameters-list">
+                        <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-row">
+                          <div class="row align-items-center flex-grow-1">
+                            <div class="col-md-3">
+                              <input type="text" class="form-control param-input" v-model="param.name"
+                                placeholder="e.g. Code Quality" required :disabled="loading" />
+                            </div>
+                            <div class="col-md-3">
+                              <div class="input-group">
+                                <input type="number" class="form-control param-input" v-model.number="param.weight"
+                                  min="0" max="100" placeholder="0" required :disabled="loading" />
+                                <span class="input-group-text weight-suffix">%</span>
+                              </div>
+                            </div>
+                            <div class="col-md-5">
+                              <input type="text" class="form-control param-input" v-model="param.description"
+                                placeholder="Optional description..." :disabled="loading" />
+                            </div>
+                            <div class="col-md-1 text-end">
+                              <button type="button" class="btn btn-sm btn-remove" @click="removeParameter(index)"
+                                :disabled="scoringParameters.length <= 1 || loading" title="Remove">
+                                <i class="fas fa-times"></i>
+                              </button>
                             </div>
                           </div>
-                          <div class="col-md-5">
-                            <input type="text" class="form-control" v-model="param.description"
-                              placeholder="Description (optional)" :disabled="loading" />
-                          </div>
-                          <div class="col-md-1 text-end">
-                            <button type="button" class="btn btn-sm btn-outline-danger" @click="removeParameter(index)"
-                              :disabled="scoringParameters.length <= 1 || loading">
-                              <i class="fas fa-times"></i>
-                            </button>
-                          </div>
                         </div>
-
                       </div>
-                    </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="addParameter"
-                      :disabled="loading">
-                      <i class="fas fa-plus me-1"></i>Add Parameter
-                    </button>
+                      <!-- Add Button -->
+                      <button type="button" class="btn btn-sm btn-add-param mt-3" @click="addParameter"
+                        :disabled="loading">
+                        <i class="fas fa-plus me-1"></i>Add Parameter
+                      </button>
 
-                    <!-- Weight validation -->
-                    <div class="mt-3 p-3 rounded" :class="weightTotalClass">
-                      <strong>Total Weight: {{ totalWeight }}%</strong>
-                      <span v-if="totalWeight !== 100" class="ms-2 text-danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Must equal 100%
-                      </span>
-                      <span v-else class="ms-2 text-success">
-                        <i class="fas fa-check-circle"></i>
-                        Valid
-                      </span>
+                      <!-- Weight Validation Bar -->
+                      <div class="weight-validation mt-3" :class="weightTotalClass">
+                        <div class="weight-bar-track">
+                          <div class="weight-bar-fill" :style="{ width: Math.min(totalWeight, 100) + '%' }" :class="{
+                            'fill-danger': totalWeight > 100,
+                            'fill-success': totalWeight === 100,
+                            'fill-warning': totalWeight < 100 && totalWeight > 0
+                          }"></div>
+                        </div>
+                        <div class="weight-info mt-2">
+                          <strong>Total Weight: {{ totalWeight }}%</strong>
+                          <span v-if="totalWeight !== 100" class="ms-2 text-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Must equal 100%
+                          </span>
+                          <span v-else class="ms-2 text-success">
+                            <i class="fas fa-check-circle me-1"></i>Valid
+                          </span>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 
@@ -378,10 +409,12 @@
                 <span class="badge bg-secondary ms-1">Optional</span>
               </label>
               <input type="url" class="form-control" id="outreachDashboardUrl" v-model="formData.outreach_dashboard_url"
-                placeholder="https://outreachdashboard.wmflabs.org/courses/WikiClub_Tech_SHUATS/Wikipedia_25_B_Day_Celebration_by_WikiClub_Tech_SHUATS" :disabled="loading" />
+                placeholder="https://outreachdashboard.wmflabs.org/courses/WikiClub_Tech_SHUATS/Wikipedia_25_B_Day_Celebration_by_WikiClub_Tech_SHUATS"
+                :disabled="loading" />
               <small class="form-text text-muted d-block mt-2">
                 <i class="fas fa-info-circle me-1"></i>
-                Link this contest to an Outreach Dashboard course. If provided, course statistics and information will be displayed in a dedicated tab.
+                Link this contest to an Outreach Dashboard course. If provided, course statistics and information will
+                be displayed in a dedicated tab.
                 Format: https://outreachdashboard.wmflabs.org/courses/{school}/{course_slug}
               </small>
             </div>
@@ -920,7 +953,7 @@ export default {
         console.log('[CREATE CONTEST] Submitting contest data:', contestData)
         const result = await store.createContest(contestData)
         console.log('[CREATE CONTEST] Result:', result)
-        
+
         if (result.success) {
           showAlert('Contest created successfully!', 'success')
           emit('created')
@@ -1481,5 +1514,159 @@ input[type="date"].form-control {
 .badge.bg-secondary {
   background-color: #6c757d !important;
   color: white;
+}
+
+.parameters-wrapper {
+  background: #f8f9fc;
+  border: 1px solid #e2e6ea;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+/* Column headers */
+.parameters-header {
+  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+.param-col-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6c757d;
+}
+
+/* Each row */
+.parameter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.parameter-row:hover {
+  border-color: #adb5bd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Index number badge */
+.param-index {
+  min-width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9ecef;
+  color: #495057;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.param-input {
+  font-size: 0.875rem;
+  border-color: #dee2e6;
+  background: #fdfdfd;
+}
+
+.param-input:focus {
+  border-color: #86b7fe;
+  background: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.1);
+}
+
+.weight-suffix {
+  font-size: 0.8rem;
+  background: #f1f3f5;
+  color: #495057;
+  font-weight: 600;
+}
+
+/* Remove button */
+.btn-remove {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #f5c6cb;
+  color: #dc3545;
+  background: #fff5f5;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  transition: all 0.15s;
+}
+
+.btn-remove:hover:not(:disabled) {
+  background: #dc3545;
+  color: #fff;
+  border-color: #dc3545;
+}
+
+.btn-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Add parameter button */
+.btn-add-param {
+  border: 1.5px dashed #0d6efd;
+  color: #0d6efd;
+  background: transparent;
+  border-radius: 7px;
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.btn-add-param:hover:not(:disabled) {
+  background: #0d6efd;
+  color: #fff;
+}
+
+/* Weight Validation */
+.weight-validation {
+  border-top: 1px solid #dee2e6;
+  padding-top: 12px;
+}
+
+.weight-bar-track {
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.weight-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.fill-success {
+  background: #198754;
+}
+
+.fill-warning {
+  background: #ffc107;
+}
+
+.fill-danger {
+  background: #dc3545;
+}
+
+.weight-info {
+  font-size: 0.875rem;
+  color: #495057;
 }
 </style>
