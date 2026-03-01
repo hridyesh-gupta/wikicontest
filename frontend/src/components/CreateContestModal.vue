@@ -5,7 +5,7 @@
       <div class="modal-content">
         <!-- Modal header with Wikipedia primary color -->
         <div class="modal-header">
-          <h5 class="modal-title">Create New Contest</h5>
+          <h5 class="modal-title">WikiContest</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" :disabled="loading"></button>
         </div>
         <div class="modal-body">
