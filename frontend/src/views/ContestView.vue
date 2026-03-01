@@ -1049,9 +1049,8 @@
                   <div class="lock-banner-content">
                     <div class="lock-banner-title"><strong>Scoring Mode is Locked</strong></div>
                     <div class="lock-banner-text">
-                      This contest has <strong>{{ reviewedSubmissionsCount }}</strong>
-                      reviewed {{ reviewedSubmissionsCount === 1 ? 'submission' : 'submissions' }}.
-                      The scoring mode cannot be changed to ensure fairness.
+                      This contest has reviewed {{ reviewedSubmissionsCount === 1 ? 'submission' : 'submissions' }}.
+                      The scoring configuration cannot be changed to ensure fairness.
                     </div>
                   </div>
                 </div>
@@ -1073,97 +1072,116 @@
                 </div>
               </div>
 
+              <!-- ✅ LOCKED STATE: Sab kuch read-only / disabled -->
               <div v-if="scoringModeLocked" class="locked-edit-info">
-                <div class="alert alert-info mb-3">
-                  <i class="fas fa-info-circle me-2"></i>
-                  <strong>What you can edit:</strong>
-                  <ul class="mb-0 mt-2">
-                    <li v-if="contestScoringMode === 'multi_parameter'">Maximum and minimum score values</li>
-                    <li v-if="contestScoringMode === 'multi_parameter'">Parameter weights (must still sum to 100%)</li>
-                    <li v-if="contestScoringMode === 'multi_parameter'">Parameter names and descriptions</li>
-                    <li v-if="contestScoringMode === 'simple'">Points for accepted and rejected submissions</li>
-                  </ul>
-                </div>
+                <!-- Multi-parameter locked view -->
                 <div v-if="contestScoringMode === 'multi_parameter'">
                   <div class="row mb-3">
                     <div class="col-md-6">
-                      <label class="form-label">Maximum Score (Accepted) *</label>
-                      <input type="number" class="form-control" v-model.number="maxScore" min="1" max="1000" required />
-                      <small class="text-muted">Final score scaled to this value</small>
+                      <label class="form-label">Maximum Score (Accepted)</label>
+                      <input type="number" class="form-control" v-model.number="maxScore" disabled />
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label">Minimum Score (Rejected) *</label>
-                      <input type="number" class="form-control" v-model.number="minScore" min="0" max="1000" required />
-                      <small class="text-muted">Score for rejected submissions</small>
+                      <label class="form-label">Minimum Score (Rejected)</label>
+                      <input type="number" class="form-control" v-model.number="minScore" disabled />
                     </div>
                   </div>
+
                   <div class="mb-3">
-                    <label class="form-label fw-bold">Scoring Parameters *</label>
-                    <div class="parameters-list">
-                      <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-item card mb-2">
-                        <div class="card-body p-3">
-                          <div class="row align-items-center">
+                    <label class="form-label fw-bold">Scoring Parameters</label>
+                    <div class="parameters-wrapper locked-params">
+
+                      <!-- Column Headers -->
+                      <div class="row align-items-center parameters-header px-1 mb-1">
+                        <div class="col-md-3">
+                          <span class="param-col-label"><i class="fas fa-tag me-1"></i>Parameter Name</span>
+                        </div>
+                        <div class="col-md-3">
+                          <span class="param-col-label"><i class="fas fa-percent me-1"></i>Weightage</span>
+                        </div>
+                        <div class="col-md-5">
+                          <span class="param-col-label"><i class="fas fa-align-left me-1"></i>Description</span>
+                        </div>
+                        <div class="col-md-1"></div>
+                      </div>
+
+                      <!-- Locked parameter rows -->
+                      <div class="parameters-list">
+                        <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-row locked-row">
+                          <div class="row align-items-center flex-grow-1">
                             <div class="col-md-3">
-                              <label class="small text-muted mb-1">Parameter Name</label>
-                              <input type="text" class="form-control" v-model="param.name" placeholder="e.g., Quality"
-                                required />
+                              <input type="text" class="form-control param-input" v-model="param.name" disabled />
                             </div>
                             <div class="col-md-3">
-                              <label class="small text-muted mb-1">Weight (%)</label>
                               <div class="input-group">
-                                <input type="number" class="form-control" v-model.number="param.weight" min="0"
-                                  max="100" required />
-                                <span class="input-group-text">%</span>
+                                <input type="number" class="form-control param-input" v-model.number="param.weight"
+                                  disabled />
+                                <span class="input-group-text weight-suffix">%</span>
                               </div>
                             </div>
                             <div class="col-md-5">
-                              <label class="small text-muted mb-1">Description (Optional)</label>
-                              <input type="text" class="form-control" v-model="param.description"
-                                placeholder="Brief description" />
+                              <input type="text" class="form-control param-input" v-model="param.description"
+                                disabled />
                             </div>
                             <div class="col-md-1 text-end">
-                              <label class="small text-muted mb-1 d-block">&nbsp;</label>
-                              <button type="button" class="btn btn-sm btn-outline-danger"
-                                @click="removeParameter(index)" :disabled="scoringParameters.length <= 1">
-                                <i class="fas fa-trash"></i>
-                              </button>
+                              <!-- No delete button in locked state -->
+                              <span class="lock-icon-sm"><i class="fas fa-lock text-muted"></i></span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="addParameter">
-                      <i class="fas fa-plus me-1"></i>Add Parameter
-                    </button>
-                    <div class="mt-3 p-3 rounded" :class="weightTotalClass">
-                      <div class="d-flex justify-content-between align-items-center">
-                        <strong>Total Weight: {{ totalWeight }}%</strong>
-                        <span v-if="totalWeight !== 100" class="text-danger"><i
-                            class="fas fa-exclamation-triangle me-1"></i>Must equal 100%</span>
-                        <span v-else class="text-success"><i class="fas fa-check-circle me-1"></i>Valid</span>
+
+                      <!-- Weight total (read only) -->
+                      <div class="weight-validation mt-3">
+                        <div class="weight-info mt-2">
+                          <strong>Total Weight: {{ totalWeight }}%</strong>
+                          <span class="ms-2 text-success">
+                            <i class="fas fa-check-circle me-1"></i>Locked
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="loadDefaultParameters">
-                    <i class="fas fa-redo me-1"></i>Reset to Default Parameters
-                  </button>
                 </div>
+
+                <!-- Simple scoring locked view -->
                 <div v-else>
-                  <div class="row">
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label">Points for Accepted Submissions *</label>
-                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_accepted" min="0"
-                        required />
-                    </div>
-                    <div class="col-md-6 mb-3">
-                      <label class="form-label">Points for Rejected Submissions *</label>
-                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_rejected" min="0"
-                        required />
+                  <div class="locked-simple-scoring">
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                          Points for Accepted Submissions
+                          <i class="fas fa-lock ms-1 text-muted" style="font-size: 0.75rem;"></i>
+                        </label>
+                        <div class="input-group">
+                          <input type="number" class="form-control locked-input"
+                            v-model.number="editForm.marks_setting_accepted" disabled />
+                          <span class="input-group-text locked-suffix">
+                            <i class="fas fa-lock text-muted"></i>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                          Points for Rejected Submissions
+                          <i class="fas fa-lock ms-1 text-muted" style="font-size: 0.75rem;"></i>
+                        </label>
+                        <div class="input-group">
+                          <input type="number" class="form-control locked-input"
+                            v-model.number="editForm.marks_setting_rejected" disabled />
+                          <span class="input-group-text locked-suffix">
+                            <i class="fas fa-lock text-muted"></i>
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+
               </div>
 
+              <!-- ✅ UNLOCKED STATE: Fully editable (tumhara original code as-is) -->
               <div v-else class="unlocked-edit-mode">
                 <div class="scoring-mode-toggle mb-2">
                   <div class="form-check form-switch">
@@ -1177,6 +1195,7 @@
                     criteria.
                   </small>
                 </div>
+
                 <div v-if="!enableMultiParameterScoring" class="simple-scoring-form">
                   <div class="row">
                     <div class="col-md-6 mb-3">
@@ -1191,6 +1210,7 @@
                     </div>
                   </div>
                 </div>
+
                 <div v-else class="multi-param-scoring-form">
                   <div class="row mb-3">
                     <div class="col-md-6">
@@ -1202,53 +1222,81 @@
                       <input type="number" class="form-control" v-model.number="minScore" min="0" max="1000" required />
                     </div>
                   </div>
+
                   <div class="mb-3">
                     <label class="form-label fw-bold">Scoring Parameters *</label>
-                    <div class="parameters-list">
-                      <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-item card mb-2">
-                        <div class="card-body p-3">
-                          <div class="row align-items-center">
+                    <div class="parameters-wrapper">
+
+                      <!-- Column Headers -->
+                      <div class="row align-items-center parameters-header px-1 mb-1">
+                        <div class="col-md-3">
+                          <span class="param-col-label"><i class="fas fa-tag me-1"></i>Parameter Name</span>
+                        </div>
+                        <div class="col-md-3">
+                          <span class="param-col-label"><i class="fas fa-percent me-1"></i>Weightage</span>
+                        </div>
+                        <div class="col-md-5">
+                          <span class="param-col-label"><i class="fas fa-align-left me-1"></i>Description</span>
+                        </div>
+                        <div class="col-md-1"></div>
+                      </div>
+
+                      <div class="parameters-list">
+                        <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-row">
+                          <div class="param-index">{{ index + 1 }}</div>
+                          <div class="row align-items-center flex-grow-1">
                             <div class="col-md-3">
-                              <label class="small text-muted mb-1">Parameter Name</label>
-                              <input type="text" class="form-control" v-model="param.name" placeholder="e.g., Quality"
-                                required />
+                              <input type="text" class="form-control param-input" v-model="param.name"
+                                placeholder="e.g., Quality" required />
                             </div>
                             <div class="col-md-3">
-                              <label class="small text-muted mb-1">Weight (%)</label>
                               <div class="input-group">
-                                <input type="number" class="form-control" v-model.number="param.weight" min="0"
-                                  max="100" required />
-                                <span class="input-group-text">%</span>
+                                <input type="number" class="form-control param-input" v-model.number="param.weight"
+                                  min="0" max="100" required />
+                                <span class="input-group-text weight-suffix">%</span>
                               </div>
                             </div>
                             <div class="col-md-5">
-                              <label class="small text-muted mb-1">Description (Optional)</label>
-                              <input type="text" class="form-control" v-model="param.description"
+                              <input type="text" class="form-control param-input" v-model="param.description"
                                 placeholder="Brief description" />
                             </div>
                             <div class="col-md-1 text-end">
-                              <label class="small text-muted mb-1 d-block">&nbsp;</label>
-                              <button type="button" class="btn btn-sm btn-outline-danger"
-                                @click="removeParameter(index)" :disabled="scoringParameters.length <= 1">
+                              <button type="button" class="btn btn-sm btn-remove" @click="removeParameter(index)"
+                                :disabled="scoringParameters.length <= 1">
                                 <i class="fas fa-trash"></i>
                               </button>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" @click="addParameter">
-                      <i class="fas fa-plus me-1"></i>Add Parameter
-                    </button>
-                    <div class="mt-3 p-3 rounded" :class="weightTotalClass">
-                      <div class="d-flex justify-content-between align-items-center">
-                        <strong>Total Weight: {{ totalWeight }}%</strong>
-                        <span v-if="totalWeight !== 100" class="text-danger"><i
-                            class="fas fa-exclamation-triangle me-1"></i>Must equal 100%</span>
-                        <span v-else class="text-success"><i class="fas fa-check-circle me-1"></i>Valid</span>
+
+                      <button type="button" class="btn btn-sm btn-add-param mt-3" @click="addParameter">
+                        <i class="fas fa-plus me-1"></i>Add Parameter
+                      </button>
+
+                      <div class="weight-validation mt-3" :class="weightTotalClass">
+                        <div class="weight-bar-track">
+                          <div class="weight-bar-fill" :style="{ width: Math.min(totalWeight, 100) + '%' }" :class="{
+                            'fill-danger': totalWeight > 100,
+                            'fill-success': totalWeight === 100,
+                            'fill-warning': totalWeight < 100 && totalWeight > 0
+                          }">
+                          </div>
+                        </div>
+                        <div class="weight-info mt-2">
+                          <strong>Total Weight: {{ totalWeight }}%</strong>
+                          <span v-if="totalWeight !== 100" class="ms-2 text-danger">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Must equal 100%
+                          </span>
+                          <span v-else class="ms-2 text-success">
+                            <i class="fas fa-check-circle me-1"></i>Valid
+                          </span>
+                        </div>
                       </div>
+
                     </div>
                   </div>
+
                   <button type="button" class="btn btn-sm btn-outline-secondary" @click="loadDefaultParameters">
                     <i class="fas fa-redo me-1"></i>Load Default Parameters
                   </button>
@@ -3524,5 +3572,229 @@ export default {
   .parameter-item .col-md-1 {
     text-align: left !important;
   }
+}
+
+.lock-banner.locked {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.lock-banner.unlocked {
+  background: #d1e7dd;
+  border: 1px solid #198754;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.lock-banner-icon {
+  font-size: 1.2rem;
+  margin-top: 2px;
+}
+
+/* Locked params dimmed */
+.locked-params {
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.locked-row {
+  background: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+}
+
+.lock-icon-sm {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 32px;
+  font-size: 0.8rem;
+}
+
+/* Parameters wrapper */
+.parameters-wrapper {
+  background: #f8f9fc;
+  border: 1px solid #e2e6ea;
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+.parameters-header {
+  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 8px;
+}
+
+.param-col-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6c757d;
+}
+
+/* Parameter rows */
+.parameter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.parameter-row:hover {
+  border-color: #adb5bd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.param-index {
+  min-width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9ecef;
+  color: #495057;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.param-input {
+  font-size: 0.875rem;
+  border-color: #dee2e6;
+  background: #fdfdfd;
+}
+
+.param-input:focus {
+  border-color: #86b7fe;
+  background: #fff;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.1);
+}
+
+.param-input:disabled {
+  background: #f1f3f5;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.weight-suffix {
+  font-size: 0.8rem;
+  background: #f1f3f5;
+  color: #495057;
+  font-weight: 600;
+}
+
+/* Remove button */
+.btn-remove {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #f5c6cb;
+  color: #dc3545;
+  background: #fff5f5;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  transition: all 0.15s;
+}
+
+.btn-remove:hover:not(:disabled) {
+  background: #dc3545;
+  color: #fff;
+  border-color: #dc3545;
+}
+
+.btn-remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Add button */
+.btn-add-param {
+  border: 1.5px dashed #0d6efd;
+  color: #0d6efd;
+  background: transparent;
+  border-radius: 7px;
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.btn-add-param:hover:not(:disabled) {
+  background: #0d6efd;
+  color: #fff;
+}
+
+/* Weight bar */
+.weight-validation {
+  border-top: 1px solid #dee2e6;
+  padding-top: 12px;
+}
+
+.weight-bar-track {
+  height: 6px;
+  background: #e9ecef;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.weight-bar-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.fill-success {
+  background: #198754;
+}
+
+.fill-warning {
+  background: #ffc107;
+}
+
+.fill-danger {
+  background: #dc3545;
+}
+
+.weight-info {
+  font-size: 0.875rem;
+  color: #495057;
+}
+
+.locked-simple-scoring {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 16px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.locked-input {
+  background: #f1f3f5 !important;
+  color: #6c757d !important;
+  cursor: not-allowed !important;
+  border-color: #dee2e6 !important;
+}
+
+.locked-suffix {
+  background: #e9ecef;
+  border-color: #dee2e6;
+  color: #adb5bd;
 }
 </style>
