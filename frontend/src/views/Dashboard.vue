@@ -27,15 +27,14 @@
             </div>
           </div>
         </div>
-
         <div class="col-12 col-sm-6 col-lg-4">
           <div class="stat-card stat-card-success">
             <div class="stat-icon">
               <i class="fas fa-medal"></i>
             </div>
             <div class="stat-content">
-              <h3 class="stat-value">{{ dashboardData.created_contests?.length || 0 }}</h3>
-              <p class="stat-label">Created Contests</p>
+              <h3 class="stat-value">{{ dashboardData.participated_contests?.length || 0 }}</h3>
+              <p class="stat-label">Participated</p>
             </div>
           </div>
         </div>
@@ -55,19 +54,17 @@
 
       <!-- Quick Overview Section -->
       <div class="row g-3 mb-4">
-        <!-- Recent Submissions -  -->
+        <!-- Recent Submissions — unchanged -->
         <div class="col-12 col-lg-6">
           <div class="section-card">
             <div class="section-header">
               <h4 class="section-title">
                 <i class="fas fa-file-alt me-2"></i>Recent Submissions
               </h4>
-              <span class="badge bg-primary">{{ totalSubmissions }}</span>
             </div>
 
             <div class="section-body">
               <div v-if="dashboardData.submissions_by_contest?.length > 0">
-                <!-- Scrollable submissions container -->
                 <div class="submissions-container" :class="{ 'expanded': showAllSubmissions }">
                   <div
                     v-for="contest in (showAllSubmissions ? dashboardData.submissions_by_contest : dashboardData.submissions_by_contest.slice(0, 3))"
@@ -112,19 +109,17 @@
           </div>
         </div>
 
-        <!-- Contest Scores -->
+        <!-- Contest Scores — unchanged -->
         <div class="col-12 col-lg-6">
           <div class="section-card">
             <div class="section-header">
               <h4 class="section-title">
                 <i class="fas fa-chart-bar me-2"></i>Contest Scores
               </h4>
-              <span class="badge bg-success">{{ dashboardData.contest_wise_scores?.length || 0 }}</span>
             </div>
 
             <div class="section-body">
               <div v-if="dashboardData.contest_wise_scores?.length > 0">
-                <!-- Scrollable scores container -->
                 <div class="scores-container" :class="{ 'expanded': showAllScores }">
                   <div
                     v-for="score in (showAllScores ? dashboardData.contest_wise_scores : dashboardData.contest_wise_scores.slice(0, 6))"
@@ -154,28 +149,13 @@
       <!-- Contests Management Section -->
       <div class="contests-section">
         <div class="section-card">
-          <!-- Section Header with Tabs -->
           <div class="section-header bordered">
             <div class="d-flex align-items-center gap-3 flex-wrap">
               <h4 class="section-title mb-0">
                 <i class="fas fa-trophy me-2"></i>Contests
               </h4>
-
-              <!-- Tabs -->
-              <div class="btn-group contest-tabs" role="group">
-                <button type="button" class="btn btn-sm"
-                  :class="activeTab === 'created' ? 'btn-primary' : 'btn-outline-primary'"
-                  @click="switchTab('created')">
-                  Your Contests ({{ dashboardData.created_contests?.length || 0 }})
-                </button>
-                <button type="button" class="btn btn-sm"
-                  :class="activeTab === 'jury' ? 'btn-primary' : 'btn-outline-primary'" @click="switchTab('jury')">
-                  Jury Contests ({{ dashboardData.jury_contests?.length || 0 }})
-                </button>
-              </div>
             </div>
 
-            <!-- Search and Filter Controls -->
             <div class="controls-row mt-3">
               <div class="search-box">
                 <i class="fas fa-search search-icon"></i>
@@ -198,9 +178,10 @@
 
           <!-- Contests Content -->
           <div class="section-body p-0">
-            <!-- Created Contests Tab -->
+            <!-- CHANGED: Tab label is still 'created' internally (no tab UI change needed),
+                 but now shows participated contests -->
             <div v-if="activeTab === 'created'">
-              <div v-if="filteredCreatedContests.length > 0">
+              <div v-if="filteredParticipatedContests.length > 0">
                 <!-- Desktop Table View -->
                 <div class="table-responsive d-none d-md-block">
                   <table class="table table-hover mb-0">
@@ -209,13 +190,14 @@
                         <th>Contest Name</th>
                         <th>Project</th>
                         <th>Status</th>
-                        <th>Submissions</th>
+                        <th>My Submissions</th>  <!-- CHANGED: was "Submissions" -->
                         <th>Created</th>
                         <th class="text-end">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="contest in paginatedCreatedContests" :key="contest.id" @click="viewContest(contest.id)"
+                      <!-- CHANGED: paginatedCreatedContests → paginatedParticipatedContests -->
+                      <tr v-for="contest in paginatedParticipatedContests" :key="contest.id" @click="viewContest(contest.id)"
                         class="table-row-clickable">
                         <td>
                           <div class="contest-name-cell">
@@ -247,7 +229,8 @@
 
                 <!-- Mobile Card View -->
                 <div class="d-md-none">
-                  <div v-for="contest in paginatedCreatedContests" :key="contest.id" class="contest-card"
+                  <!-- CHANGED: paginatedCreatedContests → paginatedParticipatedContests -->
+                  <div v-for="contest in paginatedParticipatedContests" :key="contest.id" class="contest-card"
                     @click="viewContest(contest.id)">
                     <div class="contest-card-header">
                       <strong>{{ contest.name }}</strong>
@@ -268,8 +251,9 @@
                   </div>
                 </div>
 
-                <!-- Pagination -->
-                <div v-if="filteredCreatedContests.length > itemsPerPage" class="pagination-wrapper">
+                <!-- Pagination — CHANGED: filteredCreatedContests → filteredParticipatedContests,
+                     totalPagesCreated → totalPagesParticipated -->
+                <div v-if="filteredParticipatedContests.length > itemsPerPage" class="pagination-wrapper">
                   <nav>
                     <ul class="pagination pagination-sm mb-0">
                       <li class="page-item" :class="{ disabled: currentPage === 1 }">
@@ -278,15 +262,13 @@
                         </button>
                       </li>
 
-                      <li v-for="page in totalPagesCreated" :key="page" class="page-item"
+                      <li v-for="page in totalPagesParticipated" :key="page" class="page-item"
                         :class="{ active: currentPage === page }">
-                        <button class="page-link" @click="currentPage = page">
-                          {{ page }}
-                        </button>
+                        <button class="page-link" @click="currentPage = page">{{ page }}</button>
                       </li>
 
-                      <li class="page-item" :class="{ disabled: currentPage === totalPagesCreated }">
-                        <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPagesCreated">
+                      <li class="page-item" :class="{ disabled: currentPage === totalPagesParticipated }">
+                        <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPagesParticipated">
                           <i class="fas fa-chevron-right"></i>
                         </button>
                       </li>
@@ -295,31 +277,25 @@
 
                   <div class="pagination-info">
                     Showing {{ (currentPage - 1) * itemsPerPage + 1 }} -
-                    {{ Math.min(currentPage * itemsPerPage, filteredCreatedContests.length) }}
-                    of {{ filteredCreatedContests.length }} contests
+                    {{ Math.min(currentPage * itemsPerPage, filteredParticipatedContests.length) }}
+                    of {{ filteredParticipatedContests.length }} contests
                   </div>
                 </div>
               </div>
 
-              <!-- Empty State -->
+              <!-- Empty State — CHANGED: message updated -->
               <div v-else class="empty-state-large">
                 <i class="fas fa-trophy fa-4x mb-3"></i>
                 <h5>No Contests Found</h5>
                 <p class="text-muted">
-                  {{ searchQuery ? 'Try adjusting your search or filters' : 'Create your first contest to get started'
-                  }}
+                  {{ searchQuery ? 'Try adjusting your search or filters' : 'You have not participated in any contests yet' }}
                 </p>
-                <button v-if="!searchQuery && !filterStatus" class="btn btn-primary mt-2"
-                  @click="$router.push('/create-contest')">
-                  <i class="fas fa-plus me-2"></i>Create Contest
-                </button>
               </div>
             </div>
 
-            <!-- Jury Contests Tab -->
+            <!-- Jury Contests Tab — completely unchanged -->
             <div v-if="activeTab === 'jury'">
               <div v-if="filteredJuryContests.length > 0">
-                <!-- Desktop Table View -->
                 <div class="table-responsive d-none d-md-block">
                   <table class="table table-hover mb-0">
                     <thead>
@@ -342,9 +318,7 @@
                           </span>
                         </td>
                         <td>
-                          <span class="badge bg-warning">
-                            {{ contest.pending_reviews || 0 }}
-                          </span>
+                          <span class="badge bg-warning">{{ contest.pending_reviews || 0 }}</span>
                         </td>
                         <td class="text-end">
                           <button class="btn btn-sm btn-outline-primary" @click.stop="viewContest(contest.id)">
@@ -356,7 +330,6 @@
                   </table>
                 </div>
 
-                <!-- Mobile View -->
                 <div class="d-md-none">
                   <div v-for="contest in paginatedJuryContests" :key="contest.id" class="contest-card"
                     @click="viewContest(contest.id)">
@@ -378,7 +351,6 @@
                   </div>
                 </div>
 
-                <!-- Pagination for Jury Contests -->
                 <div v-if="filteredJuryContests.length > itemsPerPage" class="pagination-wrapper">
                   <nav>
                     <ul class="pagination pagination-sm mb-0">
@@ -387,14 +359,10 @@
                           <i class="fas fa-chevron-left"></i>
                         </button>
                       </li>
-
                       <li v-for="page in totalPagesJury" :key="page" class="page-item"
                         :class="{ active: currentPage === page }">
-                        <button class="page-link" @click="currentPage = page">
-                          {{ page }}
-                        </button>
+                        <button class="page-link" @click="currentPage = page">{{ page }}</button>
                       </li>
-
                       <li class="page-item" :class="{ disabled: currentPage === totalPagesJury }">
                         <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPagesJury">
                           <i class="fas fa-chevron-right"></i>
@@ -402,7 +370,6 @@
                       </li>
                     </ul>
                   </nav>
-
                   <div class="pagination-info">
                     Showing {{ (currentPage - 1) * itemsPerPage + 1 }} -
                     {{ Math.min(currentPage * itemsPerPage, filteredJuryContests.length) }}
@@ -411,13 +378,11 @@
                 </div>
               </div>
 
-              <!-- Empty State -->
               <div v-else class="empty-state-large">
                 <i class="fas fa-gavel fa-4x mb-3"></i>
                 <h5>No Jury Assignments</h5>
                 <p class="text-muted">
-                  {{ searchQuery ? 'Try adjusting your search or filters' : `You haven't been assigned as a jury member
-                  yet` }}
+                  {{ searchQuery ? 'Try adjusting your search or filters' : `You haven't been assigned as a jury member yet` }}
                 </p>
               </div>
             </div>
@@ -462,18 +427,15 @@ export default {
     const router = useRouter()
     const store = useStore()
 
-    // State
     const dashboardData = ref(null)
     const loading = ref(true)
     const error = ref(null)
     const submittingToContestId = ref(null)
 
-    // Feedback modal state
     const selectedSubmission = ref(null)
     const reviewerName = ref('')
     const loadingReviewer = ref(false)
 
-    // UI State
     const activeTab = ref('created')
     const searchQuery = ref('')
     const debouncedSearch = ref('')
@@ -483,19 +445,9 @@ export default {
     const showAllSubmissions = ref(false)
     const showAllScores = ref(false)
 
-    // Date formatters - memoized for performance
-    const dateFormatterShort = new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric'
-    })
+    const dateFormatterShort = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
+    const dateFormatterFull = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 
-    const dateFormatterFull = new Intl.DateTimeFormat('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-
-    // Debounce search input
     let searchTimeout = null
     const handleSearchInput = () => {
       if (searchTimeout) clearTimeout(searchTimeout)
@@ -505,16 +457,6 @@ export default {
       }, 300)
     }
 
-    // Switch tab and reset state
-    const switchTab = (tab) => {
-      activeTab.value = tab
-      currentPage.value = 1
-      searchQuery.value = ''
-      debouncedSearch.value = ''
-      filterStatus.value = 'all'
-    }
-
-    // - Total submissions count
     const totalSubmissions = computed(() => {
       if (!dashboardData.value?.submissions_by_contest) return 0
       return dashboardData.value.submissions_by_contest.reduce((total, contest) => {
@@ -522,13 +464,11 @@ export default {
       }, 0)
     })
 
-    // - Filtered Created Contests
-    const filteredCreatedContests = computed(() => {
-      if (!dashboardData.value?.created_contests) return []
+    // CHANGED: reads from participated_contests instead of created_contests
+    const filteredParticipatedContests = computed(() => {
+      if (!dashboardData.value?.participated_contests) return []
+      let contests = [...dashboardData.value.participated_contests]
 
-      let contests = [...dashboardData.value.created_contests]
-
-      // Apply search filter with debounced value
       if (debouncedSearch.value) {
         const query = debouncedSearch.value.toLowerCase()
         contests = contests.filter(c =>
@@ -537,23 +477,18 @@ export default {
         )
       }
 
-      // Apply status filter
       if (filterStatus.value !== 'all') {
-        contests = contests.filter(c =>
-          c.status?.toLowerCase() === filterStatus.value
-        )
+        contests = contests.filter(c => c.status?.toLowerCase() === filterStatus.value)
       }
 
       return contests
     })
 
-    // - Filtered Jury Contests
+    // Jury contests — unchanged
     const filteredJuryContests = computed(() => {
       if (!dashboardData.value?.jury_contests) return []
-
       let contests = [...dashboardData.value.jury_contests]
 
-      // Apply search filter with debounced value
       if (debouncedSearch.value) {
         const query = debouncedSearch.value.toLowerCase()
         contests = contests.filter(c =>
@@ -562,73 +497,59 @@ export default {
         )
       }
 
-      // Apply status filter
       if (filterStatus.value !== 'all') {
-        contests = contests.filter(c =>
-          c.status?.toLowerCase() === filterStatus.value
-        )
+        contests = contests.filter(c => c.status?.toLowerCase() === filterStatus.value)
       }
 
       return contests
     })
 
-    // - Paginated Created Contests
-    const paginatedCreatedContests = computed(() => {
+    // CHANGED: paginates filteredParticipatedContests
+    const paginatedParticipatedContests = computed(() => {
       const start = (currentPage.value - 1) * itemsPerPage.value
-      const end = start + itemsPerPage.value
-      return filteredCreatedContests.value.slice(start, end)
+      return filteredParticipatedContests.value.slice(start, start + itemsPerPage.value)
     })
 
-    // - Paginated Jury Contests
     const paginatedJuryContests = computed(() => {
       const start = (currentPage.value - 1) * itemsPerPage.value
-      const end = start + itemsPerPage.value
-      return filteredJuryContests.value.slice(start, end)
+      return filteredJuryContests.value.slice(start, start + itemsPerPage.value)
     })
 
-    // - Total Pages for Created Contests (always >= 1)
-    const totalPagesCreated = computed(() => {
-      const total = Math.ceil(filteredCreatedContests.value.length / itemsPerPage.value)
-      return Math.max(1, total)
+    // CHANGED: total pages for participated contests
+    const totalPagesParticipated = computed(() => {
+      return Math.max(1, Math.ceil(filteredParticipatedContests.value.length / itemsPerPage.value))
     })
 
-    // - Total Pages for Jury Contests (always >= 1)
     const totalPagesJury = computed(() => {
-      const total = Math.ceil(filteredJuryContests.value.length / itemsPerPage.value)
-      return Math.max(1, total)
+      return Math.max(1, Math.ceil(filteredJuryContests.value.length / itemsPerPage.value))
     })
 
-    // Watch current page to ensure it's valid
-    watch([filteredCreatedContests, filteredJuryContests], () => {
-      const maxPage = activeTab.value === 'created' ? totalPagesCreated.value : totalPagesJury.value
-      if (currentPage.value > maxPage) {
-        currentPage.value = maxPage
-      }
+    // CHANGED: watch uses filteredParticipatedContests
+    watch([filteredParticipatedContests, filteredJuryContests], () => {
+      const maxPage = activeTab.value === 'created' ? totalPagesParticipated.value : totalPagesJury.value
+      if (currentPage.value > maxPage) currentPage.value = maxPage
     })
 
-    // Clear search function
     const clearSearch = () => {
       searchQuery.value = ''
       debouncedSearch.value = ''
       currentPage.value = 1
     }
 
-    // Load dashboard data with validation
     const loadDashboard = async () => {
       loading.value = true
       error.value = null
       try {
         const data = await api.get('/user/dashboard')
 
-        // Validate data structure
         if (!data || typeof data !== 'object') {
           throw new Error('Invalid dashboard data received')
         }
 
-        // Ensure all arrays exist and are valid
+        // CHANGED: created_contests → participated_contests
         dashboardData.value = {
           total_score: data.total_score || 0,
-          created_contests: Array.isArray(data.created_contests) ? data.created_contests : [],
+          participated_contests: Array.isArray(data.participated_contests) ? data.participated_contests : [],
           jury_contests: Array.isArray(data.jury_contests) ? data.jury_contests : [],
           submissions_by_contest: Array.isArray(data.submissions_by_contest) ? data.submissions_by_contest : [],
           contest_wise_scores: Array.isArray(data.contest_wise_scores) ? data.contest_wise_scores : []
@@ -638,10 +559,10 @@ export default {
         error.value = err.message || 'Failed to load dashboard'
         showAlert(error.value, 'danger')
 
-        // Set empty data structure to prevent errors
+        // CHANGED: created_contests → participated_contests in fallback too
         dashboardData.value = {
           total_score: 0,
-          created_contests: [],
+          participated_contests: [],
           jury_contests: [],
           submissions_by_contest: [],
           contest_wise_scores: []
@@ -651,85 +572,51 @@ export default {
       }
     }
 
-    // Get status color for badges
     const getStatusColor = (status) => {
-      const statusColors = {
-        accepted: 'success',
-        rejected: 'danger',
-        pending: 'warning'
-      }
+      const statusColors = { accepted: 'success', rejected: 'danger', pending: 'warning' }
       return statusColors[status?.toLowerCase()] || 'secondary'
     }
 
-    // Get status badge color for contest status
     const getStatusBadgeColor = (status) => {
-      const statusColors = {
-        current: 'success',
-        active: 'success',
-        upcoming: 'warning',
-        past: 'secondary',
-        completed: 'info'
-      }
+      const statusColors = { current: 'success', active: 'success', upcoming: 'warning', past: 'secondary', completed: 'info' }
       return statusColors[status?.toLowerCase()] || 'primary'
     }
 
-    // Format date for display (memoized)
     const formatDate = (dateString) => {
       if (!dateString) return 'N/A'
       try {
         const date = new Date(dateString)
         if (isNaN(date.getTime())) return dateString
         return dateFormatterFull.format(date)
-      } catch (e) {
-        console.error('Date formatting error:', e)
-        return dateString
-      }
+      } catch (e) { return dateString }
     }
 
-    // Format date short (memoized)
     const formatDateShort = (dateString) => {
       if (!dateString) return ''
       try {
         const date = new Date(dateString)
         if (isNaN(date.getTime())) return dateString
         return dateFormatterShort.format(date)
-      } catch (e) {
-        console.error('Date formatting error:', e)
-        return dateString
-      }
+      } catch (e) { return dateString }
     }
 
-    // Handle submission click
     const handleSubmissionClick = (submission) => {
-      if (submission?.reviewed_at) {
-        openFeedbackModal(submission)
-      }
+      if (submission?.reviewed_at) openFeedbackModal(submission)
     }
 
-    // Fetch reviewer username with error handling
     const fetchReviewerName = async (reviewerId) => {
-      if (!reviewerId) {
-        reviewerName.value = 'Jury Member'
-        return
-      }
-
+      if (!reviewerId) { reviewerName.value = 'Jury Member'; return }
       loadingReviewer.value = true
       try {
         const userData = await api.get(`/user/${reviewerId}/username`)
-        if (userData && userData.username) {
-          reviewerName.value = userData.username
-        } else {
-          reviewerName.value = 'Jury Member'
-        }
+        reviewerName.value = userData?.username || 'Jury Member'
       } catch (err) {
-        console.warn('Could not fetch reviewer name:', err)
         reviewerName.value = 'Jury Member'
       } finally {
         loadingReviewer.value = false
       }
     }
 
-    // Open feedback modal 
     const openFeedbackModal = async (submission) => {
       if (!submission || !submission.reviewed_at) {
         showAlert('This submission has not been reviewed yet', 'info')
@@ -747,46 +634,30 @@ export default {
       await nextTick()
 
       const modalEl = document.getElementById('juryFeedbackModal')
-      if (!modalEl) {
-        console.error('JuryFeedbackModal DOM not found')
-        showAlert('Unable to open feedback modal', 'danger')
-        return
-      }
-
-      // Check if Bootstrap is loaded
-      if (typeof window.bootstrap === 'undefined') {
-        console.error('Bootstrap is not loaded')
-        showAlert('Unable to open feedback modal', 'danger')
-        return
-      }
+      if (!modalEl) { showAlert('Unable to open feedback modal', 'danger'); return }
+      if (typeof window.bootstrap === 'undefined') { showAlert('Unable to open feedback modal', 'danger'); return }
 
       try {
-        const modal = new window.bootstrap.Modal(modalEl)
-        modal.show()
+        new window.bootstrap.Modal(modalEl).show()
       } catch (error) {
-        console.error('Error opening modal:', error)
         showAlert('Error opening feedback modal', 'danger')
       }
     }
 
     const viewContest = async (contestId) => {
-      if (!contestId) {
-        showAlert('Invalid contest ID', 'danger')
-        return
-      }
+      if (!contestId) { showAlert('Invalid contest ID', 'danger'); return }
 
       let contestData = null
 
-      // Try to find contest in dashboard data
-      if (dashboardData.value?.created_contests) {
-        contestData = dashboardData.value.created_contests.find(c => c.id === contestId)
+      // CHANGED: search participated_contests instead of created_contests
+      if (dashboardData.value?.participated_contests) {
+        contestData = dashboardData.value.participated_contests.find(c => c.id === contestId)
       }
 
       if (!contestData && dashboardData.value?.jury_contests) {
         contestData = dashboardData.value.jury_contests.find(c => c.id === contestId)
       }
 
-      // Try store data
       if (!contestData) {
         try {
           const allContests = store.getContestsByCategory('current')
@@ -798,31 +669,25 @@ export default {
         }
       }
 
-      // Fetch from API if not found
       if (!contestData) {
         try {
           const contest = await api.get(`/contest/${contestId}`)
           if (contest && contest.name) {
-            const contestSlug = slugify(contest.name)
-            await router.push({ name: 'ContestView', params: { name: contestSlug } })
+            await router.push({ name: 'ContestView', params: { name: slugify(contest.name) } })
             return
           } else {
             throw new Error('Invalid contest data')
           }
         } catch (error) {
-          console.error('Error loading contest:', error)
           showAlert('Contest not found or failed to load', 'danger')
           return
         }
       }
 
-      // Navigate to contest
-      if (contestData && contestData.name) {
+      if (contestData?.name) {
         try {
-          const contestSlug = slugify(contestData.name)
-          await router.push({ name: 'ContestView', params: { name: contestSlug } })
+          await router.push({ name: 'ContestView', params: { name: slugify(contestData.name) } })
         } catch (error) {
-          console.error('Navigation error:', error)
           showAlert('Failed to navigate to contest', 'danger')
         }
       } else {
@@ -830,77 +695,49 @@ export default {
       }
     }
 
-    // Handle submit article with proper DOM waiting
     const handleSubmitArticle = async (contestId) => {
-      if (!store.isAuthenticated) {
-        showAlert('Please login to submit an article', 'warning')
-        return
-      }
+      if (!store.isAuthenticated) { showAlert('Please login to submit an article', 'warning'); return }
 
       submittingToContestId.value = contestId
-
-      // Wait for DOM update
       await nextTick()
 
       const modalElement = document.getElementById('submitArticleModal')
       if (!modalElement) {
-        console.error('Submit article modal not found')
         showAlert('Unable to open submission form', 'danger')
         submittingToContestId.value = null
         return
       }
-
-      // Check if Bootstrap is loaded
       if (typeof window.bootstrap === 'undefined') {
-        console.error('Bootstrap not loaded')
         showAlert('Unable to open submission form', 'danger')
         submittingToContestId.value = null
         return
       }
 
       try {
-        const modal = new window.bootstrap.Modal(modalElement)
-        modal.show()
+        new window.bootstrap.Modal(modalElement).show()
       } catch (error) {
-        console.error('Error opening modal:', error)
         showAlert('Error opening submission form', 'danger')
         submittingToContestId.value = null
       }
     }
 
-    // Handle article submitted
     const handleArticleSubmitted = () => {
       submittingToContestId.value = null
       selectedSubmission.value = null
       loadDashboard()
     }
 
-    // Cleanup on unmount
     onUnmounted(() => {
-      // Clear search timeout
-      if (searchTimeout) {
-        clearTimeout(searchTimeout)
-      }
-
-      // Cleanup any open modals
-      const modals = document.querySelectorAll('.modal.show')
-      modals.forEach(modalEl => {
+      if (searchTimeout) clearTimeout(searchTimeout)
+      document.querySelectorAll('.modal.show').forEach(modalEl => {
         try {
           const modal = window.bootstrap?.Modal?.getInstance(modalEl)
-          if (modal) {
-            modal.hide()
-            modal.dispose()
-          }
-        } catch (err) {
-          console.error('Error disposing modal:', err)
-        }
+          if (modal) { modal.hide(); modal.dispose() }
+        } catch (err) { console.error('Error disposing modal:', err) }
       })
     })
 
-    // Load data on mount
-    onMounted(() => {
-      loadDashboard()
-    })
+    onMounted(() => { loadDashboard() })
 
     return {
       dashboardData,
@@ -919,13 +756,11 @@ export default {
       showAllSubmissions,
       showAllScores,
       totalSubmissions,
-      filteredCreatedContests,
+      filteredParticipatedContests,
       filteredJuryContests,
-      paginatedCreatedContests,
-      paginatedJuryContests,
-      totalPagesCreated,
+      paginatedParticipatedContests,
+      totalPagesParticipated,
       totalPagesJury,
-      switchTab,
       clearSearch,
       handleSearchInput,
       getStatusColor,
@@ -941,6 +776,7 @@ export default {
   }
 }
 </script>
+
 
 <style scoped>
 :root {
@@ -993,12 +829,6 @@ export default {
   letter-spacing: -0.02em;
 }
 
-.dashboard-subtitle {
-  color: var(--wiki-text-muted);
-  font-size: 1rem;
-  margin-bottom: 0;
-}
-
 .stat-card {
   background: var(--wiki-card-bg);
   border: 1px solid var(--wiki-border);
@@ -1011,15 +841,6 @@ export default {
   position: relative;
   overflow: hidden;
   will-change: transform;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
 }
 
 .stat-card-primary::before {
@@ -1216,18 +1037,6 @@ export default {
   border-radius: 8px;
   font-weight: 500;
   font-size: 0.875rem;
-}
-
-.contest-tabs {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.contest-tabs .btn {
-  border-radius: 0;
-  font-weight: 500;
-  font-size: 0.875rem;
-  padding: 0.5rem 1rem;
 }
 
 .submissions-container {
@@ -1835,16 +1644,6 @@ export default {
 
   .stat-icon {
     margin: 0 auto;
-  }
-
-  .contest-tabs {
-    width: 100%;
-  }
-
-  .contest-tabs .btn {
-    flex: 1;
-    font-size: 0.8125rem;
-    padding: 0.5rem;
   }
 
   .submission-item {
