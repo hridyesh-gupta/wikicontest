@@ -331,17 +331,17 @@ def logout():
 # ------------------------------------------------------------------------
 
 
-@user_bp.route('/dashboard', methods=['GET'])
+@user_bp.route("/dashboard", methods=["GET"])
 @require_auth
 @handle_errors
 def get_dashboard():
     """
     Get user dashboard data with SORTED contests
-    
+
     Contests are sorted by:
     1. Status priority: current/active → upcoming → past/completed
     2. Created date (newest first) within same status
-    
+
     Returns:
         JSON response with user's dashboard information
     """
@@ -355,22 +355,28 @@ def get_dashboard():
     from app.models.contest import Contest
 
     # Query submissions grouped by contest to calculate scores
-    contest_scores = db.session.query(
-        Contest.id.label('contest_id'),
-        Contest.name.label('contest_name'),
-        db.func.sum(Submission.score).label('contest_score'),
-        db.func.count(Submission.id).label('submission_count')
-    ).join(Submission).filter(
-        Submission.user_id == user.id
-    ).group_by(Contest.id, Contest.name).order_by(Contest.name).all()
+    contest_scores = (
+        db.session.query(
+            Contest.id.label("contest_id"),
+            Contest.name.label("contest_name"),
+            db.func.sum(Submission.score).label("contest_score"),
+            db.func.count(Submission.id).label("submission_count"),
+        )
+        .join(Submission)
+        .filter(Submission.user_id == user.id)
+        .group_by(Contest.id, Contest.name)
+        .order_by(Contest.name)
+        .all()
+    )
 
     # --- Get All User's Submissions Grouped by Contest ---
-    submissions_query = db.session.query(
-        Submission,
-        Contest.name.label('contest_name')
-    ).join(Contest).filter(
-        Submission.user_id == user.id
-    ).order_by(Submission.submitted_at.desc()).all()
+    submissions_query = (
+        db.session.query(Submission, Contest.name.label("contest_name"))
+        .join(Contest)
+        .filter(Submission.user_id == user.id)
+        .order_by(Submission.submitted_at.desc())
+        .all()
+    )
 
     # Group submissions by contest for organized display
     submissions_by_contest = {}
@@ -378,52 +384,69 @@ def get_dashboard():
         contest_id = submission.contest_id
         if contest_id not in submissions_by_contest:
             submissions_by_contest[contest_id] = {
-                'contest_id': contest_id,
-                'contest_name': contest_name,
-                'submissions': []
+                "contest_id": contest_id,
+                "contest_name": contest_name,
+                "submissions": [],
             }
-        submissions_by_contest[contest_id]['submissions'].append(submission.to_dict())
+        submissions_by_contest[contest_id]["submissions"].append(submission.to_dict())
+    participated_contest_ids = (
+        db.session.query(Submission.contest_id)
+        .filter(Submission.user_id == user.id)
+        .distinct()
+        .subquery()
+    )
 
-    # --- Get Contests Created by User  ---
-    created_contests = Contest.query.filter_by(created_by=user.username).all()
-    created_contests_data = []
-    for contest in created_contests:
+    participated_contests = Contest.query.filter(
+        Contest.id.in_(participated_contest_ids)
+    ).all()
+
+    participated_contests_data = []
+    for contest in participated_contests:
         contest_data = contest.to_dict()
-        contest_data['submission_count'] = contest.get_submission_count()
-        created_contests_data.append(contest_data)
-    
-    #  SORT CREATED CONTESTS
-    created_contests_data = sort_contests_by_status(created_contests_data)
+        # Show only this user's submission count, not the total contest count
+        contest_data["submission_count"] = Submission.query.filter_by(
+            contest_id=contest.id, user_id=user.id
+        ).count()
+        participated_contests_data.append(contest_data)
+
+    # Sort participated contests by status (same sorting as before)
+    participated_contests_data = sort_contests_by_status(participated_contests_data)
 
     # --- Get Contests Where User is a Jury Member (WITH SORTING) ---
     jury_contests = Contest.query.filter(
-        Contest.jury_members.like(f'%{user.username}%')
+        Contest.jury_members.like(f"%{user.username}%")
     ).all()
     jury_contests_data = []
     for contest in jury_contests:
         contest_data = contest.to_dict()
-        contest_data['submission_count'] = contest.get_submission_count()
+        contest_data["submission_count"] = contest.get_submission_count()
         jury_contests_data.append(contest_data)
-    
+
     #  SORT JURY CONTESTS
     jury_contests_data = sort_contests_by_status(jury_contests_data)
 
-    return jsonify({
-        'username': user.username,
-        'total_score': total_score,
-        'contest_wise_scores': [
+    return (
+        jsonify(
             {
-                'contest_id': row.contest_id,
-                'contest_name': row.contest_name,
-                'contest_score': row.contest_score or 0,
-                'submission_count': row.submission_count
+                "username": user.username,
+                "total_score": total_score,
+                "contest_wise_scores": [
+                    {
+                        "contest_id": row.contest_id,
+                        "contest_name": row.contest_name,
+                        "contest_score": row.contest_score or 0,
+                        "submission_count": row.submission_count,
+                    }
+                    for row in contest_scores
+                ],
+                "submissions_by_contest": list(submissions_by_contest.values()),
+                "participated_contests": participated_contests_data,  # ← renamed from created_contests
+                "jury_contests": jury_contests_data,
             }
-            for row in contest_scores
-        ],
-        'submissions_by_contest': list(submissions_by_contest.values()),
-        'created_contests': created_contests_data,
-        'jury_contests': jury_contests_data
-    }), 200
+        ),
+        200,
+    )
+
 
 @user_bp.route("/all", methods=["GET"])
 @require_role("admin")
