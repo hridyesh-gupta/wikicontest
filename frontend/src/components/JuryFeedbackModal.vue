@@ -38,22 +38,6 @@ aria-hidden="true">
               </div>
             </div>
 
-            <!-- Reviewer name and review date -->
-            <div class="feedback-section mb-4">
-              <h6 class="feedback-section-title">
-                <i class="fas fa-user-tie me-2"></i>Reviewed By
-              </h6>
-              <div class="feedback-content">
-                <div class="reviewer-info">
-                  <span class="reviewer-name">{{ reviewerName || 'Jury Member' }}</span>
-                  <span class="review-date text-muted ms-3">
-                    <i class="fas fa-calendar me-1"></i>
-                    {{ formatDate(submission.reviewed_at) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
             <!-- Total score awarded to submission -->
             <div class="feedback-section mb-4">
               <h6 class="feedback-section-title">

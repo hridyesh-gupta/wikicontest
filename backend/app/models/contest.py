@@ -15,6 +15,7 @@ from app.models.contest_mixin import ContestMixin
 # CONTEST MODEL
 # ------------------------------------------------------------------------
 
+
 class Contest(BaseModel, ContestMixin):
     """
     Contest model representing contests in the WikiContest platform
@@ -344,7 +345,7 @@ class Contest(BaseModel, ContestMixin):
             .join(Submission)
             .filter(Submission.contest_id == self.id)
             .group_by(User.id, User.username)
-            .order_by(db.func.sum(Submission.score).desc())
+            .order_by(User.username.asc())  # alphabetical A-Z
             .all()
         )
 
@@ -365,7 +366,7 @@ class Contest(BaseModel, ContestMixin):
     def set_scoring_parameters(self, params):
         """
         Set scoring parameters configuration with validation
-        
+
         Overrides ContestMixin.set_scoring_parameters to add validation logic
 
         Args:

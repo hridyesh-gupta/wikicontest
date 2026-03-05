@@ -8,10 +8,7 @@
             </button>
 
             <!-- Refresh button with loading state -->
-            <button v-if="!loading"
-class="btn btn-primary"
-@click="refreshLeaderboard"
-:disabled="refreshing">
+            <button v-if="!loading" class="btn btn-primary" @click="refreshLeaderboard" :disabled="refreshing">
                 <span v-if="refreshing" class="spinner-border spinner-border-sm me-2"></span>
                 <i v-else class="fas fa-sync-alt me-2"></i>
                 {{ refreshing ? 'Refreshing...' : 'Refresh' }}
@@ -96,65 +93,17 @@ class="btn btn-primary"
                         </div>
                     </div>
                 </div>
-
-                <!-- Total Marks Awarded Card -->
+                <!-- Total Participants Card -->
                 <div class="col-lg-3 col-md-6 mb-3">
                     <div class="stat-card">
                         <div class="stat-icon-wrapper">
                             <div class="stat-icon bg-info">
-                                <i class="fas fa-star"></i>
+                                <i class="fas fa-users"></i>
                             </div>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-value">{{ contestStats.total_marks_awarded }}</div>
-                            <div class="stat-label">Total Marks</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filters -->
-            <!-- Filter by status, minimum marks, and sort order -->
-            <div class="card mb-4 filters-card">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <!-- Status Filter -->
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label">Filter by Status</label>
-                            <select v-model="filters.filter_type" class="form-select" @change="applyFilters">
-                                <option value="all">All Participants</option>
-                                <option value="reviewed">Reviewed Only</option>
-                                <option value="pending">Pending Only</option>
-                            </select>
-                        </div>
-
-                        <!-- Minimum Marks Filter -->
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label">Minimum Marks</label>
-                            <input v-model.number="filters.min_marks"
-type="number"
-class="form-control"
-                                placeholder="e.g., 100"
-@change="applyFilters" />
-                        </div>
-
-                        <!-- Sort By Dropdown -->
-                        <div class="col-lg-3 col-md-6">
-                            <label class="form-label">Sort By</label>
-                            <select v-model="filters.sort_by" class="form-select" @change="applyFilters">
-                                <option value="marks">Total Marks</option>
-                                <option value="submissions">Submission Count</option>
-                            </select>
-                        </div>
-
-                        <!-- Reset Filters Button -->
-                        <div class="col-lg-3 col-md-6 d-flex align-items-end">
-                            <button class="btn btn-outline-secondary w-100" @click="resetFilters">
-                                <i class="fas fa-undo me-2"></i>Reset Filters
-                            </button>
+                            <div class="stat-value">{{ pagination.total_results }}</div>
+                            <div class="stat-label">Total Participants</div>
                         </div>
                     </div>
                 </div>
@@ -167,9 +116,7 @@ class="form-control"
                     <i class="fas fa-trophy empty-state-icon mb-3"></i>
                     <h4 class="mb-3">No participants found</h4>
                     <p class="text-muted mb-0">
-                        {{ filters.filter_type !== 'all' || filters.min_marks
-                            ? 'Try adjusting your filters to see more results'
-                            : 'No submissions have been made to this contest yet' }}
+                        'No submissions have been made to this contest yet'
                     </p>
                 </div>
             </div>
@@ -179,10 +126,10 @@ class="form-control"
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
-                            <i class="fas fa-list-ol me-2"></i>Rankings
+                            <i class="fas fa-list-ol me-2"></i>Scoreboard
                         </h5>
-                        <!-- Total participants count badge -->
-                        <span class="badge bg-secondary">{{ pagination.total_results }} participants</span>
+                        <!-- Total participants count badge
+                        <span class="badge bg-secondary">{{ pagination.total_results }} participants</span> -->
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -190,7 +137,6 @@ class="form-control"
                         <table class="table table-hover mb-0 leaderboard-table">
                             <thead>
                                 <tr>
-                                    <th class="rank-col">Rank</th>
                                     <th>Username</th>
                                     <th class="text-center">Submissions</th>
                                     <th class="text-center">Total Marks</th>
@@ -200,18 +146,8 @@ class="form-control"
                             </thead>
                             <tbody>
                                 <!-- Participant rows with special styling for top 3 -->
-                                <tr v-for="participant in leaderboard"
-:key="participant.user_id"
-                                    :class="getRankRowClass(participant.rank)">
+                                <tr v-for="participant in leaderboard" :key="participant.user_id">
                                     <!-- Rank badge with special icons for top 3 positions -->
-                                    <td class="rank-col">
-                                        <div class="rank-badge" :class="getRankBadgeClass(participant.rank)">
-                                            <span v-if="participant.rank <= 3" class="rank-icon">
-                                                <i :class="getRankIcon(participant.rank)"></i>
-                                            </span>
-                                            <span v-else class="rank-number">{{ participant.rank }}</span>
-                                        </div>
-                                    </td>
                                     <td>
                                         <div class="username-cell">
                                             <i class="fas fa-user me-2 text-muted"></i>
@@ -246,17 +182,14 @@ class="form-control"
                     <ul class="pagination">
                         <!-- Previous page button -->
                         <li class="page-item" :class="{ disabled: pagination.page === 1 }">
-                            <button class="page-link"
-@click="changePage(pagination.page - 1)"
+                            <button class="page-link" @click="changePage(pagination.page - 1)"
                                 :disabled="pagination.page === 1">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
                         </li>
 
                         <!-- Page number buttons (only show visible pages) -->
-                        <li v-for="page in visiblePages"
-:key="page"
-class="page-item"
+                        <li v-for="page in visiblePages" :key="page" class="page-item"
                             :class="{ active: page === pagination.page }">
                             <button class="page-link" @click="changePage(page)">
                                 {{ page }}
@@ -265,8 +198,7 @@ class="page-item"
 
                         <!-- Next page button -->
                         <li class="page-item" :class="{ disabled: pagination.page === pagination.total_pages }">
-                            <button class="page-link"
-@click="changePage(pagination.page + 1)"
+                            <button class="page-link" @click="changePage(pagination.page + 1)"
                                 :disabled="pagination.page === pagination.total_pages">
                                 <i class="fas fa-chevron-right"></i>
                             </button>
@@ -284,220 +216,151 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../services/api'
 
 export default {
-  name: 'ContestLeaderboard',
+    name: 'ContestLeaderboard',
 
-  setup() {
-    const router = useRouter()
-    const route = useRoute()
+    setup() {
+        const router = useRouter()
+        const route = useRoute()
 
-    // State
-    const contest = ref(null)
-    // Contest statistics for summary cards
-    const contestStats = ref({
-      total_submissions: 0,
-      total_reviewed: 0,
-      total_pending: 0,
-      total_marks_awarded: 0
-    })
-    const leaderboard = ref([])
-    const loading = ref(true)
-    const refreshing = ref(false)
-    const error = ref(null)
+        // State
+        const contest = ref(null)
+        // Contest statistics for summary cards
+        const contestStats = ref({
+            total_submissions: 0,
+            total_reviewed: 0,
+            total_pending: 0,
+            total_marks_awarded: 0
+        })
+        const leaderboard = ref([])
+        const loading = ref(true)
+        const refreshing = ref(false)
+        const error = ref(null)
 
-    // Filters
-    // User can filter by status, minimum marks, and sort order
-    const filters = ref({
-      filter_type: 'all',
-      min_marks: null,
-      sort_by: 'marks'
-    })
+        // Pagination
+        // 50 participants per page by default
+        const pagination = ref({
+            page: 1,
+            per_page: 50,
+            total_pages: 1,
+            total_results: 0
+        })
 
-    // Pagination
-    // 50 participants per page by default
-    const pagination = ref({
-      page: 1,
-      per_page: 50,
-      total_pages: 1,
-      total_results: 0
-    })
-
-    // Get contest ID from contest name in URL
-    const getContestId = async () => {
-      try {
-        const contestName = route.params.name
-        const contestData = await api.get(`/contest/name/${contestName}`)
-        return contestData.id
-      } catch (err) {
-        console.error('Error getting contest ID:', err)
-        throw err
-      }
-    }
-
-    // Load leaderboard data from API
-    const loadLeaderboard = async (showLoading = true) => {
-      // Use different loading states for initial load vs refresh
-      if (showLoading) loading.value = true
-      else refreshing.value = true
-      error.value = null
-
-      try {
-        const contestId = await getContestId()
-
-        // Build query parameters from filters and pagination
-        const params = {
-          filter: filters.value.filter_type,
-          sort_by: filters.value.sort_by,
-          page: pagination.value.page,
-          per_page: pagination.value.per_page
+        // Get contest ID from contest name in URL
+        const getContestId = async () => {
+            try {
+                const contestName = route.params.name
+                const contestData = await api.get(`/contest/name/${contestName}`)
+                return contestData.id
+            } catch (err) {
+                console.error('Error getting contest ID:', err)
+                throw err
+            }
         }
 
-        // Add minimum marks filter if specified
-        if (filters.value.min_marks) {
-          params.min_marks = filters.value.min_marks
+        // Load leaderboard data from API
+        const loadLeaderboard = async (showLoading = true) => {
+            // Use different loading states for initial load vs refresh
+            if (showLoading) loading.value = true
+            else refreshing.value = true
+            error.value = null
+
+            try {
+                const contestId = await getContestId()
+
+                // Fetch leaderboard data from API
+                const data = await api.get(`/contest/${contestId}/leaderboard`)
+
+                contest.value = data.contest
+                contestStats.value = data.contest_stats
+                leaderboard.value = data.leaderboard
+                pagination.value = data.pagination
+            } catch (err) {
+                console.error('Error loading leaderboard:', err)
+                error.value = 'Failed to load leaderboard: ' + (err.message || 'Unknown error')
+            } finally {
+                loading.value = false
+                refreshing.value = false
+            }
         }
 
-        // Fetch leaderboard data from API
-        const data = await api.get(`/contest/${contestId}/leaderboard`, { params })
 
-        contest.value = data.contest
-        contestStats.value = data.contest_stats
-        leaderboard.value = data.leaderboard
-        pagination.value = data.pagination
-      } catch (err) {
-        console.error('Error loading leaderboard:', err)
-        error.value = 'Failed to load leaderboard: ' + (err.message || 'Unknown error')
-      } finally {
-        loading.value = false
-        refreshing.value = false
-      }
+        // Refresh leaderboard without full page reload
+        const refreshLeaderboard = () => {
+            loadLeaderboard(false)
+        }
+
+        // Change to specified page number
+        const changePage = (page) => {
+            if (page < 1 || page > pagination.value.total_pages) return
+            pagination.value.page = page
+            loadLeaderboard(false)
+            // Scroll to top for better UX
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+
+        // Calculate visible page numbers for pagination (show current page ± 2)
+        const visiblePages = computed(() => {
+            const total = pagination.value.total_pages
+            const current = pagination.value.page
+            const delta = 2
+            const pages = []
+
+            for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+                pages.push(i)
+            }
+
+            return pages
+        })
+
+        // Get human-readable status label
+        const getStatusLabel = (status) => {
+            const labels = {
+                current: 'Active',
+                upcoming: 'Upcoming',
+                past: 'Ended',
+                unknown: 'Unknown'
+            }
+            return labels[status] || 'Unknown'
+        }
+
+        const getStatusBadgeClass = (status) => {
+            const classes = {
+                current: 'bg-success',
+                upcoming: 'bg-warning',
+                past: 'bg-secondary',
+                unknown: 'bg-secondary'
+            }
+            return classes[status] || 'bg-secondary'
+        }
+        // Navigate back to contest details page
+        const goBack = () => {
+            router.push({
+                name: 'ContestView',
+                params: { name: route.params.name }
+            })
+        }
+
+        // Load leaderboard on component mount
+        onMounted(() => {
+            loadLeaderboard()
+        })
+
+        return {
+            contest,
+            contestStats,
+            leaderboard,
+            loading,
+            refreshing,
+            error,
+            pagination,
+            visiblePages,
+            refreshLeaderboard,
+            changePage,
+            getStatusLabel,
+            getStatusBadgeClass,
+            goBack
+        }
     }
-
-    // Apply filters and reset to first page
-    const applyFilters = () => {
-      pagination.value.page = 1
-      loadLeaderboard(false)
-    }
-
-    // Reset all filters to default values
-    const resetFilters = () => {
-      filters.value = {
-        filter_type: 'all',
-        min_marks: null,
-        sort_by: 'marks'
-      }
-      pagination.value.page = 1
-      loadLeaderboard(false)
-    }
-
-    // Refresh leaderboard without full page reload
-    const refreshLeaderboard = () => {
-      loadLeaderboard(false)
-    }
-
-    // Change to specified page number
-    const changePage = (page) => {
-      if (page < 1 || page > pagination.value.total_pages) return
-      pagination.value.page = page
-      loadLeaderboard(false)
-      // Scroll to top for better UX
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-
-    // Calculate visible page numbers for pagination (show current page ± 2)
-    const visiblePages = computed(() => {
-      const total = pagination.value.total_pages
-      const current = pagination.value.page
-      const delta = 2
-      const pages = []
-
-      for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
-        pages.push(i)
-      }
-
-      return pages
-    })
-
-    // Get human-readable status label
-    const getStatusLabel = (status) => {
-      const labels = {
-        current: 'Active',
-        upcoming: 'Upcoming',
-        past: 'Ended',
-        unknown: 'Unknown'
-      }
-      return labels[status] || 'Unknown'
-    }
-
-    // Get Bootstrap badge class for contest status
-    const getStatusBadgeClass = (status) => {
-      const classes = {
-        current: 'bg-success',
-        upcoming: 'bg-warning',
-        past: 'bg-secondary',
-        unknown: 'bg-secondary'
-      }
-      return classes[status] || 'bg-secondary'
-    }
-
-    // Get row class for top 3 ranks (special highlighting)
-    const getRankRowClass = (rank) => {
-      if (rank === 1) return 'rank-row-1'
-      if (rank === 2) return 'rank-row-2'
-      if (rank === 3) return 'rank-row-3'
-      return ''
-    }
-
-    // Get badge class for rank (gold, silver, bronze)
-    const getRankBadgeClass = (rank) => {
-      if (rank === 1) return 'rank-badge-gold'
-      if (rank === 2) return 'rank-badge-silver'
-      if (rank === 3) return 'rank-badge-bronze'
-      return 'rank-badge-default'
-    }
-
-    // Get icon for top 3 ranks
-    const getRankIcon = (rank) => {
-      if (rank === 1) return 'fas fa-trophy'
-      if (rank === 2) return 'fas fa-medal'
-      if (rank === 3) return 'fas fa-award'
-      return ''
-    }
-
-    // Navigate back to contest details page
-    const goBack = () => {
-      router.push({
-        name: 'ContestView',
-        params: { name: route.params.name }
-      })
-    }
-
-    // Load leaderboard on component mount
-    onMounted(() => {
-      loadLeaderboard()
-    })
-
-    return {
-      contest,
-      contestStats,
-      leaderboard,
-      loading,
-      refreshing,
-      error,
-      filters,
-      pagination,
-      visiblePages,
-      applyFilters,
-      resetFilters,
-      refreshLeaderboard,
-      changePage,
-      getStatusLabel,
-      getStatusBadgeClass,
-      getRankRowClass,
-      getRankBadgeClass,
-      getRankIcon,
-      goBack
-    }
-  }
 }
 </script>
 
@@ -659,50 +522,6 @@ export default {
     padding: 1.5rem;
 }
 
-/* Filters Card */
-.filters-card .card-body {
-    padding: 1.25rem 1.5rem;
-}
-
-.form-label {
-    font-weight: 600;
-    color: var(--wiki-dark);
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-}
-
-/* Dark mode form label */
-[data-theme="dark"] .form-label {
-    color: #ffffff;
-}
-
-/* Form input styling */
-.form-control,
-.form-select {
-    border: 1px solid var(--wiki-border);
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
-    transition: all 0.2s ease;
-    background-color: white;
-    color: var(--wiki-dark);
-}
-
-/* Dark mode form inputs */
-[data-theme="dark"] .form-control,
-[data-theme="dark"] .form-select {
-    background-color: #2a2a2a;
-    color: #ffffff;
-    border-color: #444;
-}
-
-/* Focus state with brand color */
-.form-control:focus,
-.form-select:focus {
-    border-color: var(--wiki-primary);
-    box-shadow: 0 0 0 0.2rem rgba(0, 102, 153, 0.25);
-    outline: none;
-}
-
 /* Empty State */
 .empty-state-card .card-body {
     padding: 3rem 1.5rem;
@@ -766,90 +585,6 @@ export default {
     padding: 0.75rem;
     vertical-align: middle;
     color: var(--wiki-text);
-}
-
-/* Top 3 Row Highlights */
-/* Gold highlight for 1st place */
-.rank-row-1 {
-    background-color: rgba(255, 215, 0, 0.08) !important;
-}
-
-/* Silver highlight for 2nd place */
-.rank-row-2 {
-    background-color: rgba(192, 192, 192, 0.08) !important;
-}
-
-/* Bronze highlight for 3rd place */
-.rank-row-3 {
-    background-color: rgba(205, 127, 50, 0.08) !important;
-}
-
-/* Dark mode hover for top 3 rows */
-[data-theme="dark"] .rank-row-1:hover,
-[data-theme="dark"] .rank-row-2:hover,
-[data-theme="dark"] .rank-row-3:hover {
-    background-color: rgba(93, 184, 230, 0.1) !important;
-}
-
-/* Rank Badge */
-.rank-col {
-    width: 70px;
-    text-align: center;
-}
-
-/* Circular badge for rank display */
-.rank-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    font-weight: 700;
-    font-size: 1.1rem;
-}
-
-/* Gold gradient for 1st place */
-.rank-badge-gold {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    color: #000;
-    box-shadow: 0 2px 6px rgba(255, 215, 0, 0.4);
-}
-
-/* Silver gradient for 2nd place */
-.rank-badge-silver {
-    background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
-    color: #444;
-    box-shadow: 0 2px 6px rgba(192, 192, 192, 0.4);
-}
-
-/* Bronze gradient for 3rd place */
-.rank-badge-bronze {
-    background: linear-gradient(135deg, #cd7f32, #e89c5f);
-    color: #fff;
-    box-shadow: 0 2px 6px rgba(205, 127, 50, 0.4);
-}
-
-/* Default badge for ranks 4+ */
-.rank-badge-default {
-    background-color: #f8f9fa;
-    color: var(--wiki-dark);
-    border: 2px solid #dee2e6;
-}
-
-/* Dark mode default rank badge */
-[data-theme="dark"] .rank-badge-default {
-    background-color: #3a3a3a;
-    color: #ffffff;
-    border-color: #555;
-}
-
-.rank-icon {
-    font-size: 1.3rem;
-}
-
-.rank-number {
-    font-size: 1rem;
 }
 
 /* Username Cell */
@@ -997,18 +732,8 @@ export default {
         font-size: 1.2rem;
     }
 
-    .stat-content h3 {
-        font-size: 1.5rem;
-    }
-
     .leaderboard-table {
         font-size: 0.9rem;
-    }
-
-    .rank-badge {
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
     }
 }
 </style>
