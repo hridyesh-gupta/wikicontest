@@ -67,12 +67,15 @@
               <div v-if="dashboardData.submissions_by_contest?.length > 0">
                 <div class="submissions-container" :class="{ 'expanded': showAllSubmissions }">
                   <div
-                    v-for="contest in (showAllSubmissions ? dashboardData.submissions_by_contest : dashboardData.submissions_by_contest.slice(0, 3))"
-                    :key="contest.contest_id" class="submission-group mb-3">
+                    v-for="contest in (showAllSubmissions ? dashboardData.submissions_by_contest
+                      : dashboardData.submissions_by_contest.slice(0, 3))"
+                    :key="contest.contest_id"
+class="submission-group mb-3">
                     <div class="contest-name-badge">{{ contest.contest_name }}</div>
 
                     <div v-for="submission in contest.submissions.slice(0, showAllSubmissions ? undefined : 2)"
-                      :key="submission.id" class="submission-item"
+                      :key="submission.id"
+class="submission-item"
                       :class="{ 'submission-clickable': submission.reviewed_at }"
                       @click="handleSubmissionClick(submission)">
                       <div class="submission-info">
@@ -83,8 +86,10 @@
                         <span :class="`badge badge-${getStatusColor(submission.status)}`">
                           {{ submission.status }}
                         </span>
-                        <button v-if="submission.reviewed_at" class="btn-icon btn-feedback"
-                          @click.stop="openFeedbackModal(submission)" title="View Feedback">
+                        <button v-if="submission.reviewed_at"
+class="btn-icon btn-feedback"
+                          @click.stop="openFeedbackModal(submission)"
+title="View Feedback">
                           <i class="fas fa-comment-dots"></i>
                         </button>
                       </div>
@@ -122,8 +127,10 @@
               <div v-if="dashboardData.contest_wise_scores?.length > 0">
                 <div class="scores-container" :class="{ 'expanded': showAllScores }">
                   <div
-                    v-for="score in (showAllScores ? dashboardData.contest_wise_scores : dashboardData.contest_wise_scores.slice(0, 6))"
-                    :key="score.contest_id" class="score-item">
+                    v-for="score in (showAllScores ? dashboardData.contest_wise_scores
+                      : dashboardData.contest_wise_scores.slice(0, 6))"
+                    :key="score.contest_id"
+class="score-item">
                     <span class="score-contest">{{ score.contest_name }}</span>
                     <span class="score-points">{{ score.contest_score }} pts</span>
                   </div>
@@ -159,15 +166,23 @@
             <div class="controls-row mt-3">
               <div class="search-box">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" class="form-control search-input" placeholder="Search contests..."
-                  v-model="searchQuery" @input="handleSearchInput" />
-                <button v-if="searchQuery" class="btn-clear" @click="clearSearch" title="Clear search">
+                <input type="text"
+class="form-control search-input"
+placeholder="Search contests..."
+                  v-model="searchQuery"
+@input="handleSearchInput" />
+                <button v-if="searchQuery"
+class="btn-clear"
+@click="clearSearch"
+title="Clear search">
                   <i class="fas fa-times"></i>
                 </button>
               </div>
 
               <div class="filter-buttons">
-                <button v-for="status in ['all', 'current', 'upcoming', 'past']" :key="status" class="btn btn-sm"
+                <button v-for="status in ['all', 'current', 'upcoming', 'past']"
+:key="status"
+class="btn btn-sm"
                   :class="filterStatus === status ? 'btn-primary' : 'btn-outline-secondary'"
                   @click="filterStatus = status; currentPage = 1">
                   {{ status.charAt(0).toUpperCase() + status.slice(1) }}
@@ -197,7 +212,9 @@
                     </thead>
                     <tbody>
                       <!-- CHANGED: paginatedCreatedContests → paginatedParticipatedContests -->
-                      <tr v-for="contest in paginatedParticipatedContests" :key="contest.id" @click="viewContest(contest.id)"
+                      <tr v-for="contest in paginatedParticipatedContests"
+:key="contest.id"
+@click="viewContest(contest.id)"
                         class="table-row-clickable">
                         <td>
                           <div class="contest-name-cell">
@@ -230,7 +247,9 @@
                 <!-- Mobile Card View -->
                 <div class="d-md-none">
                   <!-- CHANGED: paginatedCreatedContests → paginatedParticipatedContests -->
-                  <div v-for="contest in paginatedParticipatedContests" :key="contest.id" class="contest-card"
+                  <div v-for="contest in paginatedParticipatedContests"
+:key="contest.id"
+class="contest-card"
                     @click="viewContest(contest.id)">
                     <div class="contest-card-header">
                       <strong>{{ contest.name }}</strong>
@@ -262,13 +281,17 @@
                         </button>
                       </li>
 
-                      <li v-for="page in totalPagesParticipated" :key="page" class="page-item"
+                      <li v-for="page in totalPagesParticipated"
+:key="page"
+class="page-item"
                         :class="{ active: currentPage === page }">
                         <button class="page-link" @click="currentPage = page">{{ page }}</button>
                       </li>
 
                       <li class="page-item" :class="{ disabled: currentPage === totalPagesParticipated }">
-                        <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPagesParticipated">
+                        <button class="page-link"
+@click="currentPage++"
+                          :disabled="currentPage === totalPagesParticipated">
                           <i class="fas fa-chevron-right"></i>
                         </button>
                       </li>
@@ -288,7 +311,8 @@
                 <i class="fas fa-trophy fa-4x mb-3"></i>
                 <h5>No Contests Found</h5>
                 <p class="text-muted">
-                  {{ searchQuery ? 'Try adjusting your search or filters' : 'You have not participated in any contests yet' }}
+                  {{ searchQuery ? 'Try adjusting your search or filters'
+                    : 'You have not participated in any contests yet' }}
                 </p>
               </div>
             </div>
@@ -308,7 +332,9 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="contest in paginatedJuryContests" :key="contest.id" @click="viewContest(contest.id)"
+                      <tr v-for="contest in paginatedJuryContests"
+:key="contest.id"
+@click="viewContest(contest.id)"
                         class="table-row-clickable">
                         <td><strong>{{ contest.name }}</strong></td>
                         <td>{{ contest.project_name || 'N/A' }}</td>
@@ -331,7 +357,9 @@
                 </div>
 
                 <div class="d-md-none">
-                  <div v-for="contest in paginatedJuryContests" :key="contest.id" class="contest-card"
+                  <div v-for="contest in paginatedJuryContests"
+:key="contest.id"
+class="contest-card"
                     @click="viewContest(contest.id)">
                     <div class="contest-card-header">
                       <strong>{{ contest.name }}</strong>
@@ -359,12 +387,16 @@
                           <i class="fas fa-chevron-left"></i>
                         </button>
                       </li>
-                      <li v-for="page in totalPagesJury" :key="page" class="page-item"
+                      <li v-for="page in totalPagesJury"
+:key="page"
+class="page-item"
                         :class="{ active: currentPage === page }">
                         <button class="page-link" @click="currentPage = page">{{ page }}</button>
                       </li>
                       <li class="page-item" :class="{ disabled: currentPage === totalPagesJury }">
-                        <button class="page-link" @click="currentPage++" :disabled="currentPage === totalPagesJury">
+                        <button class="page-link"
+@click="currentPage++"
+                          :disabled="currentPage === totalPagesJury">
                           <i class="fas fa-chevron-right"></i>
                         </button>
                       </li>
@@ -382,7 +414,8 @@
                 <i class="fas fa-gavel fa-4x mb-3"></i>
                 <h5>No Jury Assignments</h5>
                 <p class="text-muted">
-                  {{ searchQuery ? 'Try adjusting your search or filters' : `You haven't been assigned as a jury member yet` }}
+                  {{ searchQuery ? 'Try adjusting your search or filters'
+                    : `You haven't been assigned as a jury member yet` }}
                 </p>
               </div>
             </div>
@@ -398,11 +431,14 @@
     </div>
 
     <!-- Submit Article Modal -->
-    <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
+    <SubmitArticleModal v-if="submittingToContestId"
+:contest-id="submittingToContestId"
       @submitted="handleArticleSubmitted" />
 
     <!-- Jury Feedback Modal -->
-    <JuryFeedbackModal v-if="selectedSubmission" :submission="selectedSubmission" :reviewer-name="reviewerName"
+    <JuryFeedbackModal v-if="selectedSubmission"
+:submission="selectedSubmission"
+:reviewer-name="reviewerName"
       :loading-reviewer="loadingReviewer" />
   </div>
 </template>
@@ -759,6 +795,7 @@ export default {
       filteredParticipatedContests,
       filteredJuryContests,
       paginatedParticipatedContests,
+      paginatedJuryContests,
       totalPagesParticipated,
       totalPagesJury,
       clearSearch,

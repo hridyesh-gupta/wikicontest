@@ -7,12 +7,16 @@
           <i class="fas fa-arrow-left me-2"></i>Back to Contests
         </button>
         <div class="d-flex gap-2">
-          <button v-if="contest" class="btn btn-primary text-white" @click="goToLeaderboard"
+          <button v-if="contest"
+class="btn btn-primary text-white"
+@click="goToLeaderboard"
             title="View Contest Leaderboard">
             <i class="fas fa-trophy me-2"></i>Leaderboard
           </button>
           <!-- Only contest creators and admins can delete -->
-          <button v-if="canDeleteContest" class="btn btn-danger" @click="handleDeleteContest"
+          <button v-if="canDeleteContest"
+class="btn btn-danger"
+@click="handleDeleteContest"
             :disabled="deletingContest">
             <span v-if="deletingContest" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="fas fa-trash me-2"></i>
@@ -26,7 +30,9 @@
 
       <!-- Generate Report Button -->
       <div v-if="canViewSubmissions && contest" class="d-flex justify-content-end">
-        <button class="btn btn-success text-white" @click="openReportModal" :disabled="generatingReport"
+        <button class="btn btn-success text-white"
+@click="openReportModal"
+:disabled="generatingReport"
           title="Generate and Download Contest Report">
           <span v-if="generatingReport">
             <span class="spinner-border spinner-border-sm me-2"></span>
@@ -70,14 +76,26 @@
       <!-- Tabs -->
       <ul class="nav nav-tabs mb-4" role="tablist" v-if="contest.outreach_dashboard_url">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview"
-            type="button" role="tab" aria-controls="overview" aria-selected="true">
+          <button class="nav-link active"
+id="overview-tab"
+data-bs-toggle="tab"
+data-bs-target="#overview"
+            type="button"
+role="tab"
+aria-controls="overview"
+aria-selected="true">
             <i class="fas fa-info-circle me-2"></i>Overview
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="outreach-tab" data-bs-toggle="tab" data-bs-target="#outreach" type="button"
-            role="tab" aria-controls="outreach" aria-selected="false">
+          <button class="nav-link"
+id="outreach-tab"
+data-bs-toggle="tab"
+data-bs-target="#outreach"
+type="button"
+            role="tab"
+aria-controls="outreach"
+aria-selected="false">
             <i class="fas fa-graduation-cap me-2"></i>Outreach Dashboard
           </button>
         </li>
@@ -86,7 +104,10 @@
       <div class="tab-content" :class="{ 'mt-0': !contest.outreach_dashboard_url }">
 
         <!-- ═══ Overview Tab (with outreach_dashboard_url) ═══ -->
-        <div v-if="contest.outreach_dashboard_url" class="tab-pane fade show active" id="overview" role="tabpanel"
+        <div v-if="contest.outreach_dashboard_url"
+class="tab-pane fade show active"
+id="overview"
+role="tabpanel"
           aria-labelledby="overview-tab">
 
           <div class="card mb-4">
@@ -206,7 +227,10 @@
               <p class="mb-2"><strong>Articles must belong to the following MediaWiki categories:</strong></p>
               <ul class="list-unstyled">
                 <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
-                  <a :href="category" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                  <a :href="category"
+target="_blank"
+rel="noopener noreferrer"
+class="text-decoration-none">
                     <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
                   </a>
                 </li>
@@ -271,13 +295,17 @@
                     {{ filteredSubmissions.length }} / {{ submissions.length }}
                   </span>
                 </h5>
-                <button v-if="loadingSubmissions || refreshingMetadata" class="btn btn-sm btn-outline-secondary"
+                <button v-if="loadingSubmissions || refreshingMetadata"
+class="btn btn-sm btn-outline-secondary"
                   disabled>
                   <span class="spinner-border spinner-border-sm me-2"></span>
                   {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
                 </button>
-                <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
-                  :disabled="submissions.length === 0" title="Refresh article metadata"
+                <button v-else
+class="btn btn-sm btn-outline-light"
+@click="refreshMetadata"
+                  :disabled="submissions.length === 0"
+title="Refresh article metadata"
                   style="color: white; border-color: white;">
                   <i class="fas fa-database me-1"></i>Refresh Metadata
                 </button>
@@ -293,9 +321,14 @@
                   <div class="search-wrapper flex-grow-1" style="min-width:220px; max-width:380px;">
                     <div class="input-group input-group-sm">
                       <span class="input-group-text"><i class="fas fa-search"></i></span>
-                      <input v-model="searchQuery" type="text" class="form-control"
-                        placeholder="Search title, author, user..." autocomplete="off" />
-                      <button v-if="searchQuery" class="btn btn-outline-secondary" @click="searchQuery = ''"
+                      <input v-model="searchQuery"
+type="text"
+class="form-control"
+                        placeholder="Search title, author, user..."
+autocomplete="off" />
+                      <button v-if="searchQuery"
+class="btn btn-outline-secondary"
+@click="searchQuery = ''"
                         title="Clear">
                         <i class="fas fa-times"></i>
                       </button>
@@ -326,32 +359,44 @@
                         <th class="sortable-th" @click="toggleSort('article_title')">
                           Article Title
                           <i class="fas ms-1"
-                            :class="sortKey === 'article_title' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                            :class="sortKey === 'article_title'
+                              ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                              : 'fa-sort text-muted'"></i>
                         </th>
                         <th class="sortable-th" @click="toggleSort('article_author')">
                           Article Author
                           <i class="fas ms-1"
-                            :class="sortKey === 'article_author' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                            :class="sortKey === 'article_author'
+                              ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                              : 'fa-sort text-muted'"></i>
                         </th>
                         <th class="sortable-th" @click="toggleSort('username')">
                           Submitted By
                           <i class="fas ms-1"
-                            :class="sortKey === 'username' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                            :class="sortKey === 'username'
+                              ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                              : 'fa-sort text-muted'"></i>
                         </th>
                         <th class="sortable-th" @click="toggleSort('status')">
                           Status
                           <i class="fas ms-1"
-                            :class="sortKey === 'status' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                            :class="sortKey === 'status'
+                              ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                              : 'fa-sort text-muted'"></i>
                         </th>
                         <th class="sortable-th" @click="toggleSort('score')">
                           Score
                           <i class="fas ms-1"
-                            :class="sortKey === 'score' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                            :class="sortKey === 'score'
+                              ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                              : 'fa-sort text-muted'"></i>
                         </th>
                         <th class="sortable-th" @click="toggleSort('submitted_at')">
                           Submitted At
                           <i class="fas ms-1"
-                            :class="sortKey === 'submitted_at' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                            :class="sortKey === 'submitted_at'
+                              ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                              : 'fa-sort text-muted'"></i>
                         </th>
                         <th>Actions</th>
                       </tr>
@@ -360,13 +405,17 @@
                       <tr v-for="submission in pagedSubmissions" :key="submission.id">
                         <!-- Article Title with expandable bytes -->
                         <td>
-                          <a href="#" @click.prevent="showArticlePreview(submission)"
-                            class="text-decoration-none article-title-link" :title="submission.article_link">
+                          <a href="#"
+@click.prevent="showArticlePreview(submission)"
+                            class="text-decoration-none article-title-link"
+:title="submission.article_link">
                             {{ submission.article_title }}
                             <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                           </a>
-                          <span v-if="submission.article_word_count !== null" class="ms-2 text-muted small bytes-toggle"
-                            @click="toggleExpand(submission.id)" title="Toggle byte details">
+                          <span v-if="submission.article_word_count !== null"
+class="ms-2 text-muted small bytes-toggle"
+                            @click="toggleExpand(submission.id)"
+title="Toggle byte details">
                             <i class="fas"
                               :class="expandedRows.has(submission.id) ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                             {{ expandedRows.has(submission.id) ? 'Hide' : 'Bytes' }}
@@ -383,10 +432,13 @@
                               <i class="fas fa-clock me-1"></i>Original:
                               {{ formatByteCountWithExact(submission.article_word_count) }}
                             </div>
-                            <div v-if="submission.article_expansion_bytes !== null" class="small"
+                            <div v-if="submission.article_expansion_bytes !== null"
+class="small"
                               :class="submission.article_expansion_bytes >= 0 ? 'text-success' : 'text-danger'">
                               <i class="fas"
-                                :class="submission.article_expansion_bytes > 0 ? 'fa-arrow-up' : submission.article_expansion_bytes < 0 ? 'fa-arrow-down' : 'fa-arrows-left-right'"></i>
+                                :class="submission.article_expansion_bytes > 0 ? 'fa-arrow-up'
+                                  : submission.article_expansion_bytes < 0 ? 'fa-arrow-down'
+                                  : 'fa-arrows-left-right'"></i>
                               Expansion: {{ submission.article_expansion_bytes >= 0 ? '+' : '' }}{{
                                 formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }}
                             </div>
@@ -413,12 +465,15 @@
                         <td>{{ submission.score || 0 }}</td>
                         <td>{{ formatDate(submission.submitted_at) }}</td>
                         <td>
-                          <button @click="showArticlePreview(submission)" class="btn btn-sm btn-outline-primary"
+                          <button @click="showArticlePreview(submission)"
+class="btn btn-sm btn-outline-primary"
                             title="Preview Article">
                             <i class="fas fa-eye"></i>
                           </button>
-                          <button v-if="canViewSubmissions" @click="handleDeleteSubmission(submission)"
-                            class="btn btn-sm btn-outline-danger ms-1" title="Delete Submission"
+                          <button v-if="canViewSubmissions"
+@click="handleDeleteSubmission(submission)"
+                            class="btn btn-sm btn-outline-danger ms-1"
+title="Delete Submission"
                             :disabled="deletingSubmissionId === submission.id">
                             <span v-if="deletingSubmissionId === submission.id"
                               class="spinner-border spinner-border-sm"></span>
@@ -442,7 +497,9 @@
                   <nav aria-label="Submissions pagination">
                     <ul class="pagination pagination-sm mb-0">
                       <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                        <button class="page-link" @click="currentPage = 1" :disabled="currentPage === 1"
+                        <button class="page-link"
+@click="currentPage = 1"
+:disabled="currentPage === 1"
                           title="First page">
                           <i class="fas fa-angle-double-left"></i>
                         </button>
@@ -455,7 +512,10 @@
                       <li v-if="visiblePages[0] > 1" class="page-item disabled">
                         <span class="page-link">…</span>
                       </li>
-                      <li v-for="p in visiblePages" :key="p" class="page-item" :class="{ active: p === currentPage }">
+                      <li v-for="p in visiblePages"
+:key="p"
+class="page-item"
+:class="{ active: p === currentPage }">
                         <button class="page-link" @click="currentPage = p">{{ p }}</button>
                       </li>
                       <li v-if="visiblePages[visiblePages.length - 1] < totalPages" class="page-item disabled">
@@ -467,8 +527,10 @@
                         </button>
                       </li>
                       <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                        <button class="page-link" @click="currentPage = totalPages"
-                          :disabled="currentPage === totalPages" title="Last page">
+                        <button class="page-link"
+@click="currentPage = totalPages"
+                          :disabled="currentPage === totalPages"
+title="Last page">
                           <i class="fas fa-angle-double-right"></i>
                         </button>
                       </li>
@@ -476,9 +538,14 @@
                   </nav>
                   <div class="d-flex align-items-center gap-1">
                     <span class="text-muted small text-nowrap">Go to:</span>
-                    <input type="number" class="form-control form-control-sm" style="width: 64px;" :min="1"
-                      :max="totalPages" :value="currentPage"
-                      @change="e => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) currentPage = v }" />
+                    <input type="number"
+class="form-control form-control-sm"
+style="width: 64px;"
+:min="1"
+                      :max="totalPages"
+:value="currentPage"
+                      @change="e => { const v = parseInt(e.target.value);
+                        if (v >= 1 && v <= totalPages) currentPage = v }" />
                   </div>
                 </div>
               </template>
@@ -495,14 +562,18 @@
               </button>
             </div>
             <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-              class="btn btn-primary ms-auto" @click="handleSubmitArticle">
+              class="btn btn-primary ms-auto"
+@click="handleSubmitArticle">
               <i class="fas fa-paper-plane me-2"></i>Submit Article
             </button>
           </div>
         </div>
 
         <!-- Outreach Dashboard Tab -->
-        <div v-if="contest.outreach_dashboard_url" class="tab-pane fade" id="outreach" role="tabpanel"
+        <div v-if="contest.outreach_dashboard_url"
+class="tab-pane fade"
+id="outreach"
+role="tabpanel"
           aria-labelledby="outreach-tab">
           <OutreachDashboardTab :base-url="contest.outreach_dashboard_url" :contest-id="contest.id" />
         </div>
@@ -617,7 +688,10 @@
             <p class="mb-2"><strong>Articles must belong to the following MediaWiki categories:</strong></p>
             <ul class="list-unstyled">
               <li v-for="(category, index) in contest.categories" :key="index" class="mb-2">
-                <a :href="category" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                <a :href="category"
+target="_blank"
+rel="noopener noreferrer"
+class="text-decoration-none">
                   <i class="fas fa-external-link-alt me-2"></i>{{ getCategoryName(category) }}
                 </a>
               </li>
@@ -684,8 +758,11 @@
                 <span class="spinner-border spinner-border-sm me-2"></span>
                 {{ loadingSubmissions ? 'Loading...' : 'Refreshing...' }}
               </button>
-              <button v-else class="btn btn-sm btn-outline-light" @click="refreshMetadata"
-                :disabled="submissions.length === 0" title="Refresh article metadata"
+              <button v-else
+class="btn btn-sm btn-outline-light"
+@click="refreshMetadata"
+                :disabled="submissions.length === 0"
+title="Refresh article metadata"
                 style="color: white; border-color: white;">
                 <i class="fas fa-database me-1"></i>Refresh Metadata
               </button>
@@ -701,9 +778,14 @@
                 <div class="search-wrapper flex-grow-1" style="min-width:220px; max-width:380px;">
                   <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="fas fa-search"></i></span>
-                    <input v-model="searchQuery" type="text" class="form-control"
-                      placeholder="Search title, author, user..." autocomplete="off" />
-                    <button v-if="searchQuery" class="btn btn-outline-secondary" @click="searchQuery = ''"
+                    <input v-model="searchQuery"
+type="text"
+class="form-control"
+                      placeholder="Search title, author, user..."
+autocomplete="off" />
+                    <button v-if="searchQuery"
+class="btn btn-outline-secondary"
+@click="searchQuery = ''"
                       title="Clear">
                       <i class="fas fa-times"></i>
                     </button>
@@ -734,32 +816,44 @@
                       <th class="sortable-th" @click="toggleSort('article_title')">
                         Article Title
                         <i class="fas ms-1"
-                          :class="sortKey === 'article_title' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                          :class="sortKey === 'article_title'
+                            ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                            : 'fa-sort text-muted'"></i>
                       </th>
                       <th class="sortable-th" @click="toggleSort('article_author')">
                         Article Author
                         <i class="fas ms-1"
-                          :class="sortKey === 'article_author' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                          :class="sortKey === 'article_author'
+                            ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                            : 'fa-sort text-muted'"></i>
                       </th>
                       <th class="sortable-th" @click="toggleSort('username')">
                         Submitted By
                         <i class="fas ms-1"
-                          :class="sortKey === 'username' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                          :class="sortKey === 'username'
+                            ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                            : 'fa-sort text-muted'"></i>
                       </th>
                       <th class="sortable-th" @click="toggleSort('status')">
                         Status
                         <i class="fas ms-1"
-                          :class="sortKey === 'status' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                          :class="sortKey === 'status'
+                            ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                            : 'fa-sort text-muted'"></i>
                       </th>
                       <th class="sortable-th" @click="toggleSort('score')">
                         Score
                         <i class="fas ms-1"
-                          :class="sortKey === 'score' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                          :class="sortKey === 'score'
+                            ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                            : 'fa-sort text-muted'"></i>
                       </th>
                       <th class="sortable-th" @click="toggleSort('submitted_at')">
                         Submitted At
                         <i class="fas ms-1"
-                          :class="sortKey === 'submitted_at' ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort text-muted'"></i>
+                          :class="sortKey === 'submitted_at'
+                            ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down')
+                            : 'fa-sort text-muted'"></i>
                       </th>
                       <th>Actions</th>
                     </tr>
@@ -768,13 +862,17 @@
                     <tr v-for="submission in pagedSubmissions" :key="submission.id">
                       <!-- Article Title with expandable bytes -->
                       <td>
-                        <a href="#" @click.prevent="showArticlePreview(submission)"
-                          class="text-decoration-none article-title-link" :title="submission.article_link">
+                        <a href="#"
+@click.prevent="showArticlePreview(submission)"
+                          class="text-decoration-none article-title-link"
+:title="submission.article_link">
                           {{ submission.article_title }}
                           <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
                         </a>
-                        <span v-if="submission.article_word_count !== null" class="ms-2 text-muted small bytes-toggle"
-                          @click="toggleExpand(submission.id)" title="Toggle byte details">
+                        <span v-if="submission.article_word_count !== null"
+class="ms-2 text-muted small bytes-toggle"
+                          @click="toggleExpand(submission.id)"
+title="Toggle byte details">
                           <i class="fas"
                             :class="expandedRows.has(submission.id) ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
                           {{ expandedRows.has(submission.id) ? 'Hide' : 'Bytes' }}
@@ -791,10 +889,13 @@
                             <i class="fas fa-clock me-1"></i>Original:
                             {{ formatByteCountWithExact(submission.article_word_count) }}
                           </div>
-                          <div v-if="submission.article_expansion_bytes !== null" class="small"
+                          <div v-if="submission.article_expansion_bytes !== null"
+class="small"
                             :class="submission.article_expansion_bytes >= 0 ? 'text-success' : 'text-danger'">
                             <i class="fas"
-                              :class="submission.article_expansion_bytes > 0 ? 'fa-arrow-up' : submission.article_expansion_bytes < 0 ? 'fa-arrow-down' : 'fa-arrows-left-right'"></i>
+                              :class="submission.article_expansion_bytes > 0 ? 'fa-arrow-up'
+                                : submission.article_expansion_bytes < 0 ? 'fa-arrow-down'
+                                : 'fa-arrows-left-right'"></i>
                             Expansion: {{ submission.article_expansion_bytes >= 0 ? '+' : '' }}{{
                               formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }}
                           </div>
@@ -821,12 +922,15 @@
                       <td>{{ submission.score || 0 }}</td>
                       <td>{{ formatDate(submission.submitted_at) }}</td>
                       <td>
-                        <button @click="showArticlePreview(submission)" class="btn btn-sm btn-outline-primary"
+                        <button @click="showArticlePreview(submission)"
+class="btn btn-sm btn-outline-primary"
                           title="Preview Article">
                           <i class="fas fa-eye"></i>
                         </button>
-                        <button v-if="canViewSubmissions" @click="handleDeleteSubmission(submission)"
-                          class="btn btn-sm btn-outline-danger ms-1" title="Delete Submission"
+                        <button v-if="canViewSubmissions"
+@click="handleDeleteSubmission(submission)"
+                          class="btn btn-sm btn-outline-danger ms-1"
+title="Delete Submission"
                           :disabled="deletingSubmissionId === submission.id">
                           <span v-if="deletingSubmissionId === submission.id"
                             class="spinner-border spinner-border-sm"></span>
@@ -850,7 +954,9 @@
                 <nav aria-label="Submissions pagination">
                   <ul class="pagination pagination-sm mb-0">
                     <li class="page-item" :class="{ disabled: currentPage === 1 }">
-                      <button class="page-link" @click="currentPage = 1" :disabled="currentPage === 1"
+                      <button class="page-link"
+@click="currentPage = 1"
+:disabled="currentPage === 1"
                         title="First page">
                         <i class="fas fa-angle-double-left"></i>
                       </button>
@@ -863,7 +969,10 @@
                     <li v-if="visiblePages[0] > 1" class="page-item disabled">
                       <span class="page-link">…</span>
                     </li>
-                    <li v-for="p in visiblePages" :key="p" class="page-item" :class="{ active: p === currentPage }">
+                    <li v-for="p in visiblePages"
+:key="p"
+class="page-item"
+:class="{ active: p === currentPage }">
                       <button class="page-link" @click="currentPage = p">{{ p }}</button>
                     </li>
                     <li v-if="visiblePages[visiblePages.length - 1] < totalPages" class="page-item disabled">
@@ -875,7 +984,9 @@
                       </button>
                     </li>
                     <li class="page-item" :class="{ disabled: currentPage === totalPages }">
-                      <button class="page-link" @click="currentPage = totalPages" :disabled="currentPage === totalPages"
+                      <button class="page-link"
+@click="currentPage = totalPages"
+:disabled="currentPage === totalPages"
                         title="Last page">
                         <i class="fas fa-angle-double-right"></i>
                       </button>
@@ -884,9 +995,14 @@
                 </nav>
                 <div class="d-flex align-items-center gap-1">
                   <span class="text-muted small text-nowrap">Go to:</span>
-                  <input type="number" class="form-control form-control-sm" style="width: 64px;" :min="1"
-                    :max="totalPages" :value="currentPage"
-                    @change="e => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) currentPage = v }" />
+                  <input type="number"
+class="form-control form-control-sm"
+style="width: 64px;"
+:min="1"
+                    :max="totalPages"
+:value="currentPage"
+                    @change="e => { const v = parseInt(e.target.value);
+                      if (v >= 1 && v <= totalPages) currentPage = v }" />
                 </div>
               </div>
             </template>
@@ -903,7 +1019,8 @@
             </button>
           </div>
           <button v-if="contest?.status === 'current' && isAuthenticated && !canViewSubmissions"
-            class="btn btn-primary ms-auto" @click="handleSubmitArticle">
+            class="btn btn-primary ms-auto"
+@click="handleSubmitArticle">
             <i class="fas fa-paper-plane me-2"></i>Submit Article
           </button>
         </div>
@@ -912,13 +1029,18 @@
   </div>
 
   <!-- Modals -->
-  <SubmitArticleModal v-if="submittingToContestId" :contest-id="submittingToContestId"
+  <SubmitArticleModal v-if="submittingToContestId"
+:contest-id="submittingToContestId"
     @submitted="handleArticleSubmitted" />
 
-  <ArticlePreviewModal v-if="!!currentSubmission" :can-review="canUserReview"
-    :article-url="currentSubmission.article_link" :article-title="currentSubmission.article_title"
-    :submission-id="currentSubmission.id" :submission="currentSubmission"
-    :contest-scoring-config="contest?.scoring_parameters" @reviewed="handleSubmissionReviewed"
+  <ArticlePreviewModal v-if="!!currentSubmission"
+:can-review="canUserReview"
+    :article-url="currentSubmission.article_link"
+:article-title="currentSubmission.article_title"
+    :submission-id="currentSubmission.id"
+:submission="currentSubmission"
+    :contest-scoring-config="contest?.scoring_parameters"
+@reviewed="handleSubmissionReviewed"
     @deleted="handleSubmissionDeleted" />
 
   <!-- Edit Contest Modal -->
@@ -947,7 +1069,10 @@
               </div>
               <div class="mb-3">
                 <label class="form-label">Contest Rules *</label>
-                <textarea class="form-control" rows="4" v-model="editForm.rules" required></textarea>
+                <textarea class="form-control"
+rows="4"
+v-model="editForm.rules"
+required></textarea>
               </div>
               <div class="mb-3">
                 <label class="form-label">Allowed Submission Type *</label>
@@ -960,11 +1085,17 @@
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Start Date *</label>
-                  <input type="date" class="form-control" v-model="editForm.start_date" required />
+                  <input type="date"
+class="form-control"
+v-model="editForm.start_date"
+required />
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">End Date *</label>
-                  <input type="date" class="form-control" v-model="editForm.end_date" required />
+                  <input type="date"
+class="form-control"
+v-model="editForm.end_date"
+required />
                 </div>
               </div>
             </div>
@@ -974,19 +1105,28 @@
               <div class="mb-2 p-2 border rounded bg-light organizer-selection-box" style="min-height: 40px;">
                 <small v-if="editForm.selectedOrganizers.length === 0" class="organizer-placeholder-text">No additional
                   organizers added</small>
-                <span v-for="username in editForm.selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
+                <span v-for="username in editForm.selectedOrganizers"
+:key="username"
+class="badge bg-success me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;">
                   {{ username }}<i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
                 </span>
               </div>
               <div style="position: relative;">
-                <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
-                  placeholder="Type username to add additional organizers..." autocomplete="off" />
+                <input type="text"
+class="form-control"
+v-model="organizerSearchQuery"
+@input="searchOrganizers"
+                  placeholder="Type username to add additional organizers..."
+autocomplete="off" />
                 <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
                   class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000;">
-                  <div v-for="user in organizerSearchResults" :key="user.username" class="p-2 border-bottom"
-                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }" style="cursor: pointer;"
+                  <div v-for="user in organizerSearchResults"
+:key="user.username"
+class="p-2 border-bottom"
+                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
+style="cursor: pointer;"
                     @click="addOrganizer(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
@@ -1009,20 +1149,29 @@
               <div class="mb-2 p-2 border rounded bg-light jury-selection-box" style="min-height: 40px;">
                 <small v-if="editForm.selectedJuryMembers.length === 0" class="jury-placeholder-text">No jury members
                   selected yet</small>
-                <span v-for="username in editForm.selectedJuryMembers" :key="username"
-                  class="badge bg-primary me-2 mb-2" style="font-size: 0.9rem; cursor: pointer;">
+                <span v-for="username in editForm.selectedJuryMembers"
+:key="username"
+                  class="badge bg-primary me-2 mb-2"
+style="font-size: 0.9rem; cursor: pointer;">
                   <i class="fas fa-gavel me-1"></i>{{ username }}<i class="fas fa-times ms-1"
                     @click="removeJuryMember(username)"></i>
                 </span>
               </div>
               <div style="position: relative;">
-                <input type="text" class="form-control" v-model="jurySearchQuery" @input="searchJuryMembers"
-                  placeholder="Type username to search and add..." autocomplete="off" />
+                <input type="text"
+class="form-control"
+v-model="jurySearchQuery"
+@input="searchJuryMembers"
+                  placeholder="Type username to search and add..."
+autocomplete="off" />
                 <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
                   class="jury-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000;">
-                  <div v-for="user in jurySearchResults" :key="user.username" class="p-2 border-bottom"
-                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }" style="cursor: pointer;"
+                  <div v-for="user in jurySearchResults"
+:key="user.username"
+class="p-2 border-bottom"
+                    :class="{ 'bg-warning-subtle': isCurrentUser(user.username) }"
+style="cursor: pointer;"
                     @click="addJuryMember(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
@@ -1079,11 +1228,17 @@
                   <div class="row mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Maximum Score (Accepted)</label>
-                      <input type="number" class="form-control" v-model.number="maxScore" disabled />
+                      <input type="number"
+class="form-control"
+v-model.number="maxScore"
+disabled />
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Minimum Score (Rejected)</label>
-                      <input type="number" class="form-control" v-model.number="minScore" disabled />
+                      <input type="number"
+class="form-control"
+v-model.number="minScore"
+disabled />
                     </div>
                   </div>
 
@@ -1110,17 +1265,24 @@
                         <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-row locked-row">
                           <div class="row align-items-center flex-grow-1">
                             <div class="col-md-3">
-                              <input type="text" class="form-control param-input" v-model="param.name" disabled />
+                              <input type="text"
+class="form-control param-input"
+v-model="param.name"
+disabled />
                             </div>
                             <div class="col-md-3">
                               <div class="input-group">
-                                <input type="number" class="form-control param-input" v-model.number="param.weight"
+                                <input type="number"
+class="form-control param-input"
+v-model.number="param.weight"
                                   disabled />
                                 <span class="input-group-text weight-suffix">%</span>
                               </div>
                             </div>
                             <div class="col-md-5">
-                              <input type="text" class="form-control param-input" v-model="param.description"
+                              <input type="text"
+class="form-control param-input"
+v-model="param.description"
                                 disabled />
                             </div>
                             <div class="col-md-1 text-end">
@@ -1154,8 +1316,10 @@
                           <i class="fas fa-lock ms-1 text-muted" style="font-size: 0.75rem;"></i>
                         </label>
                         <div class="input-group">
-                          <input type="number" class="form-control locked-input"
-                            v-model.number="editForm.marks_setting_accepted" disabled />
+                          <input type="number"
+class="form-control locked-input"
+                            v-model.number="editForm.marks_setting_accepted"
+disabled />
                           <span class="input-group-text locked-suffix">
                             <i class="fas fa-lock text-muted"></i>
                           </span>
@@ -1168,8 +1332,10 @@
                           <i class="fas fa-lock ms-1 text-muted" style="font-size: 0.75rem;"></i>
                         </label>
                         <div class="input-group">
-                          <input type="number" class="form-control locked-input"
-                            v-model.number="editForm.marks_setting_rejected" disabled />
+                          <input type="number"
+class="form-control locked-input"
+                            v-model.number="editForm.marks_setting_rejected"
+disabled />
                           <span class="input-group-text locked-suffix">
                             <i class="fas fa-lock text-muted"></i>
                           </span>
@@ -1185,7 +1351,9 @@
               <div v-else class="unlocked-edit-mode">
                 <div class="scoring-mode-toggle mb-2">
                   <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="editEnableMultiParam"
+                    <input class="form-check-input"
+type="checkbox"
+id="editEnableMultiParam"
                       v-model="enableMultiParameterScoring" />
                     <label class="form-check-label fw-bold" for="editEnableMultiParam">Enable Multi-Parameter
                       Scoring</label>
@@ -1200,12 +1368,18 @@
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Accepted Submissions *</label>
-                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_accepted" min="0"
+                      <input type="number"
+class="form-control"
+v-model.number="editForm.marks_setting_accepted"
+min="0"
                         required />
                     </div>
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Rejected Submissions *</label>
-                      <input type="number" class="form-control" v-model.number="editForm.marks_setting_rejected" min="0"
+                      <input type="number"
+class="form-control"
+v-model.number="editForm.marks_setting_rejected"
+min="0"
                         required />
                     </div>
                   </div>
@@ -1215,11 +1389,21 @@
                   <div class="row mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Maximum Score (Accepted) *</label>
-                      <input type="number" class="form-control" v-model.number="maxScore" min="1" max="1000" required />
+                      <input type="number"
+class="form-control"
+v-model.number="maxScore"
+min="1"
+max="1000"
+required />
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Minimum Score (Rejected) *</label>
-                      <input type="number" class="form-control" v-model.number="minScore" min="0" max="1000" required />
+                      <input type="number"
+class="form-control"
+v-model.number="minScore"
+min="0"
+max="1000"
+required />
                     </div>
                   </div>
 
@@ -1246,22 +1430,33 @@
                           <div class="param-index">{{ index + 1 }}</div>
                           <div class="row align-items-center flex-grow-1">
                             <div class="col-md-3">
-                              <input type="text" class="form-control param-input" v-model="param.name"
-                                placeholder="e.g., Quality" required />
+                              <input type="text"
+class="form-control param-input"
+v-model="param.name"
+                                placeholder="e.g., Quality"
+required />
                             </div>
                             <div class="col-md-3">
                               <div class="input-group">
-                                <input type="number" class="form-control param-input" v-model.number="param.weight"
-                                  min="0" max="100" required />
+                                <input type="number"
+class="form-control param-input"
+v-model.number="param.weight"
+                                  min="0"
+max="100"
+required />
                                 <span class="input-group-text weight-suffix">%</span>
                               </div>
                             </div>
                             <div class="col-md-5">
-                              <input type="text" class="form-control param-input" v-model="param.description"
+                              <input type="text"
+class="form-control param-input"
+v-model="param.description"
                                 placeholder="Brief description" />
                             </div>
                             <div class="col-md-1 text-end">
-                              <button type="button" class="btn btn-sm btn-remove" @click="removeParameter(index)"
+                              <button type="button"
+class="btn btn-sm btn-remove"
+@click="removeParameter(index)"
                                 :disabled="scoringParameters.length <= 1">
                                 <i class="fas fa-trash"></i>
                               </button>
@@ -1276,7 +1471,9 @@
 
                       <div class="weight-validation mt-3" :class="weightTotalClass">
                         <div class="weight-bar-track">
-                          <div class="weight-bar-fill" :style="{ width: Math.min(totalWeight, 100) + '%' }" :class="{
+                          <div class="weight-bar-fill"
+:style="{ width: Math.min(totalWeight, 100) + '%' }"
+:class="{
                             'fill-danger': totalWeight > 100,
                             'fill-success': totalWeight === 100,
                             'fill-warning': totalWeight < 100 && totalWeight > 0
@@ -1308,19 +1505,31 @@
               <h6 class="section-title"><i class="fas fa-file-alt me-2"></i>Article Requirements</h6>
               <div class="mb-3">
                 <label class="form-label">Minimum Byte Count *</label>
-                <input type="number" v-model.number="editForm.min_byte_count" class="form-control" min="0" required />
+                <input type="number"
+v-model.number="editForm.min_byte_count"
+class="form-control"
+min="0"
+required />
               </div>
               <div class="mb-3">
                 <label class="form-label">Minimum Reference Count</label>
-                <input type="number" v-model.number="editForm.min_reference_count" class="form-control" min="0" />
+                <input type="number"
+v-model.number="editForm.min_reference_count"
+class="form-control"
+min="0" />
               </div>
               <div class="mb-3">
                 <label class="form-label">Category URLs *</label>
                 <div v-for="(category, index) in editForm.categories" :key="index" class="mb-2">
                   <div class="input-group">
-                    <input type="url" class="form-control" v-model="editForm.categories[index]"
-                      placeholder="https://en.wikipedia.org/wiki/Category:Example" required />
-                    <button v-if="editForm.categories.length > 1" type="button" class="btn btn-outline-danger"
+                    <input type="url"
+class="form-control"
+v-model="editForm.categories[index]"
+                      placeholder="https://en.wikipedia.org/wiki/Category:Example"
+required />
+                    <button v-if="editForm.categories.length > 1"
+type="button"
+class="btn btn-outline-danger"
                       @click="removeCategory(index)">
                       <i class="fas fa-times"></i>
                     </button>
@@ -1333,13 +1542,17 @@
               <div class="mb-3">
                 <label class="form-label">Contest Template Link <span
                     class="badge bg-secondary ms-1">Optional</span></label>
-                <input type="url" class="form-control" v-model="editForm.template_link"
+                <input type="url"
+class="form-control"
+v-model="editForm.template_link"
                   placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" />
               </div>
               <div class="mb-3">
                 <label class="form-label">Outreach Dashboard URL <span
                     class="badge bg-secondary ms-1">Optional</span></label>
-                <input type="url" class="form-control" v-model="editForm.outreach_dashboard_url"
+                <input type="url"
+class="form-control"
+v-model="editForm.outreach_dashboard_url"
                   placeholder="https://outreachdashboard.wmflabs.org/courses/..." />
               </div>
             </div>
@@ -1349,7 +1562,10 @@
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             <i class="fas fa-times me-2"></i>Cancel
           </button>
-          <button type="button" class="btn btn-primary" @click="saveContestEdits" :disabled="savingContest">
+          <button type="button"
+class="btn btn-primary"
+@click="saveContestEdits"
+:disabled="savingContest">
             <span v-if="savingContest" class="spinner-border spinner-border-sm me-2"></span>
             <i v-else class="fas fa-save me-2"></i>
             {{ savingContest ? 'Saving...' : 'Save Changes' }}
@@ -1360,13 +1576,18 @@
   </div>
 
   <!-- Report Modal -->
-  <div v-if="showReportModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);"
+  <div v-if="showReportModal"
+class="modal fade show d-block"
+tabindex="-1"
+style="background-color: rgba(0,0,0,0.5);"
     @click.self="closeReportModal">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header text-white">
           <h5 class="modal-title"><i class="fas fa-file-export me-2"></i>Generate Contest Report</h5>
-          <button type="button" class="btn-close btn-close-white" @click="closeReportModal"
+          <button type="button"
+class="btn-close btn-close-white"
+@click="closeReportModal"
             :disabled="generatingReport"></button>
         </div>
         <div class="modal-body">
@@ -1379,14 +1600,14 @@
                 <div class="format-card" :class="{ 'selected': reportFormat === 'csv' }" @click="reportFormat = 'csv'">
                   <div class="format-icon"><i class="fas fa-file-csv fa-3x text-success"></i></div>
                   <h6 class="mt-3 mb-1">CSV Report</h6>
-                  <small class="text-muted">Excel-compatible spreadsheet<br>Best for data analysis</small>
+                  <small class="text-muted">Excel-compatible spreadsheet<br/>Best for data analysis</small>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="format-card" :class="{ 'selected': reportFormat === 'pdf' }" @click="reportFormat = 'pdf'">
                   <div class="format-icon"><i class="fas fa-file-pdf fa-3x text-danger"></i></div>
                   <h6 class="mt-3 mb-1">PDF Report</h6>
-                  <small class="text-muted">Professional document<br>Includes charts & graphs</small>
+                  <small class="text-muted">Professional document<br/>Includes charts & graphs</small>
                 </div>
               </div>
             </div>
@@ -1394,15 +1615,21 @@
           <div v-if="generatingReport" class="alert alert-info mt-3 mb-0">
             <div class="d-flex align-items-center">
               <div class="spinner-border spinner-border-sm me-3" role="status"></div>
-              <div><strong>Generating your report...</strong><br><small>This may take a few moments.</small></div>
+              <div><strong>Generating your report...</strong><br/><small>This may take a few moments.</small></div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="closeReportModal" :disabled="generatingReport">
+          <button type="button"
+class="btn btn-secondary"
+@click="closeReportModal"
+:disabled="generatingReport">
             <i class="fas fa-times me-2"></i>Cancel
           </button>
-          <button type="button" class="btn btn-primary" @click="generateAndDownload" :disabled="generatingReport">
+          <button type="button"
+class="btn btn-primary"
+@click="generateAndDownload"
+:disabled="generatingReport">
             <span v-if="generatingReport"><span
                 class="spinner-border spinner-border-sm me-2"></span>Generating...</span>
             <span v-else><i class="fas fa-download me-2"></i>Generate & Download</span>
@@ -2174,7 +2401,7 @@ export default {
     // Get CSRF token from cookies
     const getCsrfToken = () => {
       const cookies = document.cookie.split(';')
-      for (let cookie of cookies) {
+      for (const cookie of cookies) {
         const [name, value] = cookie.trim().split('=')
         if (name === 'csrf_access_token') {
           return decodeURIComponent(value)
