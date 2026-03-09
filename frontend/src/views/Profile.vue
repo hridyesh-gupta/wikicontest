@@ -63,19 +63,20 @@
             <span>
               <strong>Trusted Member</strong> :
               <span v-if="isTrustedMember" class="badge bg-success">Yes</span>
-              <span v-else-if="hasRequested" class="badge bg-warning">Request Pending</span>
+              <span v-else-if="requestStatus === 'pending'" class="badge bg-warning">Pending</span>
+              <span v-else-if="requestStatus === 'rejected'" class="badge bg-danger">Rejected</span>
               <span v-else class="badge bg-secondary">No</span>
             </span>
           </div>
 
           <!-- Request Trusted Member Button -->
-          <div v-if="!isSuperadmin && !isTrustedMember && !hasRequested" class="info-item">
+          <div v-if="canRequest" class="info-item">
             <button
               class="btn btn-primary w-100"
               @click="requestTrustedMember"
               :disabled="processing"
             >
-              <i class="fas fa-user-plus me-2"></i>Request Trusted Member Status
+              <i class="fas fa-user-plus me-2"></i>{{ requestStatus === 'rejected' ? 'Re-request' : 'Request' }} Trusted Member Status
             </button>
           </div>
 
@@ -86,9 +87,15 @@
           </div>
 
           <!-- Info message for pending requests -->
-          <div v-if="hasRequested && !isTrustedMember" class="alert alert-warning mt-3">
+          <div v-if="requestStatus === 'pending' && !isTrustedMember" class="alert alert-warning mt-3">
             <i class="fas fa-clock me-2"></i>
             Your trusted member request is pending. A superadmin will review it.
+          </div>
+
+          <!-- Info message for rejected requests -->
+          <div v-if="requestStatus === 'rejected' && !isTrustedMember" class="alert alert-danger mt-3">
+            <i class="fas fa-times-circle me-2"></i>
+            Your trusted member request was rejected. You can submit a new request.
           </div>
         </div>
 
@@ -270,6 +277,21 @@ export default {
              false
     })
 
+    // Get the trusted member request status
+    const requestStatus = computed(() => {
+      return currentUser.value?.trusted_member_request_status ||
+             store.currentUser?.trusted_member_request_status ||
+             null
+    })
+
+    // Check if user can request (never requested OR was rejected)
+    const canRequest = computed(() => {
+      const status = requestStatus.value
+      return !isSuperadmin.value &&
+             !isTrustedMember.value &&
+             (!status || status === 'rejected')
+    })
+
     // Request trusted member status
     const processing = ref(false)
     const requestTrustedMember = async () => {
@@ -299,6 +321,8 @@ export default {
       isSuperadmin,
       isTrustedMember,
       hasRequested,
+      requestStatus,
+      canRequest,
       processing,
       requestTrustedMember
     }
