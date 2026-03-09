@@ -87,7 +87,10 @@ export function useStore() {
           // Use normalized role to ensure consistency
           role: normalizedRole,
           // Include trusted member status to check if user can create contests
-          is_trusted_member: response.is_trusted_member || false
+          is_trusted_member: response.is_trusted_member || false,
+          // Include trusted member request status
+          trusted_member_request: response.trusted_member_request || false,
+          trusted_member_request_status: response.trusted_member_request_status || null
         }
 
         console.log(' Setting current user:', newUser)
@@ -150,7 +153,10 @@ export function useStore() {
         // Use normalized role to ensure consistency across the app
         role: normalizedRole,
         // Include trusted member status
-        is_trusted_member: response.is_trusted_member || false
+        is_trusted_member: response.is_trusted_member || false,
+        // Include trusted member request status
+        trusted_member_request: response.trusted_member_request || false,
+        trusted_member_request_status: response.trusted_member_request_status || null
       }
 
       // Verify the state was set correctly
