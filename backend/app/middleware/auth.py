@@ -96,7 +96,8 @@ def require_role(roles):
                 allowed_roles = roles
 
             # Check if user has required role or is admin (admins bypass all role checks)
-            if user.role not in allowed_roles and not user.is_admin():
+            user_role_lower = user.role.lower() if user.role else 'user'
+            if user_role_lower not in allowed_roles and not user.is_admin():
                 return jsonify({'error': 'Insufficient permissions'}), 403
 
             # Attach user to request context

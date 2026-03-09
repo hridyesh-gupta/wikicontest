@@ -18,7 +18,7 @@ if __name__ == '__main__':
     # Debug mode is controlled by environment variable (FLASK_DEBUG) for security
     import os
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
-    
+
     print("Starting WikiContest API server...")
     print("Server will be available at: http://localhost:5000")
     if debug_mode:

@@ -186,7 +186,8 @@ class User(BaseModel):
             bool: True if user is admin or superadmin, False otherwise
         """
         # Both admin and superadmin share admin powers
-        return self.role in ('admin', 'superadmin')
+        role_lower = self.role.lower() if self.role else 'user'
+        return role_lower in ('admin', 'superadmin')
 
 
     def is_superadmin(self):
@@ -201,7 +202,8 @@ class User(BaseModel):
         Returns:
             bool: True if user is superadmin, False otherwise
         """
-        return self.role == 'superadmin'
+        role_lower = self.role.lower() if self.role else 'user'
+        return role_lower == 'superadmin'
 
 
     # ------------------------------------------------------------------------

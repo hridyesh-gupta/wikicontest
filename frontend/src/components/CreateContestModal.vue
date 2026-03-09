@@ -6,7 +6,10 @@
         <!-- Modal header with Wikipedia primary color -->
         <div class="modal-header">
           <h5 class="modal-title">WikiContest</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" :disabled="loading"></button>
+          <button type="button"
+class="btn-close"
+data-bs-dismiss="modal"
+:disabled="loading"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
@@ -14,12 +17,20 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="contestName" class="form-label">Contest Name *</label>
-                <input type="text" class="form-control" id="contestName" v-model="formData.name" required
+                <input type="text"
+class="form-control"
+id="contestName"
+v-model="formData.name"
+required
                   :disabled="loading" />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="projectName" class="form-label">Project Name *</label>
-                <input type="text" class="form-control" id="projectName" v-model="formData.project_name" required
+                <input type="text"
+class="form-control"
+id="projectName"
+v-model="formData.project_name"
+required
                   :disabled="loading" />
               </div>
             </div>
@@ -27,22 +38,31 @@
             <!-- Contest description field -->
             <div class="mb-3">
               <label for="contestDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="contestDescription" rows="3" v-model="formData.description"
+              <textarea class="form-control"
+id="contestDescription"
+rows="3"
+v-model="formData.description"
                 :disabled="loading"></textarea>
             </div>
 
             <!-- Contest rules - required field -->
             <div class="mb-3">
               <label for="contestRules" class="form-label">Contest Rules *</label>
-              <textarea class="form-control" id="contestRules" rows="4"
-                placeholder="Write rules about how articles must be submitted." v-model="formData.rules_text" required
+              <textarea class="form-control"
+id="contestRules"
+rows="4"
+                placeholder="Write rules about how articles must be submitted."
+v-model="formData.rules_text"
+required
                 :disabled="loading"></textarea>
             </div>
 
             <!-- Submission type selector: new, expansion, or both -->
             <div class="mb-3">
               <label for="allowedType" class="form-label">Allowed Submission Type</label>
-              <select id="allowedType" class="form-control" v-model="formData.allowed_submission_type"
+              <select id="allowedType"
+class="form-control"
+v-model="formData.allowed_submission_type"
                 :disabled="loading">
                 <option value="new">New Article Only</option>
                 <option value="expansion">Improved Article Only</option>
@@ -54,12 +74,20 @@
             <div class="row">
               <div class="col-md-6 mb-3">
                 <label for="startDate" class="form-label">Start Date *</label>
-                <input type="date" class="form-control" id="startDate" v-model="formData.start_date" required
+                <input type="date"
+class="form-control"
+id="startDate"
+v-model="formData.start_date"
+required
                   :disabled="loading" />
               </div>
               <div class="col-md-6 mb-3">
                 <label for="endDate" class="form-label">End Date *</label>
-                <input type="date" class="form-control" id="endDate" v-model="formData.end_date" required
+                <input type="date"
+class="form-control"
+id="endDate"
+v-model="formData.end_date"
+required
                   :disabled="loading" />
               </div>
             </div>
@@ -81,7 +109,10 @@
                   <!-- Simple Scoring Option -->
                   <div class="col-md-6">
                     <label :class="{ 'active': !enableMultiParameterScoring }">
-                      <input type="radio" name="scoringMode" :value="false" v-model="enableMultiParameterScoring"
+                      <input type="radio"
+name="scoringMode"
+:value="false"
+v-model="enableMultiParameterScoring"
                         :disabled="loading" />
                       <h6>Simple Scoring</h6>
                     </label>
@@ -90,7 +121,10 @@
                   <!-- Multi-Parameter Scoring Option -->
                   <div class="col-md-6">
                     <label :class="{ 'active': enableMultiParameterScoring }">
-                      <input type="radio" name="scoringMode" :value="true" v-model="enableMultiParameterScoring"
+                      <input type="radio"
+name="scoringMode"
+:value="true"
+v-model="enableMultiParameterScoring"
                         :disabled="loading" />
                       <div>
                         <h6>Multi-Parameter Scoring</h6>
@@ -109,8 +143,13 @@
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label for="marksAccepted" class="form-label">Points for Accepted Submissions *</label>
-                      <input type="number" class="form-control" id="marksAccepted"
-                        v-model.number="formData.marks_setting_accepted" min="0" required :disabled="loading" />
+                      <input type="number"
+class="form-control"
+id="marksAccepted"
+                        v-model.number="formData.marks_setting_accepted"
+min="0"
+required
+:disabled="loading" />
                       <small class="form-text text-muted">
                         Maximum points that can be awarded. Jury can assign points from 0 up to this value for accepted
                         submissions.
@@ -118,8 +157,13 @@
                     </div>
                     <div class="col-md-6 mb-3">
                       <label for="marksRejected" class="form-label">Points for Rejected Submissions *</label>
-                      <input type="number" class="form-control" id="marksRejected"
-                        v-model.number="formData.marks_setting_rejected" min="0" required :disabled="loading" />
+                      <input type="number"
+class="form-control"
+id="marksRejected"
+                        v-model.number="formData.marks_setting_rejected"
+min="0"
+required
+:disabled="loading" />
                       <small class="form-text text-muted">
                         Fixed points awarded automatically for rejected submissions (usually 0 or negative).
                       </small>
@@ -139,15 +183,27 @@
                   <div class="row mb-3">
                     <div class="col-md-6">
                       <label class="form-label">Maximum Score (Accepted Submissions) *</label>
-                      <input type="number" class="form-control" v-model.number="maxScore" min="1" max="100"
-                        placeholder="0" required :disabled="loading" />
+                      <input type="number"
+class="form-control"
+v-model.number="maxScore"
+min="1"
+max="100"
+                        placeholder="0"
+required
+:disabled="loading" />
                       <small class="text-muted">Final calculated score will be scaled to this value</small>
                     </div>
 
                     <div class="col-md-6">
                       <label class="form-label">Minimum Score (Rejected Submissions) *</label>
-                      <input type="number" class="form-control" v-model.number="minScore" min="0" max="100"
-                        placeholder="0" required :disabled="loading" />
+                      <input type="number"
+class="form-control"
+v-model.number="minScore"
+min="0"
+max="100"
+                        placeholder="0"
+required
+:disabled="loading" />
                       <small class="text-muted">Score for rejected submissions</small>
                     </div>
                   </div>
@@ -178,7 +234,7 @@
                             <i class="fas fa-percent me-1"></i>Weightage
                           </span>
                         </div>
-                        
+
                         <div class="col-md-1"></div>
                       </div>
 
@@ -187,23 +243,39 @@
                         <div v-for="(param, index) in scoringParameters" :key="index" class="parameter-row">
                           <div class="row align-items-center flex-grow-1">
                             <div class="col-md-3">
-                              <input type="text" class="form-control param-input" v-model="param.name"
-                                placeholder="e.g. Code Quality" required :disabled="loading" />
+                              <input type="text"
+class="form-control param-input"
+v-model="param.name"
+                                placeholder="e.g. Code Quality"
+required
+:disabled="loading" />
                             </div>
                             <div class="col-md-3">
                               <div class="input-group">
-                                <input type="number" class="form-control param-input" v-model.number="param.weight"
-                                  min="0" max="100" placeholder="0" required :disabled="loading" />
+                                <input type="number"
+class="form-control param-input"
+v-model.number="param.weight"
+                                  min="0"
+max="100"
+placeholder="0"
+required
+:disabled="loading" />
                                 <span class="input-group-text weight-suffix">%</span>
                               </div>
                             </div>
                             <div class="col-md-5">
-                              <input type="text" class="form-control param-input" v-model="param.description"
-                                placeholder="Optional description..." :disabled="loading" />
+                              <input type="text"
+class="form-control param-input"
+v-model="param.description"
+                                placeholder="Optional description..."
+:disabled="loading" />
                             </div>
                             <div class="col-md-1 text-end">
-                              <button type="button" class="btn btn-sm btn-remove" @click="removeParameter(index)"
-                                :disabled="scoringParameters.length <= 1 || loading" title="Remove">
+                              <button type="button"
+class="btn btn-sm btn-remove"
+@click="removeParameter(index)"
+                                :disabled="scoringParameters.length <= 1 || loading"
+title="Remove">
                                 <i class="fas fa-times"></i>
                               </button>
                             </div>
@@ -212,7 +284,9 @@
                       </div>
 
                       <!-- Add Button -->
-                      <button type="button" class="btn btn-sm btn-add-param mt-3" @click="addParameter"
+                      <button type="button"
+class="btn btn-sm btn-add-param mt-3"
+@click="addParameter"
                         :disabled="loading">
                         <i class="fas fa-plus me-1"></i>Add Parameter
                       </button>
@@ -220,7 +294,9 @@
                       <!-- Weight Validation Bar -->
                       <div class="weight-validation mt-3" :class="weightTotalClass">
                         <div class="weight-bar-track">
-                          <div class="weight-bar-fill" :style="{ width: Math.min(totalWeight, 100) + '%' }" :class="{
+                          <div class="weight-bar-fill"
+:style="{ width: Math.min(totalWeight, 100) + '%' }"
+:class="{
                             'fill-danger': totalWeight > 100,
                             'fill-success': totalWeight === 100,
                             'fill-warning': totalWeight < 100 && totalWeight > 0
@@ -241,7 +317,9 @@
                   </div>
 
                   <!-- Reset to default parameters -->
-                  <button type="button" class="btn btn-sm btn-outline-secondary" @click="loadDefaultParameters"
+                  <button type="button"
+class="btn btn-sm btn-outline-secondary"
+@click="loadDefaultParameters"
                     :disabled="loading">
                     <i class="fas fa-redo me-1"></i>Load Default Parameters
                   </button>
@@ -258,7 +336,9 @@
                 <small v-if="selectedOrganizers.length === 0" class="organizer-placeholder-text">
                   No additional organizers added
                 </small>
-                <span v-for="username in selectedOrganizers" :key="username" class="badge bg-success me-2 mb-2"
+                <span v-for="username in selectedOrganizers"
+:key="username"
+class="badge bg-success me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;">
                   {{ username }}
                   <i class="fas fa-times ms-1" @click="removeOrganizer(username)"></i>
@@ -267,16 +347,24 @@
 
               <!-- Organizer search input with autocomplete dropdown -->
               <div style="position: relative;">
-                <input type="text" class="form-control" v-model="organizerSearchQuery" @input="searchOrganizers"
-                  placeholder="Type username to add additional organizers..." autocomplete="off" :disabled="loading" />
+                <input type="text"
+class="form-control"
+v-model="organizerSearchQuery"
+@input="searchOrganizers"
+                  placeholder="Type username to add additional organizers..."
+autocomplete="off"
+:disabled="loading" />
 
                 <!-- Autocomplete results dropdown -->
                 <div v-if="organizerSearchResults.length > 0 && organizerSearchQuery.length >= 2"
                   class="organizer-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div v-for="user in organizerSearchResults" :key="user.username"
-                    class="p-2 border-bottom cursor-pointer" :class="{ 'bg-info-subtle': isCurrentUser(user.username) }"
-                    style="cursor: pointer;" @click="addOrganizer(user.username)">
+                  <div v-for="user in organizerSearchResults"
+:key="user.username"
+                    class="p-2 border-bottom cursor-pointer"
+:class="{ 'bg-info-subtle': isCurrentUser(user.username) }"
+                    style="cursor: pointer;"
+@click="addOrganizer(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
                         <i class="fas fa-user-tie me-2 text-success"></i>
@@ -308,7 +396,9 @@
                 <small v-if="selectedJury.length === 0" class="jury-placeholder-text">
                   No jury members selected yet
                 </small>
-                <span v-for="username in selectedJury" :key="username" class="badge bg-primary me-2 mb-2"
+                <span v-for="username in selectedJury"
+:key="username"
+class="badge bg-primary me-2 mb-2"
                   style="font-size: 0.9rem; cursor: pointer;">
                   {{ username }}
                   <i class="fas fa-times ms-1" @click="removeJury(username)"></i>
@@ -317,15 +407,24 @@
 
               <!-- Jury search input with autocomplete dropdown -->
               <div style="position: relative;">
-                <input type="text" class="form-control" id="juryInput" v-model="jurySearchQuery" @input="searchJury"
-                  placeholder="Type username to search..." autocomplete="off" :disabled="loading" />
+                <input type="text"
+class="form-control"
+id="juryInput"
+v-model="jurySearchQuery"
+@input="searchJury"
+                  placeholder="Type username to search..."
+autocomplete="off"
+:disabled="loading" />
                 <!-- Autocomplete results with self-selection warning -->
                 <div v-if="jurySearchResults.length > 0 && jurySearchQuery.length >= 2"
                   class="jury-autocomplete position-absolute w-100 border rounded-bottom"
                   style="max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                  <div v-for="user in jurySearchResults" :key="user.username" class="p-2 border-bottom cursor-pointer"
+                  <div v-for="user in jurySearchResults"
+:key="user.username"
+class="p-2 border-bottom cursor-pointer"
                     :class="{ 'bg-warning-subtle self-selection-warning': isCurrentUser(user.username) }"
-                    style="cursor: pointer;" @click="addJury(user.username)">
+                    style="cursor: pointer;"
+@click="addJury(user.username)">
                     <div class="d-flex align-items-center justify-content-between">
                       <div class="d-flex align-items-center">
                         <i class="fas fa-user me-2 text-primary"></i>
@@ -344,16 +443,27 @@
             <!-- Article size requirement in bytes -->
             <div class="mb-3">
               <label for="minByteCount" class="form-label">Minimum Byte Count *</label>
-              <input type="number" class="form-control" id="minByteCount" v-model.number="formData.min_byte_count"
-                min="0" placeholder="e.g., 1000" required :disabled="loading" />
+              <input type="number"
+class="form-control"
+id="minByteCount"
+v-model.number="formData.min_byte_count"
+                min="0"
+placeholder="e.g., 1000"
+required
+:disabled="loading" />
               <small class="form-text text-muted">Articles must have at least this many bytes</small>
             </div>
 
             <!-- Minimum reference/citation requirement -->
             <div class="mb-3">
               <label for="minReferenceCount" class="form-label">Minimum Reference Count</label>
-              <input type="number" class="form-control" id="minReferenceCount"
-                v-model.number="formData.min_reference_count" min="0" placeholder="e.g., 5" :disabled="loading" />
+              <input type="number"
+class="form-control"
+id="minReferenceCount"
+                v-model.number="formData.min_reference_count"
+min="0"
+placeholder="e.g., 5"
+:disabled="loading" />
               <small class="form-text text-muted">
                 Articles must have at least this many references (external links). Leave as 0 for no requirement.
               </small>
@@ -368,17 +478,27 @@
 
               <div v-for="(category, index) in formData.categories" :key="index" class="mb-2">
                 <div class="input-group">
-                  <input type="url" class="form-control" v-model="formData.categories[index]"
+                  <input type="url"
+class="form-control"
+v-model="formData.categories[index]"
                     :placeholder="index === 0 ? 'https://en.wikipedia.org/wiki/Category:Example' : 'Add another category URL'"
-                    required :disabled="loading" />
-                  <button v-if="formData.categories.length > 1" type="button" class="btn btn-outline-danger"
-                    @click="removeCategory(index)" title="Remove category" :disabled="loading">
+                    required
+:disabled="loading" />
+                  <button v-if="formData.categories.length > 1"
+type="button"
+class="btn btn-outline-danger"
+                    @click="removeCategory(index)"
+title="Remove category"
+:disabled="loading">
                     <i class="fas fa-times"></i>
                   </button>
                 </div>
               </div>
 
-              <button type="button" class="btn btn-outline-primary btn-sm" @click="addCategory" :disabled="loading">
+              <button type="button"
+class="btn btn-outline-primary btn-sm"
+@click="addCategory"
+:disabled="loading">
                 <i class="fas fa-plus me-1"></i>Add Category
               </button>
 
@@ -393,8 +513,12 @@
                 Contest Template Link
                 <span class="badge bg-secondary ms-1">Optional</span>
               </label>
-              <input type="url" class="form-control" id="templateLink" v-model="formData.template_link"
-                placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate" :disabled="loading" />
+              <input type="url"
+class="form-control"
+id="templateLink"
+v-model="formData.template_link"
+                placeholder="https://en.wikipedia.org/wiki/Template:YourContestTemplate"
+:disabled="loading" />
               <small class="form-text text-muted d-block mt-2">
                 <i class="fas fa-info-circle me-1"></i>
                 If set, this template will be automatically added to submitted articles that don't already have it.
@@ -408,7 +532,10 @@
                 Outreach Dashboard URL
                 <span class="badge bg-secondary ms-1">Optional</span>
               </label>
-              <input type="url" class="form-control" id="outreachDashboardUrl" v-model="formData.outreach_dashboard_url"
+              <input type="url"
+class="form-control"
+id="outreachDashboardUrl"
+v-model="formData.outreach_dashboard_url"
                 placeholder="https://outreachdashboard.wmflabs.org/courses/WikiClub_Tech_SHUATS/Wikipedia_25_B_Day_Celebration_by_WikiClub_Tech_SHUATS"
                 :disabled="loading" />
               <small class="form-text text-muted d-block mt-2">
@@ -424,8 +551,14 @@
 
         <!-- Modal footer with action buttons -->
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" :disabled="loading">Cancel</button>
-          <button type="submit" class="btn btn-primary" @click="handleSubmit" :disabled="loading">
+          <button type="button"
+class="btn btn-secondary"
+data-bs-dismiss="modal"
+:disabled="loading">Cancel</button>
+          <button type="submit"
+class="btn btn-primary"
+@click="handleSubmit"
+:disabled="loading">
             <span v-if="loading">
               <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
               Creating...

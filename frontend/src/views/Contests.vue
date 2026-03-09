@@ -33,13 +33,15 @@
     <!-- Contest Category Tabs -->
     <ul class="nav nav-tabs mb-4" id="contestTabs">
       <li class="nav-item">
-        <button class="nav-link" :class="{ active: activeCategory === 'current' }"
+        <button class="nav-link"
+:class="{ active: activeCategory === 'current' }"
           @click="setActiveCategory('current')">
           Current
         </button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" :class="{ active: activeCategory === 'upcoming' }"
+        <button class="nav-link"
+:class="{ active: activeCategory === 'upcoming' }"
           @click="setActiveCategory('upcoming')">
           Upcoming
         </button>
@@ -67,7 +69,10 @@
       </div>
       <!-- Contest Cards -->
       <div v-else class="contest-list">
-        <div v-for="contest in currentContests" :key="contest.id" class="contest-item" @click="viewContest(contest)">
+        <div v-for="contest in currentContests"
+:key="contest.id"
+class="contest-item"
+@click="viewContest(contest)">
           <div class="contest-card">
             <!-- Contest Header: Title and Creation Timestamp -->
             <div class="contest-header">
@@ -107,12 +112,15 @@
                 </span>
                 <div class="organizers-avatars">
                   <!-- Show first 3 organizers -->
-                  <div v-for="(organizer, index) in getOrganizers(contest)" :key="index" class="organizer-avatar"
+                  <div v-for="(organizer, index) in getOrganizers(contest)"
+:key="index"
+class="organizer-avatar"
                     :title="organizer">
                     {{ getInitials(organizer) }}
                   </div>
                   <!-- Show count of remaining organizers if more than 3 -->
-                  <div v-if="getOrganizers(contest).length > 3" class="organizer-avatar organizer-more"
+                  <div v-if="getOrganizers(contest).length > 3"
+class="organizer-avatar organizer-more"
                     :title="`${getOrganizers(contest).length - 3} more organizers`">
                     +{{ getOrganizers(contest).length - 3 }}
                   </div>
