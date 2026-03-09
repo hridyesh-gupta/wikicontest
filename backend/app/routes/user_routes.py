@@ -844,8 +844,10 @@ def request_trusted_member():
             'error': 'You are already a trusted member'
         }), 400
 
-    # Check if already requested
-    if getattr(user, 'trusted_member_request', False):
+    # Check if request is already pending
+    # Users can re-request if their previous request was rejected
+    request_status = getattr(user, 'trusted_member_request_status', None)
+    if request_status == 'pending':
         return jsonify({
             'error': 'You have already requested trusted member status. Please wait for approval.'
         }), 400
@@ -879,6 +881,7 @@ def request_trusted_member():
         # Store request with reason for superadmin review
         user.trusted_member_request = True
         user.trusted_member_request_reason = reason
+        user.trusted_member_request_status = 'pending'
         user.save()
 
         return jsonify({
@@ -894,6 +897,7 @@ def request_trusted_member():
         user.is_trusted_member = True
         user.trusted_member_request = False  # No need for request flag
         user.trusted_member_request_reason = None  # Clear any previous reason
+        user.trusted_member_request_status = 'approved'
         user.save()
 
         return jsonify({
@@ -917,6 +921,7 @@ def request_trusted_member():
     # Store request with reason for superadmin review
     user.trusted_member_request = True
     user.trusted_member_request_reason = reason
+    user.trusted_member_request_status = 'pending'
     user.save()
 
     return jsonify({
@@ -1018,6 +1023,7 @@ def approve_trusted_member(user_id):
     user.is_trusted_member = True
     user.trusted_member_request = False  # Clear the request flag
     user.trusted_member_request_reason = None  # Clear the reason
+    user.trusted_member_request_status = 'approved'
     user.save()
 
     return jsonify({
@@ -1049,6 +1055,7 @@ def reject_trusted_member(user_id):
     # Clear the request flag and reason (rejection)
     user.trusted_member_request = False
     user.trusted_member_request_reason = None
+    user.trusted_member_request_status = 'rejected'
     user.save()
 
     return jsonify({
@@ -1087,6 +1094,7 @@ def add_trusted_member(user_id):
     user.is_trusted_member = True
     user.trusted_member_request = False  # Clear any pending request
     user.trusted_member_request_reason = None  # Clear any reason
+    user.trusted_member_request_status = 'approved'
     user.save()
 
     return jsonify({
