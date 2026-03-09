@@ -9,6 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from app.database import db
 from app.models.base_model import BaseModel
+import sqlalchemy as sa
 
 
 # ------------------------------------------------------------------------====
@@ -71,6 +72,14 @@ class User(BaseModel):
     # This is required when user has less than 300 edits
     # Superadmins can view this reason when reviewing requests
     trusted_member_request_reason = db.Column(db.Text, nullable=True)
+
+    # Status of trusted member request
+    # Values: 'pending' (awaiting review), 'approved' (granted), 'rejected' (denied)
+    # This allows tracking the complete request lifecycle
+    trusted_member_request_status = db.Column(
+        sa.Enum('pending', 'approved', 'rejected', name='trusted_member_request_status_enum'),
+        nullable=True
+    )
 
     # Account creation timestamp (UTC)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -356,6 +365,7 @@ class User(BaseModel):
             "is_trusted_member": bool(getattr(self, 'is_trusted_member', False)),
             "trusted_member_request": bool(getattr(self, 'trusted_member_request', False)),
             "trusted_member_request_reason": getattr(self, 'trusted_member_request_reason', None),
+            "trusted_member_request_status": getattr(self, 'trusted_member_request_status', None),
             # Convert datetime to ISO format string
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
