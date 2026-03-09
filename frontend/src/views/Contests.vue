@@ -19,10 +19,24 @@
       >
         <i class="fas fa-plus me-2"></i>Create Contest
       </button>
-      <!-- Show Request Contest Creator Rights button for regular users (non-privileged) -->
-      <!-- CRITICAL: Superadmins and trusted members should NEVER see this button -->
+      <!-- Show Request Pending status badge for users with pending requests -->
+      <div
+        v-else-if="isAuthenticated && requestStatus === 'pending'"
+        class="badge bg-warning status-badge"
+      >
+        <i class="fas fa-clock me-2"></i>Request Pending
+      </div>
+      <!-- Show Re-request Contest Creator Rights button for users whose request was rejected -->
       <button
-        v-else-if="isAuthenticated && !canCreateContests && !isSuperadmin"
+        v-else-if="isAuthenticated && requestStatus === 'rejected'"
+        class="btn btn-secondary"
+        @click="showRequestTrustedMemberModal"
+      >
+        <i class="fas fa-redo me-2"></i>Re-request Contest Creator Rights
+      </button>
+      <!-- Show Request Contest Creator Rights button for users who have never requested -->
+      <button
+        v-else-if="isAuthenticated && canRequest"
         class="btn btn-secondary"
         @click="showRequestTrustedMemberModal"
       >
@@ -235,6 +249,23 @@ export default {
       const isTrusted = user.is_trusted_member === true
       console.log('[canCreateContests] User is trusted member:', isTrusted)
       return isTrusted
+    })
+
+    // Get the trusted member request status
+    const requestStatus = computed(() => {
+      const user = store.currentUser.value
+      if (!user) {
+        return null
+      }
+      return user.trusted_member_request_status || null
+    })
+
+    // Check if user can request (never requested OR was rejected)
+    const canRequest = computed(() => {
+      const status = requestStatus.value
+      return !isSuperadmin.value &&
+             !canCreateContests.value &&
+             (!status || status === 'rejected')
     })
 
     // Combine creator and organizers array into single list
@@ -510,6 +541,8 @@ export default {
       isAuthenticated,
       isSuperadmin,
       canCreateContests,
+      requestStatus,
+      canRequest,
       submittingToContestId,
       createContestModal,
       showRequestTrustedMemberForm,
@@ -567,6 +600,33 @@ h2 {
   background-color: var(--wiki-primary-hover);
   border-color: var(--wiki-primary-hover);
   box-shadow: 0 2px 4px rgba(0, 102, 153, 0.2);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  background-color: var(--wiki-text-muted);
+  border-color: var(--wiki-text-muted);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+}
+
+.btn-secondary:hover {
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+/* Status Badge in Page Header */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
 }
 
 /* Category Navigation Tabs */
