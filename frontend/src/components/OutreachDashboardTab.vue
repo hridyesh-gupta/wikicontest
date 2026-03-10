@@ -3,8 +3,8 @@
     <!-- Nested Tabs for Course and Users -->
     <ul class="nav nav-tabs mb-4" role="tablist">
       <li class="nav-item" role="presentation">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           :class="{ active: activeSubTab === 'course' }"
           @click="activeSubTab = 'course'"
           type="button"
@@ -14,8 +14,8 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           :class="{ active: activeSubTab === 'users' }"
           @click="handleUsersTabClick"
           type="button"
@@ -25,8 +25,8 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           :class="{ active: activeSubTab === 'articles' }"
           @click="handleArticlesTabClick"
           type="button"
@@ -36,8 +36,8 @@
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button 
-          class="nav-link" 
+        <button
+          class="nav-link"
           :class="{ active: activeSubTab === 'uploads' }"
           @click="handleUploadsTabClick"
           type="button"
@@ -51,7 +51,7 @@
     <!-- Tab Content -->
     <div class="tab-content">
       <!-- Course Tab -->
-      <div 
+      <div
         v-show="activeSubTab === 'course'"
         class="tab-pane"
         :class="{ 'active': activeSubTab === 'course' }"
@@ -247,7 +247,10 @@
           <h6 class="mb-0"><i class="fas fa-link me-2"></i>Enrollment</h6>
         </div>
         <div class="card-body">
-          <a :href="courseData.enroll_url" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+          <a :href="courseData.enroll_url"
+target="_blank"
+rel="noopener noreferrer"
+class="btn btn-primary">
             <i class="fas fa-external-link-alt me-2"></i>Enroll in Course
           </a>
           <small class="d-block mt-2 text-muted" v-if="courseData.passcode_required">
@@ -265,7 +268,7 @@
       </div>
 
       <!-- Users Tab -->
-      <div 
+      <div
         v-show="activeSubTab === 'users'"
         class="tab-pane"
         :class="{ 'active': activeSubTab === 'users' }"
@@ -332,10 +335,10 @@
                       <td>{{ formatNumber(user.character_sum_us || 0) }}</td>
                       <td>{{ user.total_uploads || 0 }}</td>
                       <td>
-                        <a 
-                          v-if="user.contribution_url" 
-                          :href="user.contribution_url" 
-                          target="_blank" 
+                        <a
+                          v-if="user.contribution_url"
+                          :href="user.contribution_url"
+                          target="_blank"
                           rel="noopener noreferrer"
                           class="btn btn-sm btn-outline-primary"
                           title="View Contributions"
@@ -359,7 +362,7 @@
       </div>
 
       <!-- Articles Tab -->
-      <div 
+      <div
         v-show="activeSubTab === 'articles'"
         class="tab-pane"
         :class="{ 'active': activeSubTab === 'articles' }"
@@ -437,10 +440,10 @@
                         <span class="badge bg-primary">{{ article.user_ids ? article.user_ids.length : 0 }}</span>
                       </td>
                       <td>
-                        <a 
-                          v-if="article.url" 
-                          :href="article.url" 
-                          target="_blank" 
+                        <a
+                          v-if="article.url"
+                          :href="article.url"
+                          target="_blank"
                           rel="noopener noreferrer"
                           class="btn btn-sm btn-outline-primary"
                           title="View Article"
@@ -464,7 +467,7 @@
       </div>
 
       <!-- Uploads Tab -->
-      <div 
+      <div
         v-show="activeSubTab === 'uploads'"
         class="tab-pane"
         :class="{ 'active': activeSubTab === 'uploads' }"
@@ -533,9 +536,9 @@
                         <span v-else class="badge bg-secondary">Not tracked</span>
                       </td>
                       <td>
-                        <img 
-                          v-if="upload.thumburl" 
-                          :src="upload.thumburl" 
+                        <img
+                          v-if="upload.thumburl"
+                          :src="upload.thumburl"
                           :alt="upload.file_name"
                           class="img-thumbnail"
                           style="max-width: 100px; max-height: 100px; cursor: pointer;"
@@ -545,10 +548,10 @@
                         <span v-else class="text-muted">No preview</span>
                       </td>
                       <td>
-                        <a 
-                          v-if="upload.url" 
-                          :href="upload.url" 
-                          target="_blank" 
+                        <a
+                          v-if="upload.url"
+                          :href="upload.url"
+                          target="_blank"
                           rel="noopener noreferrer"
                           class="btn btn-sm btn-outline-primary"
                           title="View on Commons"
@@ -595,15 +598,15 @@ export default {
     const loading = ref(false)
     const error = ref(null)
     const courseData = ref(null)
-    
+
     const loadingUsers = ref(false)
     const usersError = ref(null)
     const usersData = ref(null)
-    
+
     const loadingArticles = ref(false)
     const articlesError = ref(null)
     const articlesData = ref(null)
-    
+
     const loadingUploads = ref(false)
     const uploadsError = ref(null)
     const uploadsData = ref(null)

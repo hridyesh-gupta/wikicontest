@@ -85,9 +85,9 @@ class Contest(BaseModel, ContestMixin):
     # Default 0 means no requirement
     min_reference_count = db.Column(db.Integer, nullable=False, default=0)
 
-    # Required MediaWiki categories (stored as JSON array of URLs)
-    # Articles must belong to at least one of these categories
-    categories = db.Column(db.Text, nullable=False, default="[]")
+    # Optional MediaWiki categories (stored as JSON array of URLs)
+    # If set, articles must belong to at least one of these categories
+    categories = db.Column(db.Text, nullable=True)
 
     # ------------------------------------------------------------------------
     # Database Columns - People Management
