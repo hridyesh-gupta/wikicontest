@@ -805,10 +805,8 @@ title="Delete Submission"
     <div class="modal-dialog modal-fullscreen">
       <div class="modal-content">
         <!-- Modal Header -->
-        <div class="modal-header">
-          <h5 class="modal-title">
-            <i class="fas fa-edit me-2"></i>Edit Contest
-          </h5>
+        <div class="modal-header py-2">
+          <div class="text-white">WikiContest Tool</div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
 
