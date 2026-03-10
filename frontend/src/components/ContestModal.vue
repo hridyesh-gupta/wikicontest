@@ -118,29 +118,6 @@ class="text-decoration-none">
                       >
                         {{ submission.article_title }}
                         <i class="fas fa-eye ms-1" style="font-size: 0.8em;"></i>
-                      <!-- Total bytes = Original bytes (at submission) + Expansion bytes (change since submission) -->
-                      <div
-                        v-if="submission.article_word_count !== null &&
-                          submission.article_word_count !== undefined"
-                        class="text-muted small mt-1"
-                      >
-                        <i class="fas fa-file-alt me-1"></i>Total bytes:
-                        {{
-                          formatByteCountWithExact(
-                            (submission.article_word_count || 0) +
-                            (submission.article_expansion_bytes || 0)
-                          )
-                        }}
-                      </div>
-                      <!-- Original byte count at time of submission -->
-                      <div
-                        v-if="submission.article_word_count !== null &&
-                          submission.article_word_count !== undefined"
-                        class="text-muted small mt-1"
-                      >
-                        <i class="fas fa-clock me-1"></i>Original bytes:
-                        {{ formatByteCountWithExact(submission.article_word_count) }}
-                      </div>
                       <!-- Expansion bytes showing growth/shrinkage since submission -->
                       <div
                         v-if="submission.article_expansion_bytes !== null &&
@@ -154,15 +131,19 @@ class="text-decoration-none">
                             : 'fas fa-arrow-down me-1'"
                         ></i>Expansion bytes:
                         <span
-                          v-if="submission.article_expansion_bytes !== 0"
-                          :class="submission.article_expansion_bytes >= 0 ? 'text-success' : 'text-danger'"
+                          :class="submission.article_expansion_bytes > 0
+                            ? 'text-success'
+                            : submission.article_expansion_bytes < 0
+                              ? 'text-danger'
+                              : 'text-muted'"
                         >
-                          {{ submission.article_expansion_bytes >= 0 ? '+' : '-' }}{{
-                            formatByteCountWithExact(Math.abs(submission.article_expansion_bytes))
-                          }}
-                        </span>
-                        <span v-else>
-                          {{ formatByteCountWithExact(0) }}
+                          {{
+                            submission.article_expansion_bytes > 0
+                              ? '+'
+                              : submission.article_expansion_bytes < 0
+                                ? '-'
+                                : ''
+                          }}{{ formatByteCountWithExact(Math.abs(submission.article_expansion_bytes)) }}
                         </span>
                       </div>
                     </td>
