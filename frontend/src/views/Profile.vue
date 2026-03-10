@@ -58,11 +58,13 @@
           </div>
 
           <!-- Trusted Member Status -->
-          <div class="info-item" v-if="!isSuperadmin">
+          <div class="info-item">
             <i class="fas fa-users-shield"></i>
             <span>
               <strong>Trusted Member</strong> :
-              <span v-if="isTrustedMember" class="badge bg-success">Yes</span>
+              <span v-if="isTrustedMember" class="badge bg-success">
+                {{ isSuperadmin ? 'Yes (Superadmin)' : 'Yes' }}
+              </span>
               <span v-else-if="requestStatus === 'pending'" class="badge bg-warning">Pending</span>
               <span v-else-if="requestStatus === 'rejected'" class="badge bg-danger">Rejected</span>
               <span v-else class="badge bg-secondary">No</span>
@@ -82,19 +84,20 @@
           </div>
 
           <!-- Info message for trusted members -->
-          <div v-if="isTrustedMember && !isSuperadmin" class="alert alert-success mt-3">
+          <div v-if="isTrustedMember" class="alert alert-success mt-3">
             <i class="fas fa-check-circle me-2"></i>
-            You are a trusted member and can create contests.
+            <span v-if="isSuperadmin">You are a superadmin and can create contests.</span>
+            <span v-else>You are a trusted member and can create contests.</span>
           </div>
 
           <!-- Info message for pending requests -->
-          <div v-if="requestStatus === 'pending' && !isTrustedMember" class="alert alert-warning mt-3">
+          <div v-if="requestStatus === 'pending' && !isTrustedMember && !isSuperadmin" class="alert alert-warning mt-3">
             <i class="fas fa-clock me-2"></i>
             Your trusted member request is pending. A superadmin will review it.
           </div>
 
           <!-- Info message for rejected requests -->
-          <div v-if="requestStatus === 'rejected' && !isTrustedMember" class="alert alert-danger mt-3">
+          <div v-if="requestStatus === 'rejected' && !isTrustedMember && !isSuperadmin" class="alert alert-danger mt-3">
             <i class="fas fa-times-circle me-2"></i>
             Your trusted member request was rejected. You can submit a new request.
           </div>
@@ -128,11 +131,35 @@ export default {
     const route = useRoute()
     const currentUser = computed(() => store.currentUser)
 
+    // Direct profile data state (bypasses store cache)
+    const directProfileData = ref(null)
+
     // Refresh user data from backend to get latest role information
     const refreshUserData = async () => {
       console.log('🔄 Refreshing user data...')
       try {
-        // Force auth check to fetch latest data from database
+        // First, try to fetch fresh data directly from /user/profile endpoint
+        // This bypasses any cached data in the store
+        const profileResponse = await api.get('/user/profile')
+        console.log('🔄 Direct profile response:', JSON.stringify(profileResponse, null, 2))
+        directProfileData.value = profileResponse
+
+        // Update the store with fresh data from profile endpoint
+        if (profileResponse) {
+          store.state.currentUser = {
+            id: profileResponse.id,
+            username: profileResponse.username,
+            email: profileResponse.email,
+            role: profileResponse.role,
+            is_trusted_member: profileResponse.is_trusted_member,
+            trusted_member_request: profileResponse.trusted_member_request,
+            trusted_member_request_status: profileResponse.trusted_member_request_status
+          }
+          console.log('🔄 Store updated with profile data')
+          console.log('🔄 Updated is_trusted_member in store:', profileResponse.is_trusted_member)
+        }
+
+        // Also force auth check to fetch latest data from database
         await store.checkAuth()
         // Allow time for reactive state to propagate
         await new Promise(resolve => setTimeout(resolve, 300))
@@ -140,6 +167,7 @@ export default {
         // Log refreshed data for debugging
         console.log('🔄 After refresh - currentUser:', JSON.stringify(currentUser.value, null, 2))
         console.log('🔄 After refresh - role:', currentUser.value?.role)
+        console.log('🔄 After refresh - is_trusted_member:', currentUser.value?.is_trusted_member)
       } catch (error) {
         console.error('🔄 Error refreshing user data:', error)
       }
@@ -205,7 +233,9 @@ export default {
     // Format role for display with capitalization
     const formattedRole = computed(() => {
       // Check multiple sources to ensure we get the latest role
-      const role = currentUser.value?.role ||
+      // Priority: directProfileData > currentUser > store.currentUser > store.state
+      const role = directProfileData.value?.role ||
+                   currentUser.value?.role ||
                    store.currentUser?.role ||
                    store.state?.currentUser?.role ||
                    'user'
@@ -222,7 +252,9 @@ export default {
     // Get lowercase role for CSS class application
     const userRole = computed(() => {
       // Check multiple sources to ensure we get the latest role
-      const role = currentUser.value?.role ||
+      // Priority: directProfileData > currentUser > store.currentUser > store.state
+      const role = directProfileData.value?.role ||
+                   currentUser.value?.role ||
                    store.currentUser?.role ||
                    store.state?.currentUser?.role ||
                    'user'
@@ -260,15 +292,32 @@ export default {
 
     // Check if user is superadmin
     const isSuperadmin = computed(() => {
-      const role = currentUser.value?.role || store.currentUser?.role || ''
-      return String(role).toLowerCase() === 'superadmin'
+      // Priority: directProfileData > currentUser > store.currentUser > store.state
+      const role = directProfileData.value?.role ||
+                   currentUser.value?.role ||
+                   store.currentUser?.role ||
+                   store.state?.currentUser?.role ||
+                   ''
+      const isSuper = String(role).toLowerCase() === 'superadmin'
+      console.log('[Profile] isSuperadmin check:', { role, isSuper, directProfileData: directProfileData.value })
+      return isSuper
     })
 
-    // Check if user is trusted member
+    // Check if user is trusted member (superadmins are automatically trusted)
     const isTrustedMember = computed(() => {
-      return currentUser.value?.is_trusted_member ||
+      // Superadmins are always trusted members
+      if (isSuperadmin.value) {
+        console.log('[Profile] isTrustedMember: User is superadmin, returning true')
+        return true
+      }
+      // Priority: directProfileData > currentUser > store
+      const trustedFromData = directProfileData.value?.is_trusted_member
+      const trustedFromStore = currentUser.value?.is_trusted_member ||
              store.currentUser?.is_trusted_member ||
              false
+      const result = trustedFromData !== undefined ? trustedFromData : trustedFromStore
+      console.log('[Profile] isTrustedMember:', { directProfileData: directProfileData.value, trustedFromData, trustedFromStore, result })
+      return result
     })
 
     // Check if user has requested trusted member status
@@ -280,7 +329,9 @@ export default {
 
     // Get the trusted member request status
     const requestStatus = computed(() => {
-      return currentUser.value?.trusted_member_request_status ||
+      // Priority: directProfileData > currentUser > store
+      return directProfileData.value?.trusted_member_request_status ||
+             currentUser.value?.trusted_member_request_status ||
              store.currentUser?.trusted_member_request_status ||
              null
     })
