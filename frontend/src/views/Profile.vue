@@ -76,7 +76,8 @@
               @click="requestTrustedMember"
               :disabled="processing"
             >
-              <i class="fas fa-user-plus me-2"></i>{{ requestStatus === 'rejected' ? 'Re-request' : 'Request' }} Trusted Member Status
+              <i class="fas fa-user-plus me-2"></i>
+              {{ requestStatus === 'rejected' ? 'Re-request' : 'Request' }} Trusted Member Status
             </button>
           </div>
 

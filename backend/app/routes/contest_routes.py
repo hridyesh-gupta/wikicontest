@@ -533,7 +533,7 @@ def create_contest():
         marks_setting_rejected: Points for rejected submissions (default: 0)
         min_byte_count: Minimum article byte count (required)
         min_reference_count: Minimum reference count (default: 0)
-        categories: List of MediaWiki category URLs (required)
+        categories: List of MediaWiki category URLs (optional)
         scoring_parameters: Multi-parameter scoring config (optional)
         organizers: Additional organizer usernames (optional)
 
@@ -664,20 +664,17 @@ def create_contest():
         )
 
     # -----------------------------------------------------------------------
-    # Validate Categories (Required)
+    # Validate Categories (Optional)
     # -----------------------------------------------------------------------
 
-    categories = data.get("categories")
-    if not categories or not isinstance(categories, list) or len(categories) == 0:
-        return jsonify({"error": "At least one category URL is required"}), 400
+    categories = data.get("categories", [])
+    if not isinstance(categories, list):
+        categories = []
+    # Filter out empty strings
+    categories = [c for c in categories if isinstance(c, str) and c.strip()]
 
-    # Validate each category URL format
+    # Validate each category URL format (only if categories are provided)
     for category_url in categories:
-        if not isinstance(category_url, str) or not category_url.strip():
-            return (
-                jsonify({"error": "All category URLs must be non-empty strings"}),
-                400,
-            )
         if not (
             category_url.startswith("http://") or category_url.startswith("https://")
         ):
@@ -1050,25 +1047,16 @@ def update_contest(contest_id):
                     400,
                 )
 
-        # --- Categories ---
+        # --- Categories (Optional) ---
         if "categories" in data:
             categories_value = data.get("categories")
-            if (
-                not categories_value
-                or not isinstance(categories_value, list)
-                or len(categories_value) == 0
-            ):
-                return jsonify({"error": "At least one category URL is required"}), 400
+            if not isinstance(categories_value, list):
+                categories_value = []
+            # Filter out empty strings
+            categories_value = [c for c in categories_value if isinstance(c, str) and c.strip()]
 
-            # Validate each category URL
+            # Validate each category URL format (only if categories are provided)
             for category_url in categories_value:
-                if not isinstance(category_url, str) or not category_url.strip():
-                    return (
-                        jsonify(
-                            {"error": "All category URLs must be non-empty strings"}
-                        ),
-                        400,
-                    )
                 if not (
                     category_url.startswith("http://")
                     or category_url.startswith("https://")
