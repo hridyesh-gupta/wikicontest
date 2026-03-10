@@ -346,18 +346,21 @@ def check_cookie():
                 f'🔐 Cookie check FINAL RESPONSE - '
                 f'Username: {response_data.get("username")}, '
                 f'User ID: {response_data.get("userId")}, '
-                f'Role being sent to frontend: {response_data.get("role")}'
+                f'Role being sent to frontend: {response_data.get("role")}, '
+                f'is_trusted_member: {response_data.get("is_trusted_member")}'
             )
             current_app.logger.info(log_msg)
             # Also print to console for immediate visibility
             print(f'🔐 [FINAL RESPONSE] {log_msg}')
             # Special check for Adityakumar0545
             if response_data.get("username") == 'Adityakumar0545':
-                print(f'⚠️ [SPECIAL CHECK] Adityakumar0545 - Role in response: {response_data.get("role")}')
+                print(f'⚠️ [SPECIAL CHECK] Adityakumar0545 - Role: {response_data.get("role")}, is_trusted_member: {response_data.get("is_trusted_member")}')
                 if response_data.get("role") != 'superadmin':
                     print(f'❌ [ERROR] Role should be superadmin but is: {response_data.get("role")}')
+                elif not response_data.get("is_trusted_member"):
+                    print(f'❌ [ERROR] is_trusted_member should be True for superadmin')
                 else:
-                    print(' [SUCCESS] Role is correctly set to superadmin in response')
+                    print(' [SUCCESS] Role and is_trusted_member are correct')
         except Exception as error:  # pylint: disable=broad-exception-caught
             # Logging failures should not crash the application
             current_app.logger.error(f'Logging error: {str(error)}')

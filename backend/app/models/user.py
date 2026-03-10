@@ -355,14 +355,19 @@ class User(BaseModel):
         Returns:
             dict: User data (excludes password for security)
         """
+        # Superadmins are automatically treated as trusted members
+        is_trusted = bool(getattr(self, 'is_trusted_member', False))
+        if self.is_superadmin():
+            is_trusted = True
+
         return {
             "id": self.id,
             "username": self.username,
             "email": self.email,
             "role": self.role,
             "score": self.score,
-            # Trusted member status (use getattr for safety during migration)
-            "is_trusted_member": bool(getattr(self, 'is_trusted_member', False)),
+            # Trusted member status (superadmins are automatically trusted)
+            "is_trusted_member": is_trusted,
             "trusted_member_request": bool(getattr(self, 'trusted_member_request', False)),
             "trusted_member_request_reason": getattr(self, 'trusted_member_request_reason', None),
             "trusted_member_request_status": getattr(self, 'trusted_member_request_status', None),
