@@ -1,7 +1,7 @@
 """Add image_count and infobox_count columns to submissions table
 
 Revision ID: f1a2b3c4d5e6
-Revises: e4e56960f418
+Revises: b3f7a9c2d1e4
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ from sqlalchemy import inspect
 
 
 revision = "f1a2b3c4d5e6"
-down_revision = "e4e56960f418"
+down_revision = "b3f7a9c2d1e4"
 branch_labels = None
 depends_on = None
 
