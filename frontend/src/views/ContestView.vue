@@ -997,7 +997,10 @@ style="cursor: pointer;"
                   </div>
                   <div class="lock-banner-content">
                     <div class="scoring-mode-badge">
-                      <span v-if="contestScoringMode === 'multi_parameter'" class="badge-mode multi">
+                      <span v-if="contestScoringMode === 'automated'" class="badge-mode automated">
+                        <i class="fas fa-robot me-2"></i>Automated Scoring
+                      </span>
+                      <span v-else-if="contestScoringMode === 'multi_parameter'" class="badge-mode multi">
                         <i class="fas fa-star me-2"></i>Multi-Parameter Scoring
                       </span>
                       <span v-else class="badge-mode simple">
@@ -1018,6 +1021,12 @@ style="cursor: pointer;"
                   <i class="fas fa-info-circle me-2"></i>
                   <strong>What you can edit:</strong>
                   <ul class="mb-0 mt-2">
+                    <li v-if="contestScoringMode === 'automated'">
+                      Eligibility criteria values
+                    </li>
+                    <li v-if="contestScoringMode === 'automated'">
+                      Evaluation points values
+                    </li>
                     <li v-if="contestScoringMode === 'multi_parameter'">
                       Maximum and minimum score values
                     </li>
@@ -1133,7 +1142,7 @@ class="btn btn-sm btn-outline-danger"
                 </div>
 
                 <!-- Simple Scoring Locked Editing -->
-                <div v-else>
+                <div v-else-if="contestScoringMode === 'simple'">
                   <div class="row">
                     <div class="col-md-6 mb-3">
                       <label class="form-label">Points for Accepted Submissions *</label>
@@ -1152,6 +1161,109 @@ v-model.number="editForm.marks_setting_rejected"
 min="0"
                         required />
                       <small class="text-muted">Points for rejected submissions</small>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Automated Scoring Locked Editing -->
+                <div v-else-if="contestScoringMode === 'automated'">
+                  <!-- Eligibility Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-filter me-2"></i>Eligibility Criteria</h6>
+                    <div class="row">
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Edits</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.eligibility.min_edits"
+min="0" />
+                      </div>
+                      <div class="col-md-6 mb-3">
+                        <label class="form-label">Minimum Outgoing Links</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.eligibility.min_outgoing_links"
+min="0" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Evaluation Criteria -->
+                  <div class="mb-4">
+                    <h6 class="mb-3"><i class="fas fa-calculator me-2"></i>Evaluation Criteria (Points)</h6>
+                    <div class="row">
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Accepted</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_accepted"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Byte</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_byte"
+min="0"
+step="0.0001" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Incoming Link</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_incoming_link"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Outgoing Link</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_outgoing_link"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Category</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_category"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per New Reference</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_new_reference"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Reused Reference</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_reused_reference"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Infobox</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_infobox"
+min="0"
+step="0.01" />
+                      </div>
+                      <div class="col-md-4 mb-3">
+                        <label class="form-label">Points per Image</label>
+                        <input type="number"
+class="form-control"
+v-model.number="automatedSettings.evaluation.points_per_image"
+min="0"
+step="0.01" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1481,9 +1593,29 @@ export default {
       { name: 'Neutrality', weight: 20, description: 'Unbiased writing' },
       { name: 'Formatting', weight: 10, description: 'Presentation & formatting' }
     ])
-    const contestScoringMode = ref('simple')
+    const contestScoringMode = ref('simple') // 'simple', 'multi_parameter', or 'automated'
     const scoringModeLocked = ref(false)
     const reviewedSubmissionsCount = ref(0)
+
+    // Automated scoring settings for edit modal
+    const automatedSettings = reactive({
+      enabled: true,
+      eligibility: {
+        min_edits: 100,
+        min_outgoing_links: 3
+      },
+      evaluation: {
+        points_per_accepted: 10,
+        points_per_byte: 0.001,
+        points_per_incoming_link: 2,
+        points_per_outgoing_link: 1,
+        points_per_category: 1,
+        points_per_new_reference: 3,
+        points_per_reused_reference: 1,
+        points_per_infobox: 5,
+        points_per_image: 2
+      }
+    })
 
     // Calculate total weight of all parameters
     const totalWeight = computed(() => {
@@ -1519,6 +1651,25 @@ export default {
         { name: 'Neutrality', weight: 20, description: 'Unbiased writing' },
         { name: 'Formatting', weight: 10, description: 'Presentation & formatting' }
       ]
+    }
+
+    // Reset to default automated settings
+    const loadDefaultAutomatedSettings = () => {
+      automatedSettings.eligibility = {
+        min_edits: 100,
+        min_outgoing_links: 3
+      }
+      automatedSettings.evaluation = {
+        points_per_accepted: 10,
+        points_per_byte: 0.001,
+        points_per_incoming_link: 2,
+        points_per_outgoing_link: 1,
+        points_per_category: 1,
+        points_per_new_reference: 3,
+        points_per_reused_reference: 1,
+        points_per_infobox: 5,
+        points_per_image: 2
+      }
     }
 
     // Track current submission for preview modal
@@ -2229,7 +2380,10 @@ export default {
       scoringModeLocked.value = reviewedSubmissions.length > 0
 
       // This determines what the contest is CURRENTLY using
-      if (contest.value.scoring_parameters?.enabled === true) {
+      if (contest.value.automated_settings?.enabled === true) {
+        contestScoringMode.value = 'automated'
+        console.log('[EDIT MODAL] Current scoring mode: AUTOMATED')
+      } else if (contest.value.scoring_parameters?.enabled === true) {
         contestScoringMode.value = 'multi_parameter'
         console.log('[EDIT MODAL] Current scoring mode: MULTI-PARAMETER')
       } else {
@@ -2237,7 +2391,37 @@ export default {
         console.log('[EDIT MODAL] Current scoring mode: SIMPLE')
       }
 
-      if (contestScoringMode.value === 'multi_parameter') {
+      if (contestScoringMode.value === 'automated') {
+        // Contest is using automated scoring
+        enableMultiParameterScoring.value = false
+
+        // Load automated settings
+        if (contest.value.automated_settings) {
+          automatedSettings.eligibility = {
+            min_edits: Number(contest.value.automated_settings.eligibility?.min_edits ?? 100),
+            min_outgoing_links: Number(contest.value.automated_settings.eligibility?.min_outgoing_links ?? 3)
+          }
+          automatedSettings.evaluation = {
+            points_per_accepted: Number(contest.value.automated_settings.evaluation?.points_per_accepted ?? 10),
+            points_per_byte: Number(contest.value.automated_settings.evaluation?.points_per_byte ?? 0.001),
+            points_per_incoming_link: Number(contest.value.automated_settings.evaluation?.points_per_incoming_link ?? 2),
+            points_per_outgoing_link: Number(contest.value.automated_settings.evaluation?.points_per_outgoing_link ?? 1),
+            points_per_category: Number(contest.value.automated_settings.evaluation?.points_per_category ?? 1),
+            points_per_new_reference: Number(contest.value.automated_settings.evaluation?.points_per_new_reference ?? 3),
+            points_per_reused_reference: Number(contest.value.automated_settings.evaluation?.points_per_reused_reference ?? 1),
+            points_per_infobox: Number(contest.value.automated_settings.evaluation?.points_per_infobox ?? 5),
+            points_per_image: Number(contest.value.automated_settings.evaluation?.points_per_image ?? 2)
+          }
+        } else {
+          loadDefaultAutomatedSettings()
+        }
+
+        editForm.automated_settings = {
+          enabled: true,
+          eligibility: { ...automatedSettings.eligibility },
+          evaluation: { ...automatedSettings.evaluation }
+        }
+      } else if (contestScoringMode.value === 'multi_parameter') {
         // Contest is using multi-parameter scoring
         enableMultiParameterScoring.value = true
 
@@ -2309,8 +2493,30 @@ export default {
         }
 
         let scoringParametersPayload = null
+        let automatedSettingsPayload = null
 
-        if (enableMultiParameterScoring.value) {
+        if (contestScoringMode.value === 'automated') {
+          // Automated scoring is enabled
+          automatedSettingsPayload = {
+            enabled: true,
+            eligibility: {
+              min_edits: Number(automatedSettings.eligibility.min_edits) || 0,
+              min_outgoing_links: Number(automatedSettings.eligibility.min_outgoing_links) || 0
+            },
+            evaluation: {
+              points_per_accepted: Number(automatedSettings.evaluation.points_per_accepted) || 0,
+              points_per_byte: Number(automatedSettings.evaluation.points_per_byte) || 0,
+              points_per_incoming_link: Number(automatedSettings.evaluation.points_per_incoming_link) || 0,
+              points_per_outgoing_link: Number(automatedSettings.evaluation.points_per_outgoing_link) || 0,
+              points_per_category: Number(automatedSettings.evaluation.points_per_category) || 0,
+              points_per_new_reference: Number(automatedSettings.evaluation.points_per_new_reference) || 0,
+              points_per_reused_reference: Number(automatedSettings.evaluation.points_per_reused_reference) || 0,
+              points_per_infobox: Number(automatedSettings.evaluation.points_per_infobox) || 0,
+              points_per_image: Number(automatedSettings.evaluation.points_per_image) || 0
+            }
+          }
+          scoringParametersPayload = null
+        } else if (enableMultiParameterScoring.value) {
           // Multi-parameter scoring is enabled (either locked or unlocked)
 
           // Validate weights sum to 100
@@ -2373,7 +2579,8 @@ export default {
           outreach_dashboard_url: outreachUrlValue,
           marks_setting_accepted: Number(editForm.marks_setting_accepted),
           marks_setting_rejected: Number(editForm.marks_setting_rejected),
-          scoring_parameters: scoringParametersPayload
+          scoring_parameters: scoringParametersPayload,
+          automated_settings: automatedSettingsPayload
         }
         await api.put(`/contest/${contest.value.id}`, payload)
 
@@ -2490,7 +2697,9 @@ export default {
       savingContest,
       scoringModeLocked,
       reviewedSubmissionsCount,
-      contestScoringMode
+      contestScoringMode,
+      automatedSettings,
+      loadDefaultAutomatedSettings
     }
   }
 }
