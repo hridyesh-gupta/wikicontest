@@ -767,7 +767,7 @@ def create_contest():
                 evaluation = {}
 
             # Validate numeric values in eligibility
-            for field in ["min_edits", "min_bytes", "min_incoming_links", "min_outgoing_links"]:
+            for field in ["min_edits", "min_outgoing_links"]:
                 value = eligibility.get(field)
                 if value is not None:
                     try:
@@ -1280,7 +1280,7 @@ def update_contest(contest_id):
                         evaluation = {}
                     
                     # Validate numeric values in eligibility
-                    for field in ["min_edits", "min_bytes", "min_incoming_links", "min_outgoing_links"]:
+                    for field in ["min_edits", "min_outgoing_links"]:
                         value = eligibility.get(field)
                         if value is not None:
                             try:
