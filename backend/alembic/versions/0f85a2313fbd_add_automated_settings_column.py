@@ -28,8 +28,6 @@ def upgrade():
         "enabled": true,
         "eligibility": {
             "min_edits": 100,
-            "min_bytes": 5000,
-            "min_incoming_links": 2,
             "min_outgoing_links": 3
         },
         "evaluation": {
