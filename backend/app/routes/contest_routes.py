@@ -35,6 +35,7 @@ from app.utils import (
     get_article_infobox_count,
     get_article_incoming_links,
     get_article_outgoing_links,
+    crawl_category_articles,
     MEDIAWIKI_API_TIMEOUT,
 )
 from app.services.outreach_dashboard import (
@@ -2932,4 +2933,129 @@ def reject_contest_request(request_id):
     return jsonify({
         'message': 'Contest request rejected successfully',
         'requestId': contest_request.id
+    }), 200
+
+
+# ------------------------------------------------------------------------
+# CATEGORY CRAWLER ROUTE
+# ------------------------------------------------------------------------
+
+
+@contest_bp.route("/<int:contest_id>/crawl-category", methods=["POST"])
+@require_auth
+@handle_errors
+@validate_json_data(["category_url"])
+def crawl_category_for_contest(contest_id):
+    """
+    Crawl articles from a Wikipedia category and create pending submissions.
+
+    This endpoint is used for automated scoring contests to import articles
+    from a Wikipedia category. Each article is created as a pending submission
+    that can later be evaluated by the automated evaluation engine.
+
+    Args:
+        contest_id: Contest ID to add submissions to
+
+    Expected JSON data:
+        category_url: Full URL to a Wikipedia category page
+        limit: Optional maximum number of articles to import (default: 5000, max: 5000)
+
+    Returns:
+        JSON response with:
+            - message: Success message
+            - total_imported: Number of submissions created
+            - articles: List of imported article titles
+            - skipped: Number of articles skipped (duplicates)
+    """
+    user = request.current_user
+    data = request.get_json()
+
+    # Fetch contest
+    contest = Contest.query.get(contest_id)
+    if not contest:
+        return jsonify({"error": "Contest not found"}), 404
+
+    # Check if contest uses automated scoring
+    scoring_mode = contest.get_scoring_mode()
+    if scoring_mode != "automated":
+        return jsonify({
+            "error": "Category crawling is only available for automated scoring contests"
+        }), 400
+
+    # Permission check: admin, creator, or organizer
+    is_admin = hasattr(user, "is_admin") and callable(getattr(user, "is_admin")) and user.is_admin()
+    is_creator = getattr(user, "username", None) == getattr(contest, "created_by", None)
+    is_organizer = user.username in [o.username for o in contest.organizers] if hasattr(contest, "organizers") else False
+
+    if not (is_admin or is_creator or is_organizer):
+        return jsonify({"error": "You do not have permission to crawl categories for this contest"}), 403
+
+    # Get parameters
+    category_url = data.get("category_url")
+    limit = data.get("limit", 5000)
+
+    # Validate limit
+    try:
+        limit = min(int(limit), 5000)
+    except (ValueError, TypeError):
+        limit = 5000
+
+    # Crawl the category
+    result = crawl_category_articles(category_url, limit=limit)
+
+    if not result:
+        return jsonify({
+            "error": "Failed to crawl category. Please check the category URL."
+        }), 400
+
+    articles = result.get("articles", [])
+    imported = []
+    skipped = 0
+
+    # Get existing article links for this contest to avoid duplicates
+    existing_links = set(
+        s.article_link for s in Submission.query.filter_by(contest_id=contest_id).all()
+    )
+
+    # Create submissions for each article
+    for article in articles:
+        article_url = article.get("url")
+        article_title = article.get("title")
+
+        # Skip if already submitted
+        if article_url in existing_links:
+            skipped += 1
+            continue
+
+        # Create pending submission
+        # For automated contests, we use a system user (user_id of contest creator or first organizer)
+        # The submission will be marked as pending for automated evaluation
+        submission = Submission(
+            user_id=user.id,  # Use current user as the importer
+            contest_id=contest_id,
+            article_title=article_title,
+            article_link=article_url,
+            status="pending",
+        )
+
+        try:
+            submission.save()
+            imported.append(article_title)
+            existing_links.add(article_url)  # Prevent duplicates within this batch
+        except IntegrityError:
+            # Duplicate submission, skip
+            db.session.rollback()
+            skipped += 1
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            current_app.logger.error(f"Error creating submission for {article_title}: {str(e)}")
+            db.session.rollback()
+            skipped += 1
+
+    return jsonify({
+        "message": f"Successfully imported {len(imported)} articles from category",
+        "total_imported": len(imported),
+        "skipped": skipped,
+        "category": result.get("category"),
+        "wiki_base": result.get("wiki_base"),
+        "articles": imported[:100],  # Return first 100 for preview
     }), 200

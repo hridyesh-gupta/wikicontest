@@ -527,6 +527,61 @@ aria-labelledby="outreach-tab">
                   <i class="fas fa-info-circle"></i>
                   <span>Articles are automatically scored based on metrics and eligibility criteria</span>
                 </div>
+
+                <!-- Category Crawler Section -->
+                <div class="crawler-section" v-if="canEdit">
+                  <h6 class="section-title"><i class="fas fa-download me-2"></i>Import Articles from Category</h6>
+                  <div class="crawler-form">
+                    <input
+                      type="text"
+                      v-model="categoryUrl"
+                      placeholder="Enter Wikipedia category URL (e.g., https://en.wikipedia.org/wiki/Category:Test_articles)"
+                      class="form-control crawler-input"
+                    />
+                    <input
+                      type="number"
+                      v-model.number="crawlLimit"
+                      placeholder="Limit"
+                      min="1"
+                      max="5000"
+                      class="form-control crawler-limit"
+                    />
+                    <button
+                      class="btn btn-primary crawler-btn"
+                      @click="crawlCategory"
+                      :disabled="crawling || !categoryUrl"
+                    >
+                      <span v-if="crawling">
+                        <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+                      </span>
+                      <span v-else>
+                        <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+                      </span>
+                    </button>
+                  </div>
+                  <div v-if="crawlResult" class="crawl-result">
+                    <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+                      <i class="fas fa-check-circle me-2"></i>
+                      {{ crawlResult.message }}
+                      <br />
+                      <small>Category: {{ crawlResult.category }}</small>
+                      <br />
+                      <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+                    </div>
+                    <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+                      <i class="fas fa-exclamation-triangle me-2"></i>
+                      All {{ crawlResult.skipped }} articles were duplicates
+                    </div>
+                    <div class="alert alert-info" v-else>
+                      <i class="fas fa-info-circle me-2"></i>
+                      No articles found in category
+                    </div>
+                  </div>
+                  <div v-if="crawlError" class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    {{ crawlError }}
+                  </div>
+                </div>
               </div>
 
               <!-- Multi-Parameter Scoring Display -->
@@ -1744,6 +1799,51 @@ export default {
       }
     }
 
+    // Category crawler state
+    const categoryUrl = ref('')
+    const crawlLimit = ref(100)
+    const crawling = ref(false)
+    const crawlResult = ref(null)
+    const crawlError = ref(null)
+
+    // Crawl category and import articles
+    const crawlCategory = async () => {
+      if (!categoryUrl.value) return
+
+      crawling.value = true
+      crawlResult.value = null
+      crawlError.value = null
+
+      try {
+        const response = await fetch(`/api/contest/${contest.value.id}/crawl-category`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            category_url: categoryUrl.value,
+            limit: crawlLimit.value || 100
+          })
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to crawl category')
+        }
+
+        crawlResult.value = data
+
+        // Refresh submissions list to show new imports
+        await fetchSubmissions()
+      } catch (err) {
+        crawlError.value = err.message || 'An error occurred while crawling the category'
+      } finally {
+        crawling.value = false
+      }
+    }
+
     // Track current submission for preview modal
     const currentSubmissionId = ref(null)
 
@@ -2771,7 +2871,14 @@ export default {
       reviewedSubmissionsCount,
       contestScoringMode,
       automatedSettings,
-      loadDefaultAutomatedSettings
+      loadDefaultAutomatedSettings,
+      // Category crawler
+      categoryUrl,
+      crawlLimit,
+      crawling,
+      crawlResult,
+      crawlError,
+      crawlCategory
     }
   }
 }
@@ -3402,6 +3509,83 @@ export default {
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--wiki-primary);
+}
+
+/* Category Crawler Styles */
+.crawler-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+[data-theme="dark"] .crawler-section {
+  background: #1a1a2e;
+  border-color: #334155;
+}
+
+.crawler-section .section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--wiki-text);
+  margin-bottom: 0.75rem;
+}
+
+.crawler-form {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.crawler-input {
+  flex: 1;
+  min-width: 280px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-input {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-limit {
+  width: 100px;
+  padding: 0.625rem 0.875rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 0.875rem;
+}
+
+[data-theme="dark"] .crawler-limit {
+  background: #1f1f1f;
+  border-color: #404040;
+  color: #e5e7eb;
+}
+
+.crawler-btn {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.crawler-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.crawl-result {
+  margin-top: 1rem;
+}
+
+.crawl-result .alert {
+  margin-bottom: 0;
+  font-size: 0.875rem;
 }
 
 /* --------------------------------------------------------------------------
