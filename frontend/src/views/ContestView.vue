@@ -457,8 +457,80 @@ aria-labelledby="outreach-tab">
             </div>
 
             <div class="scoring-content">
+              <!-- Automated Scoring Display -->
+              <div v-if="contest.automated_settings?.enabled === true">
+                <div class="automated-header">
+                  <i class="fas fa-robot me-2"></i>
+                  <strong>Automated Scoring</strong>
+                  <span class="badge bg-info ms-2">Auto-evaluated</span>
+                </div>
+
+                <!-- Eligibility Criteria -->
+                <div class="automated-section">
+                  <h6 class="section-title"><i class="fas fa-filter me-2"></i>Eligibility Criteria</h6>
+                  <div class="criteria-grid">
+                    <div class="criteria-item">
+                      <span class="criteria-label">Min Edits</span>
+                      <span class="criteria-value">{{ contest.automated_settings.eligibility?.min_edits ?? 0 }}</span>
+                    </div>
+                    <div class="criteria-item">
+                      <span class="criteria-label">Min Outgoing Links</span>
+                      <span class="criteria-value">{{ contest.automated_settings.eligibility?.min_outgoing_links ?? 0 }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Evaluation Points -->
+                <div class="automated-section">
+                  <h6 class="section-title"><i class="fas fa-calculator me-2"></i>Evaluation Points</h6>
+                  <div class="points-grid">
+                    <div class="point-chip">
+                      <span class="chip-label">Accepted</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_accepted ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Per Byte</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_byte ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Incoming Link</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_incoming_link ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Outgoing Link</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_outgoing_link ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Category</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_category ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">New Ref</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_new_reference ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Reused Ref</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_reused_reference ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Infobox</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_infobox ?? 0 }}</span>
+                    </div>
+                    <div class="point-chip">
+                      <span class="chip-label">Image</span>
+                      <span class="chip-value">{{ contest.automated_settings.evaluation?.points_per_image ?? 0 }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="info-note">
+                  <i class="fas fa-info-circle"></i>
+                  <span>Articles are automatically scored based on metrics and eligibility criteria</span>
+                </div>
+              </div>
+
               <!-- Multi-Parameter Scoring Display -->
-              <div v-if="contest.scoring_parameters?.enabled === true">
+              <div v-else-if="contest.scoring_parameters?.enabled === true">
                 <div class="scoring-meta">
                   <span class="max-points">Accepted points: {{ contest.scoring_parameters.max_score }}</span>
                   <span class="max-points">Rejected points: {{ contest.scoring_parameters.min_score }}</span>
@@ -3198,6 +3270,105 @@ export default {
 
 .info-note i {
   font-size: 0.9375em;
+}
+
+/* Automated Scoring Display Styles */
+.automated-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--wiki-border);
+  font-size: 1.125rem;
+  color: var(--wiki-primary);
+}
+
+.automated-section {
+  margin-bottom: 1.25rem;
+}
+
+.automated-section .section-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--wiki-text);
+  margin-bottom: 0.75rem;
+}
+
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.criteria-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.625rem 0.875rem;
+  background: #f3f4f6;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+[data-theme="dark"] .criteria-item {
+  background: #1f1f1f;
+  border-color: #404040;
+}
+
+.criteria-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .criteria-label {
+  color: #9ca3af;
+}
+
+.criteria-value {
+  font-weight: 600;
+  color: var(--wiki-primary);
+  font-size: 0.9375rem;
+}
+
+.points-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.point-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.625rem;
+  background: rgba(13, 202, 240, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(13, 202, 240, 0.3);
+}
+
+[data-theme="dark"] .point-chip {
+  background: rgba(13, 202, 240, 0.15);
+  border-color: rgba(13, 202, 240, 0.4);
+}
+
+.chip-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+[data-theme="dark"] .chip-label {
+  color: #9ca3af;
+}
+
+.chip-value {
+  font-weight: 600;
+  color: #0dcaf0;
+  font-size: 0.9375rem;
+}
+
+[data-theme="dark"] .chip-value {
+  color: #5bc8e6;
 }
 
 .points-row {
