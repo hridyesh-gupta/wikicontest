@@ -743,6 +743,63 @@ def create_contest():
         scoring_parameters = None
 
     # -----------------------------------------------------------------------
+    # Validate Automated Settings (Optional)
+    # -----------------------------------------------------------------------
+
+    automated_settings = data.get("automated_settings")
+
+    if automated_settings:
+        if not isinstance(automated_settings, dict):
+            return jsonify({"error": "Automated settings must be an object"}), 400
+
+        # Validate automated scoring structure if enabled
+        if automated_settings.get("enabled"):
+            current_app.logger.info(f"[AUTOMATED CREATE] Automated scoring enabled")
+
+            # Validate eligibility section
+            eligibility = automated_settings.get("eligibility", {})
+            if not isinstance(eligibility, dict):
+                eligibility = {}
+
+            # Validate evaluation section
+            evaluation = automated_settings.get("evaluation", {})
+            if not isinstance(evaluation, dict):
+                evaluation = {}
+
+            # Validate numeric values in eligibility
+            for field in ["min_edits", "min_bytes", "min_incoming_links", "min_outgoing_links"]:
+                value = eligibility.get(field)
+                if value is not None:
+                    try:
+                        eligibility[field] = int(value)
+                        if eligibility[field] < 0:
+                            return jsonify({"error": f"{field} must be non-negative"}), 400
+                    except (ValueError, TypeError):
+                        return jsonify({"error": f"{field} must be a valid integer"}), 400
+
+            # Validate numeric values in evaluation
+            for field in ["points_per_accepted", "points_per_byte", "points_per_incoming_link",
+                          "points_per_outgoing_link", "points_per_category", "points_per_new_reference",
+                          "points_per_reused_reference", "points_per_infobox", "points_per_image"]:
+                value = evaluation.get(field)
+                if value is not None:
+                    try:
+                        evaluation[field] = float(value)
+                        if evaluation[field] < 0:
+                            return jsonify({"error": f"{field} must be non-negative"}), 400
+                    except (ValueError, TypeError):
+                        return jsonify({"error": f"{field} must be a valid number"}), 400
+
+            # Update with validated values
+            automated_settings["eligibility"] = eligibility
+            automated_settings["evaluation"] = evaluation
+
+            # When automated mode is enabled, scoring_parameters should be null
+            scoring_parameters = None
+    else:
+        automated_settings = None
+
+    # -----------------------------------------------------------------------
     # Create Contest
     # -----------------------------------------------------------------------
 
@@ -810,6 +867,7 @@ def create_contest():
             template_link=template_link,
             outreach_dashboard_url=outreach_dashboard_url,
             scoring_parameters=scoring_parameters,
+            automated_settings=automated_settings,
             organizers=additional_organizers,
             min_reference_count=min_reference_count,
         )
@@ -1198,6 +1256,62 @@ def update_contest(contest_id):
                     contest.set_scoring_parameters(sp)
                 except ValueError as ve:
                     return jsonify({"error": str(ve)}), 400
+
+        # --- Automated Settings (Automated Scoring Mode) ---
+        if "automated_settings" in data:
+            as_settings = data.get("automated_settings")
+            
+            # Accept explicit null to disable automated settings
+            if as_settings is None:
+                contest.set_automated_settings(None)
+            elif not isinstance(as_settings, dict):
+                return jsonify({"error": "automated_settings must be an object"}), 400
+            else:
+                # Validate automated scoring structure if enabled
+                if as_settings.get("enabled"):
+                    # Validate eligibility section
+                    eligibility = as_settings.get("eligibility", {})
+                    if not isinstance(eligibility, dict):
+                        eligibility = {}
+                    
+                    # Validate evaluation section
+                    evaluation = as_settings.get("evaluation", {})
+                    if not isinstance(evaluation, dict):
+                        evaluation = {}
+                    
+                    # Validate numeric values in eligibility
+                    for field in ["min_edits", "min_bytes", "min_incoming_links", "min_outgoing_links"]:
+                        value = eligibility.get(field)
+                        if value is not None:
+                            try:
+                                eligibility[field] = int(value)
+                                if eligibility[field] < 0:
+                                    return jsonify({"error": f"{field} must be non-negative"}), 400
+                            except (ValueError, TypeError):
+                                return jsonify({"error": f"{field} must be a valid integer"}), 400
+                    
+                    # Validate numeric values in evaluation
+                    for field in ["points_per_accepted", "points_per_byte", "points_per_incoming_link",
+                                  "points_per_outgoing_link", "points_per_category", "points_per_new_reference",
+                                  "points_per_reused_reference", "points_per_infobox", "points_per_image"]:
+                        value = evaluation.get(field)
+                        if value is not None:
+                            try:
+                                evaluation[field] = float(value)
+                                if evaluation[field] < 0:
+                                    return jsonify({"error": f"{field} must be non-negative"}), 400
+                            except (ValueError, TypeError):
+                                return jsonify({"error": f"{field} must be a valid number"}), 400
+                    
+                    # Update with validated values
+                    as_settings["eligibility"] = eligibility
+                    as_settings["evaluation"] = evaluation
+                    
+                    # When automated mode is enabled, disable multi-parameter scoring
+                    contest.set_scoring_parameters(None)
+                
+                # Persist validated automated settings
+                contest.set_automated_settings(as_settings)
 
         # --- Organizers ---
         if "organizers" in data:

@@ -71,6 +71,10 @@ class Contest(BaseModel, ContestMixin):
     # Multi-parameter scoring configuration (stored as JSON string)
     scoring_parameters = db.Column(db.Text, nullable=True)
 
+    # Automated scoring configuration (stored as JSON string)
+    # Contains eligibility criteria and evaluation parameters
+    automated_settings = db.Column(db.Text, nullable=True)
+
     # Submission type restriction: 'new', 'expansion', or 'both'
     allowed_submission_type = db.Column(db.String(20), default="both", nullable=False)
 
@@ -154,6 +158,9 @@ class Contest(BaseModel, ContestMixin):
 
         # Set scoring configuration (handles validation internally)
         self.set_scoring_parameters(kwargs.get("scoring_parameters"))
+
+        # Set automated scoring configuration (handles validation internally)
+        self.set_automated_settings(kwargs.get("automated_settings"))
 
         # Set article requirements
         self.min_byte_count = kwargs.get("min_byte_count", 0)
@@ -563,8 +570,13 @@ class Contest(BaseModel, ContestMixin):
         Get the current scoring mode for this contest.
 
         Returns:
-            str: 'simple' or 'multi_parameter'
+            str: 'simple', 'multi_parameter', or 'automated'
         """
+        # Check for automated scoring mode first
+        automated = self.get_automated_settings()
+        if automated and automated.get("enabled") is True:
+            return "automated"
+        # Then check for multi-parameter scoring
         params = self.get_scoring_parameters()
         if params and params.get("enabled") is True:
             return "multi_parameter"
@@ -607,6 +619,8 @@ class Contest(BaseModel, ContestMixin):
             ),
             #  CRITICAL FIX: Explicitly add scoring_parameters
             "scoring_parameters": scoring_params,
+            # Automated scoring settings
+            "automated_settings": self.get_automated_settings(),
             # Computed fields
             "submission_count": self.get_submission_count(),
             "status": self.get_status(),
