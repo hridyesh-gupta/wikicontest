@@ -1743,10 +1743,11 @@ def crawl_category_articles(
         headers = get_mediawiki_headers()
 
         # Build API params for category members
+        # cmtitle requires the full title with namespace prefix (e.g., "Category:Living_people")
         params = {
             "action": "query",
             "list": "categorymembers",
-            "cmtitle": category_name,
+            "cmtitle": f"Category:{category_name}",
             "cmtype": "page",  # Only get actual pages, not subcategories or files
             "cmlimit": "max",  # Max per request (usually 500)
             "cmnamespace": "0",  # Only mainspace articles
@@ -1812,6 +1813,9 @@ def crawl_category_articles(
             "wiki_base": wiki_base,
         }
 
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception as e:  # pylint: disable=broad-exception-caught
         # If crawling fails, return None to indicate failure
+        # Log the error for debugging
+        import logging
+        logging.error(f"crawl_category_articles failed: {str(e)}")
         return None

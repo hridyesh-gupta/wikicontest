@@ -2948,114 +2948,103 @@ def reject_contest_request(request_id):
 def crawl_category_for_contest(contest_id):
     """
     Crawl articles from a Wikipedia category and create pending submissions.
-
-    This endpoint is used for automated scoring contests to import articles
-    from a Wikipedia category. Each article is created as a pending submission
-    that can later be evaluated by the automated evaluation engine.
-
-    Args:
-        contest_id: Contest ID to add submissions to
-
-    Expected JSON data:
-        category_url: Full URL to a Wikipedia category page
-        limit: Optional maximum number of articles to import (default: 5000, max: 5000)
-
-    Returns:
-        JSON response with:
-            - message: Success message
-            - total_imported: Number of submissions created
-            - articles: List of imported article titles
-            - skipped: Number of articles skipped (duplicates)
     """
-    user = request.current_user
-    data = request.get_json()
-
-    # Fetch contest
-    contest = Contest.query.get(contest_id)
-    if not contest:
-        return jsonify({"error": "Contest not found"}), 404
-
-    # Check if contest uses automated scoring
-    scoring_mode = contest.get_scoring_mode()
-    if scoring_mode != "automated":
-        return jsonify({
-            "error": "Category crawling is only available for automated scoring contests"
-        }), 400
-
-    # Permission check: admin, creator, or organizer
-    is_admin = hasattr(user, "is_admin") and callable(getattr(user, "is_admin")) and user.is_admin()
-    is_creator = getattr(user, "username", None) == getattr(contest, "created_by", None)
-    is_organizer = user.username in [o.username for o in contest.organizers] if hasattr(contest, "organizers") else False
-
-    if not (is_admin or is_creator or is_organizer):
-        return jsonify({"error": "You do not have permission to crawl categories for this contest"}), 403
-
-    # Get parameters
-    category_url = data.get("category_url")
-    limit = data.get("limit", 5000)
-
-    # Validate limit
     try:
-        limit = min(int(limit), 5000)
-    except (ValueError, TypeError):
-        limit = 5000
+        user = request.current_user
+        data = request.get_json()
 
-    # Crawl the category
-    result = crawl_category_articles(category_url, limit=limit)
+        # Fetch contest
+        contest = Contest.query.get(contest_id)
+        if not contest:
+            return jsonify({"error": "Contest not found"}), 404
 
-    if not result:
-        return jsonify({
-            "error": "Failed to crawl category. Please check the category URL."
-        }), 400
+        # Check if contest uses automated scoring
+        try:
+            scoring_mode = contest.get_scoring_mode()
+        except Exception as e:
+            current_app.logger.error(f"Error getting scoring mode: {str(e)}")
+            scoring_mode = "simple"
 
-    articles = result.get("articles", [])
-    imported = []
-    skipped = 0
+        if scoring_mode != "automated":
+            return jsonify({
+                "error": f"Category crawling is only available for automated scoring contests. Current mode: {scoring_mode}"
+            }), 400
 
-    # Get existing article links for this contest to avoid duplicates
-    existing_links = set(
-        s.article_link for s in Submission.query.filter_by(contest_id=contest_id).all()
-    )
+        # Permission check: jury member or superadmin only
+        jury_members = contest.get_jury_members() if hasattr(contest, "get_jury_members") else []
+        is_jury_member = user.username in jury_members if jury_members else False
+        is_superadmin = getattr(user, "role", None) == "superadmin"
 
-    # Create submissions for each article
-    for article in articles:
-        article_url = article.get("url")
-        article_title = article.get("title")
+        if not (is_jury_member or is_superadmin):
+            return jsonify({"error": "You do not have permission to crawl categories for this contest"}), 403
 
-        # Skip if already submitted
-        if article_url in existing_links:
-            skipped += 1
-            continue
+        # Get parameters
+        category_url = data.get("category_url")
+        limit = data.get("limit", 5000)
 
-        # Create pending submission
-        # For automated contests, we use a system user (user_id of contest creator or first organizer)
-        # The submission will be marked as pending for automated evaluation
-        submission = Submission(
-            user_id=user.id,  # Use current user as the importer
-            contest_id=contest_id,
-            article_title=article_title,
-            article_link=article_url,
-            status="pending",
+        # Validate limit
+        try:
+            limit = min(int(limit), 5000)
+        except (ValueError, TypeError):
+            limit = 5000
+
+        # Crawl the category
+        result = crawl_category_articles(category_url, limit=limit)
+
+        if not result:
+            return jsonify({
+                "error": "Failed to crawl category. Please check the category URL."
+            }), 400
+
+        articles = result.get("articles", [])
+        imported = []
+        skipped = 0
+
+        # Get existing article links for this contest to avoid duplicates
+        existing_links = set(
+            s.article_link for s in Submission.query.filter_by(contest_id=contest_id).all()
         )
 
-        try:
-            submission.save()
-            imported.append(article_title)
-            existing_links.add(article_url)  # Prevent duplicates within this batch
-        except IntegrityError:
-            # Duplicate submission, skip
-            db.session.rollback()
-            skipped += 1
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            current_app.logger.error(f"Error creating submission for {article_title}: {str(e)}")
-            db.session.rollback()
-            skipped += 1
+        # Create submissions for each article
+        for article in articles:
+            article_url = article.get("url")
+            article_title = article.get("title")
 
-    return jsonify({
-        "message": f"Successfully imported {len(imported)} articles from category",
-        "total_imported": len(imported),
-        "skipped": skipped,
-        "category": result.get("category"),
-        "wiki_base": result.get("wiki_base"),
-        "articles": imported[:100],  # Return first 100 for preview
-    }), 200
+            # Skip if already submitted
+            if article_url in existing_links:
+                skipped += 1
+                continue
+
+            # Create pending submission
+            submission = Submission(
+                user_id=user.id,
+                contest_id=contest_id,
+                article_title=article_title,
+                article_link=article_url,
+                status="pending",
+            )
+
+            try:
+                submission.save()
+                imported.append(article_title)
+                existing_links.add(article_url)
+            except IntegrityError:
+                db.session.rollback()
+                skipped += 1
+            except Exception as e:
+                current_app.logger.error(f"Error creating submission for {article_title}: {str(e)}")
+                db.session.rollback()
+                skipped += 1
+
+        return jsonify({
+            "message": f"Successfully imported {len(imported)} articles from category",
+            "total_imported": len(imported),
+            "skipped": skipped,
+            "category": result.get("category"),
+            "wiki_base": result.get("wiki_base"),
+            "articles": imported[:100],
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"crawl_category_for_contest error: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
