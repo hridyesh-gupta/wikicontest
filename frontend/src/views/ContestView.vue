@@ -267,6 +267,66 @@ class="text-decoration-none">
         </div>
       </div>
 
+      <!-- Category Crawler Section (for Automated Scoring Contests) -->
+      <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
+          
+          <div class="crawler-form">
+            <select v-model="selectedCategory" class="form-select crawler-select">
+              <option value="">Select a category...</option>
+              <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+            </select>
+            <input
+              type="number"
+              v-model.number="crawlLimit"
+              placeholder="Limit"
+              min="1"
+              max="5000"
+              class="form-control crawler-limit"
+            />
+            <button
+              class="btn btn-primary crawler-btn"
+              @click="crawlCategory"
+              :disabled="crawling || !selectedCategory"
+            >
+              <span v-if="crawling">
+                <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+              </span>
+              <span v-else>
+                <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+              </span>
+            </button>
+          </div>
+          
+          <div v-if="crawlResult" class="crawl-result mt-3">
+            <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+              <i class="fas fa-check-circle me-2"></i>
+              {{ crawlResult.message }}
+              <br />
+              <small>Category: {{ crawlResult.category }}</small>
+              <br />
+              <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+            </div>
+            <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              All {{ crawlResult.skipped }} articles were duplicates
+            </div>
+            <div class="alert alert-info" v-else>
+              <i class="fas fa-info-circle me-2"></i>
+              No articles found in category
+            </div>
+          </div>
+          <div v-if="crawlError" class="alert alert-danger mt-3">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            {{ crawlError }}
+          </div>
+        </div>
+      </div>
+
       <!-- Submissions Table (Visible to Jury and Organizers) -->
       <div v-if="canViewSubmissions" class="card mb-4">
         <div class="card-header">
@@ -400,66 +460,6 @@ title="Delete Submission"
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Category Crawler Section (for Automated Scoring Contests) -->
-      <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
-        </div>
-        <div class="card-body">
-          <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
-          
-          <div class="crawler-form">
-            <select v-model="selectedCategory" class="form-select crawler-select">
-              <option value="">Select a category...</option>
-              <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
-            </select>
-            <input
-              type="number"
-              v-model.number="crawlLimit"
-              placeholder="Limit"
-              min="1"
-              max="5000"
-              class="form-control crawler-limit"
-            />
-            <button
-              class="btn btn-primary crawler-btn"
-              @click="crawlCategory"
-              :disabled="crawling || !selectedCategory"
-            >
-              <span v-if="crawling">
-                <i class="fas fa-spinner fa-spin me-1"></i> Importing...
-              </span>
-              <span v-else>
-                <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
-              </span>
-            </button>
-          </div>
-          
-          <div v-if="crawlResult" class="crawl-result mt-3">
-            <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
-              <i class="fas fa-check-circle me-2"></i>
-              {{ crawlResult.message }}
-              <br />
-              <small>Category: {{ crawlResult.category }}</small>
-              <br />
-              <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
-            </div>
-            <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
-              <i class="fas fa-exclamation-triangle me-2"></i>
-              All {{ crawlResult.skipped }} articles were duplicates
-            </div>
-            <div class="alert alert-info" v-else>
-              <i class="fas fa-info-circle me-2"></i>
-              No articles found in category
-            </div>
-          </div>
-          <div v-if="crawlError" class="alert alert-danger mt-3">
-            <i class="fas fa-exclamation-circle me-2"></i>
-            {{ crawlError }}
           </div>
         </div>
       </div>
@@ -746,6 +746,66 @@ class="text-decoration-none">
           </div>
         </div>
 
+        <!-- Category Crawler Section (for Automated Scoring Contests) -->
+        <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
+            
+            <div class="crawler-form">
+              <select v-model="selectedCategory" class="form-select crawler-select">
+                <option value="">Select a category...</option>
+                <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+              <input
+                type="number"
+                v-model.number="crawlLimit"
+                placeholder="Limit"
+                min="1"
+                max="5000"
+                class="form-control crawler-limit"
+              />
+              <button
+                class="btn btn-primary crawler-btn"
+                @click="crawlCategory"
+                :disabled="crawling || !selectedCategory"
+              >
+                <span v-if="crawling">
+                  <i class="fas fa-spinner fa-spin me-1"></i> Importing...
+                </span>
+                <span v-else>
+                  <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
+                </span>
+              </button>
+            </div>
+            
+            <div v-if="crawlResult" class="crawl-result mt-3">
+              <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
+                <i class="fas fa-check-circle me-2"></i>
+                {{ crawlResult.message }}
+                <br />
+                <small>Category: {{ crawlResult.category }}</small>
+                <br />
+                <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
+              </div>
+              <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                All {{ crawlResult.skipped }} articles were duplicates
+              </div>
+              <div class="alert alert-info" v-else>
+                <i class="fas fa-info-circle me-2"></i>
+                No articles found in category
+              </div>
+            </div>
+            <div v-if="crawlError" class="alert alert-danger mt-3">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              {{ crawlError }}
+            </div>
+          </div>
+        </div>
+
         <!-- Submissions Table (Visible to Jury and Organizers) -->
         <div v-if="canViewSubmissions" class="card mb-4">
           <div class="card-header">
@@ -879,66 +939,6 @@ title="Delete Submission"
                   </tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Category Crawler Section (for Automated Scoring Contests) -->
-        <div v-if="contest.automated_settings?.enabled === true && contest.categories && contest.categories.length > 0 && canImportArticles" class="card mb-4">
-          <div class="card-header">
-            <h5 class="mb-0"><i class="fas fa-download me-2"></i>Import Articles from Category</h5>
-          </div>
-          <div class="card-body">
-            <p class="text-muted mb-3">Import articles from the contest's configured categories as pending submissions.</p>
-            
-            <div class="crawler-form">
-              <select v-model="selectedCategory" class="form-select crawler-select">
-                <option value="">Select a category...</option>
-                <option v-for="cat in contest.categories" :key="cat" :value="cat">{{ cat }}</option>
-              </select>
-              <input
-                type="number"
-                v-model.number="crawlLimit"
-                placeholder="Limit"
-                min="1"
-                max="5000"
-                class="form-control crawler-limit"
-              />
-              <button
-                class="btn btn-primary crawler-btn"
-                @click="crawlCategory"
-                :disabled="crawling || !selectedCategory"
-              >
-                <span v-if="crawling">
-                  <i class="fas fa-spinner fa-spin me-1"></i> Importing...
-                </span>
-                <span v-else>
-                  <i class="fas fa-cloud-download-alt me-1"></i> Import Articles
-                </span>
-              </button>
-            </div>
-            
-            <div v-if="crawlResult" class="crawl-result mt-3">
-              <div class="alert alert-success" v-if="crawlResult.total_imported > 0">
-                <i class="fas fa-check-circle me-2"></i>
-                {{ crawlResult.message }}
-                <br />
-                <small>Category: {{ crawlResult.category }}</small>
-                <br />
-                <small>Skipped (duplicates): {{ crawlResult.skipped }}</small>
-              </div>
-              <div class="alert alert-warning" v-else-if="crawlResult.skipped > 0">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                All {{ crawlResult.skipped }} articles were duplicates
-              </div>
-              <div class="alert alert-info" v-else>
-                <i class="fas fa-info-circle me-2"></i>
-                No articles found in category
-              </div>
-            </div>
-            <div v-if="crawlError" class="alert alert-danger mt-3">
-              <i class="fas fa-exclamation-circle me-2"></i>
-              {{ crawlError }}
             </div>
           </div>
         </div>
@@ -2129,7 +2129,7 @@ export default {
         crawlResult.value = data
 
         // Refresh submissions list to show new imports
-        await fetchSubmissions()
+        await loadSubmissions()
       } catch (err) {
         crawlError.value = err.message || 'An error occurred while crawling the category'
       } finally {
