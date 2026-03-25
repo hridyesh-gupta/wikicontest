@@ -6,7 +6,7 @@
         <i class="fas fa-arrow-left me-2"></i>Back to Contests
       </button>
       <div class="d-flex gap-2">
-        <button v-if="contest"
+        <button v-if="contest && contestScoringMode !== 'automated'"
 class="btn btn-primary text-white"
 @click="goToLeaderboard"
           title="View Contest Leaderboard">
